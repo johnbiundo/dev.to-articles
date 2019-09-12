@@ -37,12 +37,7 @@ If you've played around with any NestJS modules - such as `@nestjs/typeorm`, `@n
 ```typescript
 @Module({
   imports: [
-    JwtModule.registerAsync(
-      {
-        useClass: ConfigService,
-        imports: [ConfigModule],
-      }
-    )
+    JwtModule.registerAsync({ useClass: ConfigService }),
   ]
 })
 ```
@@ -85,23 +80,13 @@ To begin with, we can imagine supporting a module import statement using the sam
 
 ```typescript
 @Module({
-  imports: [MassiveModule.registerAsync({
-    useClass: ConfigService,
-    imports: [ConfigModule],
-  })]
+  imports: [
+    MassiveModule.registerAsync({ useClass: ConfigService })
+  ],
 })
 ```
 
 What's happening here?  In the *static options* case (using the `register()` method) we pass in a static options object. Now, we'd like to have this `registerAsync()` method use an *options provider* that (someone? Perhaps the NestJS runtime system on our behalf?) can call upon to supply the object dynamically.
-
-Let's look again at the object we passed to `registerAsync` above:
-
-```js
-{
-  useClass: ConfigService,
-  imports: [ConfigModule],
-}
-```
 
 If this doesn't look familiar, take a quick look at [this section](https://docs.nestjs.com/fundamentals/custom-providers#class-providers-useclass) of the *Custom providers* chapter. The similarities are deliberate. We're applying the lessons learned from *Custom providers* to build a more flexible means of supplying options to our dynamic modules - hence the name *async options provider*.
 
@@ -169,7 +154,6 @@ OK, so now you remember that we can define our *options provider* with a constru
 {
   provide: 'MASSIVE_CONNECT_OPTIONS',
   useFactory: // <-- we need to get our options factory inserted here!
-  imports:    // <-- we need to import a module here if our factory lives in a separate one
   inject:     // <-- injectable parameters for useFactory
 }
 ```
@@ -178,10 +162,9 @@ Let's tie a few things together.  Recall where we started (with our consumer mod
 
 ```typescript
 @Module({
-  imports: [MassiveModule.registerAsync({
-    useClass: ConfigService,
-    imports: [ConfigModule],
-  })]
+  imports: [
+    MassiveModule.registerAsync({ useClass: ConfigService })
+  ],
 })
 ```
 
@@ -199,7 +182,6 @@ OK, so we're working on steps 4, 5, and 6 right now.  We're not yet ready to ass
 ```typescript
 {
   provide: 'MASSIVE_CONNECT_OPTIONS',
-  imports: [ConfigModule],
   useFactory: async (ConfigService) =>
     await ConfigService.createMassiveConnectOptions(),
   inject: [ConfigService]
@@ -246,47 +228,69 @@ export class MassiveModule {
   ): DynamicModule {
     return {
       module: MassiveModule,
-      imports: connectOptions.imports || [],
       providers: [
-        this.createConnectProvider(connectOptions),
         MassiveService,
+        this.createConnectProviders(connectOptions),
       ],
       exports: [MassiveService],
     };
   }
 
-  private static createConnectProvider(
+  private static createConnectProviders(
     options: MassiveConnectAsyncOptions,
-  ): Provider {
-    return {
-      provide: 'MASSIVE_CONNECT_OPTIONS',
-      useFactory: async (optionsFactory: MassiveOptionsFactory) =>
-        await optionsFactory.createMassiveConnectOptions(),
-      inject: [options.useClass],
-    };
+  ): Provider[] {
+    return [
+      {
+        provide: 'MASSIVE_CONNECT_OPTIONS',
+        useFactory: async (optionsFactory: MassiveOptionsFactory) =>
+          await optionsFactory.createMassiveConnectOptions(),
+        inject: [options.useClass],
+      },
+      {
+        provide: options.useClass,
+        useClass: useClass,
+      }
+    ];
   }
 ```
 
-Let's get a firm handle on what this code does.  If we were to insert a logging statement displaying the return value from `registerAsync()`, we'd see an object that looks pretty much like this:
+Let's get a firm handle on what this code does. This is really where the rubber meets the road, so take time to understand it carefully. Consider that if we were to insert a logging statement displaying the return value from:
+
+```typescript
+registerAsync({ useClass: ConfigService })
+```
+
+we'd see an object that looks pretty much like this:
 
 ```typescript
 {
   module: MassiveModule,
-  imports: [],
   providers: [
-    {
+     MassiveService,
+   {
       provide: 'MASSIVE_CONNECT_OPTIONS',
       useFactory: async (optionsFactory: MassiveOptionsFactory) =>
         await optionsFactory.createMassiveConnectOptions(),
       inject: [ ConfigService ],
     },
-    MassiveService
+    {
+      provide: ConfigService,
+      useClass: ConfigService,
+    }
   ],
   exports: [ MassiveService ]
 }
 ```
 
-This should be pretty recognizable. To describe it in English, we're returning a dynamic module that declares two providers.  One of the providers is obviously the `MassiveService` itself, which we plan to use in our consumer's feature modules, so we re-export it.  The other provider is *only used internally* by the `MassiveService` to ingest the connection options it needs.  Let's take a little closer look at that factory provider. Note that it has an `inject` property to inject the `ConfigService` into the factory function.  This is described in detail [here in the Custom providers chapter](https://docs.nestjs.com/fundamentals/custom-providers#factory-providers-usefactory), but basically, the idea is that the factory function takes optional input arguments which, if specified, are resolved by injecting a provider from the `inject` property array.
+This should be pretty recognizable. To describe it in English, we're returning a dynamic module that declares **three** providers.
+
+- The first provider is obviously the `MassiveService` itself, which we plan to use in our consumer's feature modules, so we re-export it.
+
+The second provider (`'MASSIVE_CONNECT_OPTIONS'`) is *only used internally* by the `MassiveService` to ingest the connection options it needs (notice that we do **not** re-export it).  Let's take a little closer look at that `useFactory` construct. Note that there's also an `inject` property, which is used to inject the `ConfigService` into the factory function.  This is described in detail [here in the Custom providers chapter](https://docs.nestjs.com/fundamentals/custom-providers#factory-providers-usefactory), but basically, the idea is that the factory function takes optional input arguments which, if specified, are resolved by injecting a provider from the `inject` property array.  You might be wondering where that `ConfigService` comes from.  Read on :smile:.
+
+Finally, we have a third provider, also used only internally by our dynamic module (and hence not exported), which is our single private instance of the `ConfigService`.  So, Nest is going to instantiate a `ConfigService` inside the dynamic module context (this makes sense, right?  We told it to `useClass`, which means "create your own instance"), and that will be injected into the factory.
+
+If you made it this far, you can breathe out now.  Congrats, that was the hardest part!
 
 One other thing that should be obvious from looking at the generated `useFactory` syntax above is that the `ConfigService` class must implement a `createMassiveConnectOptions()` method. This should be a familiar pattern if you're already using some sort of configuration module, but now you can see how it plugs into this construct. Later, when we finalize our code, we'll make sure to use types to ensure that TypeScript, and our development tooling, assists us in making sure we supply a conforming class in `useFactory`.
 
@@ -342,7 +346,13 @@ This sometimes-overlooked construct is actually extremely useful.  In our contex
 
 ### Supporting Multiple Async Options Providers Techniques
 
-We're in the home stretch.  We're going to focus now on generalizing and abstracting our `registerAsync()` method to support the additional methods described above.  I'm going to jump right to the code, as we're all getting weary now :wink:.  I'll describe the key elements below.
+We're in the home stretch.  We're going to focus now on generalizing and optimizing our `registerAsync()` method to support the additional methods described above.  When we're done, our module will support all three mechanisms described above:
+
+1. useClass - to get a private instance of the options provider.
+2. useFactory - to use a function as the options provider.
+3. useExisting - to re-use an existing (shared, `SINGLETON`) service as the options provider.
+
+I'm going to jump right to the code, as we're all getting weary now :wink:.  I'll describe the key elements below.
 
 ```typescript
 @Global()
@@ -407,7 +417,6 @@ export class MassiveModule {
   ```
 
 Before discussing the details of the code, let's cover a few superficial changes to the prior implementation to make sure they don't trip you up.  These changes are mostly just an artifact of avoiding a bit of unnecessary complexity in the earlier example.
-- Yes, we did change the name (from singular to plural) and return type (to array) of the `createConnectProvider` method.
 - We use the constant `MASSIVE_CONNECT_OPTIONS` in place of the string-valued token above.
 - Rather than listing `MassiveService` in the `providers` and `exports` properties of the dynamically constructed module, we promoted them up to the decorator.  Why? Partly style, and partly to keep the code DRY.  The two approaches are equivalent.
 
@@ -440,9 +449,9 @@ We could expect a dynamic module to be constructed with the following properties
 }
 ```
 
-And of course, because the module is preceded by an `@Module()` decorator listing `MassiveService` as a provider and exporting it, our resulting dynamic module will have those properties.
+And of course, because the module is preceded by an `@Module()` decorator listing `MassiveService` as a provider and exporting it (the other code change we made in this last iteration), our resulting dynamic module will have those properties.
 
-Consider another question. How is the `ConfigService` available inside the factory for injection? Kind of a trick question.  In the sample above, I assumed that it was already visible inside the consuming module -- perhaps as a global module.  Let's say that wasn't true, and that it lives in `ConfigModule`.  Can our code handle this?  Let's see.
+Consider another question. How is the `ConfigService` available inside the factory for injection in this `useExisting` case? Kind of a trick question.  In the sample above, I assumed that it was already visible inside the consuming module -- perhaps as a global module (one declared with `@Global()`).  Let's say that wasn't true, and that it lives in `ConfigModule`.  Can our code handle this?  Let's see.
 
 Our registration would instead look like this:
 
@@ -460,10 +469,9 @@ And our resulting dynamic module would look like this:
 ```typescript
 {
   module: MassiveModule,
-  imports: [],
+  imports: [ ConfigModule ],
   providers: [
     {
-      imports: [ ConfigModule ]
       provide: MASSIVE_CONNECT_OPTIONS,
       useFactory: async (optionsFactory: MassiveConnectOptionsFactory) =>
         await optionsFactory.createMassiveConnectOptions(),
@@ -473,7 +481,7 @@ And our resulting dynamic module would look like this:
 }
 ```
 
-Do you see how the pieces fit together? One thing to consider is the difference in the code paths when you use `useClass` vs. `useExisting`.  It's worth working through those details as the concepts, combined with understanding global modules (using `@Global()) will give you a full picture of how NestJS modules can fit together in a coherent way.
+Do you see how the pieces fit together? One thing to consider is the difference in the code paths when you use `useClass` vs. `useExisting`.  The important point is how we either instantiate a `ConfigService` class, or inject an existing one.  It's worth working through those details as the concepts will give you a full picture of how NestJS modules can fit together in a coherent way.
 
 If you have questions, feel free to ask in the comments below!
 
