@@ -72,7 +72,7 @@ The primary function of the `@nestjsplus/massive` package is to make a connectio
 }
 ```
 
-What we quickly realize is that it's not optimal to hard-code those connection parameters in our Nest app.  The conventional solution is to supply them through some sort of *Configuration Module*.  And that's exactly what we can do with nest's `@nestjs/jwt` module as shown in the example above. Now let's figure out how to do that in our Massive module.
+What we quickly realize is that it's not optimal to hard-code those connection parameters in our Nest app.  The conventional solution is to supply them through some sort of *Configuration Module*.  And that's exactly what we can do with Nest's `@nestjs/jwt` module as shown in the example above. Now let's figure out how to do that in our Massive module.
 
 ### Coding for Async Options Providers
 
@@ -211,7 +211,7 @@ export class MassiveService {
 
 The `MassiveService` class injects the connection options provider and uses that information to make the API call needed to create a database connection (the line: `massive(this._massiveConnectOptions)`). Once made, it caches the connection so it can return an existing connection on subsequent calls. That's it.  That's why we're jumping through hoops to be able to pass in our *options provider*.
 
-We've now worked out the concepts and sketched out the piece parts of our dynamically configurable module.  Let's start assembling them.  First we'll write some *glue code* to pull this all together.  As we learned in the [dynamic modules](https://docs.nestjs.com/fundamentals/dynamic-modules) chapter, all that glue should live in the module definition class.  Let's create the `MassiveModule` class for that purpose.  We'll describe what's happening in the this code just below it.
+We've now worked out the concepts and sketched out the piece parts of our dynamically configurable module.  Let's start assembling them.  First we'll write some *glue code* to pull this all together.  As we learned in the [dynamic modules](https://docs.nestjs.com/fundamentals/dynamic-modules) chapter, all that glue should live in the module definition class.  Let's create the `MassiveModule` class for that purpose.  We'll describe what's happening in this code just below it.
 
 ```typescript
 @Global()
@@ -416,7 +416,7 @@ export class MassiveModule {
 
 Before discussing the details of the code, let's cover a few superficial changes to the prior implementation to make sure they don't trip you up.  These changes are mostly just an artifact of avoiding a bit of unnecessary complexity in the earlier example.
 - We now use the constant `MASSIVE_CONNECT_OPTIONS` in place of a string-valued token.
-- Rather than listing `MassiveService` in the `providers` and `exports` properties of the dynamically constructed module, we promoted them up live in the `@Module()` decorator metadata.  Why? Partly style, and partly to keep the code DRY.  The two approaches are equivalent.
+- Rather than listing `MassiveService` in the `providers` and `exports` properties of the dynamically constructed module, we promoted them up to live in the `@Module()` decorator metadata.  Why? Partly style, and partly to keep the code DRY.  The two approaches are equivalent.
 
 You should be able to trace the path through this code to see how it handles each case uniquely.  I highly recommend you do the following.  Construct an arbitrary `registerAsync()` registration call on paper, and walk through the code to predict what the returned dynamic module will look like.  This will strongly reinforce the patterns and help you firmly connect all the dots.
 
@@ -481,7 +481,7 @@ And our resulting dynamic module would look like this:
 
 Do you see how the pieces fit together?
 
-Another exercise is to ponder the difference in the code paths when you use `useClass` vs. `useExisting`.  The important point is how we either instantiate a `ConfigService` class, or inject an existing one.  It's worth working through those details, as the concepts will give you a full picture of how NestJS modules can fit together in a coherent way.
+Another exercise is to ponder the difference in the code paths when you use `useClass` vs. `useExisting`.  The important point is how we either instantiate a `ConfigService` class, or inject an existing one.  It's worth working through those details, as the concepts will give you a full picture of how NestJS modules can fit together in a coherent way.  But this article is already too long, so I'll leave that as an exercise for you, dear reader. :smile:
 
 If you have questions, feel free to ask in the comments below!
 
@@ -492,5 +492,7 @@ The patterns illustrated above are used throughout Nest's add-on modules, like `
 As a next step, you may want to consider browsing through the source code of those modules, now that you have a roadmap. You can also see a slightly evolved version of the code in this article in the [@nestjsplus/massive repository](https://github.com/nestjsplus/massive) (while you're there, maybe give it a quick :star: if you like this article :wink:). The main difference between the code in this article and that repo is that the production version needs to handle **multiple** asynchronous options providers, so there's a tiny bit more plumbing.
 
 Now you can confidently start using these powerful patterns in your own code to create robust and flexible modules that work reliably in a wide variety of contexts.
+
+As a final bonus, if you're building an Open Source package for public use, just combine this technique with the steps described in my last article [on publishing NPM packages](https://dev.to/nestjs/publishing-nestjs-packages-with-npm-21fm), and you're all set.
 
 Feel free to ask questions, make comments or suggestions, or just say hello in the comments below.  And join us at [Discord](https://discord.gg/G7Qnnhy) for more happy discussions about NestJS.  I post there as *Y Prospect*.
