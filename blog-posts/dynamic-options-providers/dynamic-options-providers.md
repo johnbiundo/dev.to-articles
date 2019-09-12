@@ -1,6 +1,6 @@
 ---
 published: false
-title: "Advanced NestJS: How to build completely dynamic NestJS modules and prosper"
+title: "Advanced NestJS: How to build completely dynamic NestJS modules"
 description: "tags: nestjs, nest, dependency injection, providers"
 series:
 canonical_url:
@@ -12,7 +12,7 @@ canonical_url:
 
 Over on the [NestJS documentation site](https://docs.nestjs.com), we recently added a new chapter on [dynamic modules](https://docs.nestjs.com/fundamentals/dynamic-modules). This is a fairly advanced chapter, and along with some recent significant improvements to the [asynchronous providers chapter](https://docs.nestjs.com/fundamentals/async-providers), Nest developers have some great new resources to help build configurable modules that can be assembled into complex, robust applications.
 
-This article builds on that foundation and takes it one step further.  One of the hallmarks of NestJS is making **asynchronous programming** very straightforward.  Nest fully embraces Node.js Promises and the `async/await` paradigm. Coupled with Nest's signature Dependency Injection features, this is an extremely powerful combination. Let's look at how these features can be used to create *dynamically configurable modules*.  Mastering this skill lets you build modules that are re-usable in any context.  This enables fully context-aware re-usable packages (libraries), and *assemble* apps that deploy smoothly across cloud providers and throughout the DevOps spectrum - from development to staging to production.
+This article builds on that foundation and takes it one step further.  One of the hallmarks of NestJS is making **asynchronous programming** very straightforward.  Nest fully embraces Node.js Promises and the `async/await` paradigm. Coupled with Nest's signature Dependency Injection features, this is an extremely powerful combination. Let's look at how these features can be used to create *dynamically configurable modules*.  Mastering this skill lets you build modules that are re-usable in any context.  This enables fully context-aware re-usable packages (libraries), and lets you *assemble* apps that deploy smoothly across cloud providers and throughout the DevOps spectrum - from development to staging to production.
 
 ### Basic Dynamic Modules
 
@@ -42,7 +42,7 @@ If you've played around with any NestJS modules - such as `@nestjs/typeorm`, `@n
 })
 ```
 
-With this construct, not only is the module dynamically configured, but the **options** passed to the dynamic module are themselves constructed dynamically. This is higher order functionality at its best. Configuration options are provided based on values extracted from the *environment by the `ConfigService`, meaning they can be changed completely external to your feature code.  Compare that to hardcoding a parameter, as with `ConfigModule.register({ folder: './config'})`, and you can immediately see the win.
+With this construct, not only is the module dynamically configured, but the **options** passed to the dynamic module are themselves constructed dynamically. This is higher order functionality at its best. Configuration options are provided based on values extracted from the *environment* by the `ConfigService`, meaning they can be changed completely external to your feature code.  Compare that to hardcoding a parameter, as with `ConfigModule.register({ folder: './config'})`, and you can immediately see the win.
 
 In this article, we'll further explore why you may need this feature, and how to build it. Make sure you have a firm grasp on the concepts in the [Custom providers](https://docs.nestjs.com/fundamentals/custom-providers) and [Dynamic modules](https://docs.nestjs.com/fundamentals/dynamic-modules) chapters before moving on to the next section.
 
@@ -72,7 +72,7 @@ The primary function of the `@nestjsplus/massive` package is to make a connectio
 }
 ```
 
-What we quickly realize is that it's not optimal to hard-code those connection parameters in our Nest app.  The conventional solution is to supply them through some sort of *Configuration Module*.  And that's exactly what we can with nest's `@nestjs/jwt` module as shown in the example above. Now let's figure out how to do that in our Massive module.
+What we quickly realize is that it's not optimal to hard-code those connection parameters in our Nest app.  The conventional solution is to supply them through some sort of *Configuration Module*.  And that's exactly what we can do with nest's `@nestjs/jwt` module as shown in the example above. Now let's figure out how to do that in our Massive module.
 
 ### Coding for Async Options Providers
 
@@ -285,7 +285,7 @@ This should be pretty recognizable. To describe it in English, we're returning a
 
 - The first provider is obviously the `MassiveService` itself, which we plan to use in our consumer's feature modules, so we re-export it.
 
-- The second provider (`'MASSIVE_CONNECT_OPTIONS'`) is *only used internally* by the `MassiveService` to ingest the connection options it needs (notice that we do **not** re-export it).  Let's take a little closer look at that `useFactory` construct. Note that there's also an `inject` property, which is used to inject the `ConfigService` into the factory function.  This is described in detail [here in the Custom providers chapter](https://docs.nestjs.com/fundamentals/custom-providers#factory-providers-usefactory), but basically, the idea is that the factory function takes optional input arguments which, if specified, are resolved by injecting a provider from the `inject` property array.  You might be wondering where that `ConfigService` comes from.  Read on :smile:.
+- The second provider (`'MASSIVE_CONNECT_OPTIONS'`) is *only used internally* by the `MassiveService` to ingest the connection options it needs (notice that we do **not** re-export it).  Let's take a little closer look at that `useFactory` construct. Note that there's also an `inject` property, which is used to inject the `ConfigService` into the factory function.  This is described in detail [here in the Custom providers chapter](https://docs.nestjs.com/fundamentals/custom-providers#factory-providers-usefactory), but basically, the idea is that the factory function takes optional input arguments which, if specified, are resolved by injecting a provider from the `inject` property array.  You might be wondering where that `ConfigService` injectable comes from.  Read on :smile:.
 
 - Finally, we have a third provider, also used only internally by our dynamic module (and hence not exported), which is our single private instance of the `ConfigService`.  So, Nest is going to instantiate a `ConfigService` inside the dynamic module context (this makes sense, right?  We told it to `useClass`, which means "create your own instance"), and that will be injected into the factory.
 
@@ -305,11 +305,11 @@ What we've built so far allows us to configure the `MassiveModule` by handing it
 })
 ```
 
-We can refer to this as configuring our dynamic module with a `useClass` technique (AKA a *class provider*).  Are there other options?  You may recall seeing several other similar patterns in the *custom providers* chapter.  We can model our `registerAsync()` interface based on those patterns.  Let's sketch out what those techniques would look like from a consumer module perspective, and then we can easily add support for them.
+We can refer to this as configuring our dynamic module with a `useClass` technique (AKA a *class provider*).  Are there other options?  You may recall seeing several other similar patterns in the *Custom providers* chapter.  We can model our `registerAsync()` interface based on those patterns.  Let's sketch out what those techniques would look like from a consumer module perspective, and then we can easily add support for them.
 
 #### Factory Providers: useFactory
 
-While we mentioned using a factory in the previous section, that was *internal* to the module mechanics.  What would `useFactory` look like in terms of our `registerAsync()` method?
+While we mentioned using a factory in the previous section, that was *internal* to the dynamic module construction mechanics.  What would `useFactory` look like in terms of our `registerAsync()` method?
 
 ```typescript
 @Module({
