@@ -1,6 +1,6 @@
 ---
 published: false
-title: "Build completely dynamic NestJS modules"
+title: "How to build completely dynamic NestJS modules, and prosper"
 description: "tags: nestjs, nest, dependency injection, providers"
 series:
 canonical_url:
@@ -10,13 +10,13 @@ canonical_url:
 
 ### Intro
 
-Over on the [NestJS documentation site](https://docs.nestjs.com), we recently added a new chapter on [dynamic modules](https://docs.nestjs.com/fundamentals/dynamic-modules). This is a fairly advanced chapter, and along with some recent significant improvements to the [asynchronous providers chapter](https://docs.nestjs.com/fundamentals/asynchronous-providers), Nest developers have some great new resources to help build configurable modules that can be assembled into complex, robust applications.
+Over on the [NestJS documentation site](https://docs.nestjs.com), we recently added a new chapter on [dynamic modules](https://docs.nestjs.com/fundamentals/dynamic-modules). This is a fairly advanced chapter, and along with some recent significant improvements to the [asynchronous providers chapter](https://docs.nestjs.com/fundamentals/async-providers), Nest developers have some great new resources to help build configurable modules that can be assembled into complex, robust applications.
 
-This article builds on that foundation and takes it one step further.  One of the hallmarks of NestJS is making **asynchronous programming** very straightforward.  Nest fully embraces Node.js Promises and the `async/await` paradigm. Coupled with Nest's signature Dependency Injection features, this is an extremely powerful combination. Let's look at how these features can be used to create *dynamically configurable modules*.  Mastering this capability enables you to build modules that are re-usable in any context.  This enables fully context-aware re-usable packages (libraries), as well as apps that deploy smoothly across cloud providers and throughout the DevOps spectrum - from development to staging to production.
+This article builds on that foundation and takes it one step further.  One of the hallmarks of NestJS is making **asynchronous programming** very straightforward.  Nest fully embraces Node.js Promises and the `async/await` paradigm. Coupled with Nest's signature Dependency Injection features, this is an extremely powerful combination. Let's look at how these features can be used to create *dynamically configurable modules*.  Mastering this skill lets you build modules that are re-usable in any context.  This enables fully context-aware re-usable packages (libraries), as well as apps that deploy smoothly across cloud providers and throughout the DevOps spectrum - from development to staging to production.
 
 ### Basic Dynamic Modules
 
-In the [dynamic modules chapter](), the end result of the code sample is the ability to pass in options to configure a module while it is being imported.  At reading the chapter, we know how a construct like the following works through the dynamic module API.
+In the [dynamic modules chapter](), the end result of the code sample is the ability to pass in options to configure a module while it is being imported.  After reading the chapter, we know how the following code snippet works via the dynamic module API.
 
 ```typescript
 import { Module } from '@nestjs/common';
@@ -36,22 +36,26 @@ If you've played around with any NestJS modules - such as `@nestjs/typeorm`, `@n
 
 ```typescript
 @Module({
-  imports: [JwtModule.registerAsync({
-    useClass: ConfigService,
-    imports: [ConfigModule],
-  })]
+  imports: [
+    JwtModule.registerAsync(
+      {
+        useClass: ConfigService,
+        imports: [ConfigModule],
+      }
+    )
+  ]
 })
 ```
 
-With this construct, not only is the module dynamically configured, but the **options** passed to the dynamic module are themselves constructed dynamically. This is higher order functionality at its best. Configuration options are provided based on values currently available from the `ConfigService`, meaning they can be changed completely external to the implementation.  Compare that to hardcoding a parameter, as with `ConfigModule.register({ folder: './config'})`, and you can immediately see the win.
+With this construct, not only is the module dynamically configured, but the **options** passed to the dynamic module are themselves constructed dynamically. This is higher order functionality at its best. Configuration options are provided based on values currently available from the `ConfigService`, meaning they can be changed completely external to your feature code.  Compare that to hardcoding a parameter, as with `ConfigModule.register({ folder: './config'})`, and you can immediately see the win.
 
 In this article, we'll further explore why you may need this feature, and how to build it. Make sure you have a firm grasp on the concepts in the [Custom providers](https://docs.nestjs.com/fundamentals/custom-providers) and [Dynamic modules](https://docs.nestjs.com/fundamentals/dynamic-modules) chapters before moving on to the next section.
 
 ### Async Options Providers Use-case
 
-That section heading is a mouthful!  What the heck is an *async options provider*?
+The section heading above is quite a mouthful!  What the heck is an *async options provider*?
 
-To answer that, first consider that our example above (specifically, the `ConfigModule.register({ folder: './config'})` part) is passing a **static options object** in to the `register()` method.  As we learned in the *Dynamic modules* chapter, this options object is used to customize the behavior of the module.  (Review [that chapter]() before proceeding if this concept is not familiar).  As mentioned, we now want to take that concept *one step further*, and let our **options** object be provided dynamically at run-time.
+To answer that, first consider that our example above (specifically, the `ConfigModule.register({ folder: './config'})` part) is passing a **static options object** in to the `register()` method.  As we learned in the *Dynamic modules* chapter, this options object is used to customize the behavior of the module.  (Review [that chapter](https://docs.nestjs.com/fundamentals/dynamic-modules) before proceeding if this concept is not familiar).  As mentioned, we now want to take that concept *one step further*, and let our **options** object be provided dynamically at run-time.
 
 To give us a concrete working example for the remainder of this article, I'm going to introduce a new module. We'll then walk through how to use dynamic options providers in that context.
 
@@ -61,7 +65,7 @@ I recently published the [@nestjsplus/massive package](https://github.com/nestjs
 - `db.update()` to update database records
 - `db.myFunction()` to execute scripts or database procedures/functions
 
-The primary function of the `@nestjsplus/massive` package is to make a connection to the database, and return the `db` object.  In our feature modules, we then access the database via methods hung off the `db` object, as shown above. Right off the bat, it should be clear that in order to establish a database connection, we need to pass in some connection parameters.  In our case, with PostgreSQL, those parameters would be something like:
+The primary function of the `@nestjsplus/massive` package is to make a connection to the database, and return the `db` object.  In our feature modules, we then access the database using methods hung off the `db` object, as shown above. Right off the bat, it should be clear that in order to establish a database connection, we need to pass in some connection parameters.  In our case, with PostgreSQL, those parameters would be something like:
 
 ```json
 {
@@ -75,7 +79,9 @@ The primary function of the `@nestjsplus/massive` package is to make a connectio
 
 What we quickly realize is that it's not optimal to hard-code those connection parameters in our Nest app.  The conventional solution is to supply them through some sort of *Configuration Module*.  And that's exactly what we're doing in the JWT example above. Now let's figure out how to do that in our Massive module.
 
-To begin with, we can imagine modifying our module import using a construct like this:
+### Coding for Async Options Providers
+
+To begin with, we can imagine supporting a module import statement using the same construct we found in `@nestjs/jwt`, like this:
 
 ```typescript
 @Module({
@@ -86,7 +92,7 @@ To begin with, we can imagine modifying our module import using a construct like
 })
 ```
 
-What's happening here?  In the *static options* case, when we use a `register()` method, we pass in a static options object.  Instead, we'd like to have this `registerAsync()` method use an *options provider* that (someone? Perhaps the NestJS runtime system on our behalf?) can call upon to supply the object dynamically.
+What's happening here?  In the *static options* case (using the `register()` method) we pass in a static options object. Now, we'd like to have this `registerAsync()` method use an *options provider* that (someone? Perhaps the NestJS runtime system on our behalf?) can call upon to supply the object dynamically.
 
 Let's look again at the object we passed to `registerAsync` above:
 
@@ -97,15 +103,14 @@ Let's look again at the object we passed to `registerAsync` above:
 }
 ```
 
-If this doesn't look familiar, take a quick look at this section of the [Custom providers chapter](https://docs.nestjs.com/fundamentals/custom-providers#class-providers-useclass). The similarities are deliberate. We're applying the lessons learned from *Custom providers* to build a more flexible means of supplying options to our dynamic modules - hence the name *async options provider*.
+If this doesn't look familiar, take a quick look at [this section](https://docs.nestjs.com/fundamentals/custom-providers#class-providers-useclass) of the *Custom providers* chapter. The similarities are deliberate. We're applying the lessons learned from *Custom providers* to build a more flexible means of supplying options to our dynamic modules - hence the name *async options provider*.
 
-### Coding for Async Options Providers
 
-So how do we implement this?  Let's dig in. This is going to be a **long** section, but we can do this! :)  Bear in mind that we are walking through a design pattern that, once you understand it, you can **confidently** cut-and-paste as boilerplate to start any sophisticated module that needs dynamic configuration.  As always, before the cutting and pasting starts, it's important to understand the template so you can customize it to your needs. Just remember that you won't have to write this from scratch each time!
+So how do we implement this?  Let's dig in. This is going to be a **long** section, but we can do this! :smile:.  Bear in mind that we are walking through a design pattern that, once you understand it, you can **confidently** cut-and-paste as boilerplate to start building a module that needs dynamic configuration.  As always, before the cutting and pasting starts, it's important to understand the template so you can customize it to your needs. Just remember that you won't have to write this from scratch each time!
 
 Let's first discuss what we expect to accomplish with the `registerAsync(...)` construct above.  Basically, we're saying "Hey module! I don't want to give you the option property values in code.  How about instead I give you a class that has a *method* you can call to get the option values?".  This would give us a great deal of flexibility in how we can generate the options dynamically at runtime.
 
-This implies that our dynamic module is going to need to do a little more work in this case, as compared to the static options technique, to acquire its connection options.  We're going to work up to that. We begin by formalizing some definitions.  We're trying to supply MassiveJS with its expected *connection options*, so first  we'll create an interface to model that:
+This implies that our dynamic module is going to need to do a little more work in this case, as compared to the static options technique, to acquire its connection options.  We're going to work our way up to that result. We begin by formalizing some definitions.  We're trying to supply MassiveJS with its expected *connection options*, so first  we'll create an interface to model that:
 
 ```typescript
 export interface MassiveConnectOptions {
@@ -150,7 +155,9 @@ interface MassiveOptionsFactory {
 }
 ```
 
-Now what mechanism is going to actually *call* our factory function at run time, take the results, and make them available to the part of our code that needs them?  Hmmm... if only we had some general purpose mechanism.  Maybe a feature that we could register an arbitrary object with at run-time, and then have that object passed into a constructor.  Anybody got any ideas?  ;)
+Nice!  We can return the options directly, or a Promise that will resolve to an options object. Nest makes it super easy to support either.  Hence, we now see the "async" part of our *async options provider* coming into play.
+
+Now, let's ask the following: what mechanism is going to actually *call* our factory function at run time, take the results, and make them available to the part of our code that needs them?  Hmmm... if only we had some general purpose mechanism.  Maybe a feature that we could register an arbitrary object with at run-time, and then have that object passed into a constructor.  Anybody got any ideas?  :wink:
 
 Well of course, we've got the awesome NestJS Dependency Injection system at our disposal. That seems like a good fit!
 
@@ -158,7 +165,7 @@ The *recipe* for binding something to the Nest IoC container, and later having i
 
 OK, so now you remember that we can define our *options provider* with a construct like this:
 
-```json
+```js
 {
   provide: 'MASSIVE_CONNECT_OPTIONS',
   useFactory: // <-- we need to get our options factory inserted here!
@@ -192,7 +199,7 @@ OK, so we're working on steps 4, 5, and 6 right now.  We're not yet ready to ass
 {
   provide: 'MASSIVE_CONNECT_OPTIONS',
   imports: [ConfigModule],
-  useFactory: async () =>
+  useFactory: async (ConfigService) =>
     await ConfigService.createMassiveConnectOptions(),
   inject: [ConfigService]
 }
@@ -200,7 +207,7 @@ OK, so we're working on steps 4, 5, and 6 right now.  We're not yet ready to ass
 
 So we've now figured out what our *options provider* should look like. Good so far?
 
-Our next step is to do the assembly of the dynamic module.  Remember that the *options provider* is, after all, just fulfilling a dependency in that module.  Now that we mention it, we haven't really looked at that service that depends on the `'MASSIVE_CONNECTIONS_OBJECT'`. let's take a very short detour to consider our ultimate objective - providing the service that needs this fancy *options provider*.  That is, of course, a `MassiveService` class.  It's surprisingly straightforward:
+Our next step is to do the assembly of the dynamic module.  Remember that the *options provider* is, after all, just fulfilling a dependency inside that module.  Now that we mention it, we haven't really looked at the service that depends on the `'MASSIVE_CONNECTIONS_OBJECT'` we're working so hard to supply. Let's take a very short detour to consider our ultimate objective - providing the service that needs this fancy *options provider*.  That service is, predictably enough, the `MassiveService` class.  It's surprisingly straightforward:
 
 ```typescript
 @Injectable()
@@ -219,7 +226,7 @@ export class MassiveService {
 }
 ```
 
-The `MassiveService` class injects the connection options provider and uses that information to make the API call needed to make a database connection: `massive(this_massiveConnectOptions)`. Once made, it caches the connection so it can provide an existing connection on subsequent calls. That's it.  That's why we're jumping through hoops to be able to pass in our *options provider*.
+The `MassiveService` class injects the connection options provider and uses that information to make the API call needed to create a database connection: `massive(this._massiveConnectOptions)`. Once made, it caches the connection so it can provide an existing connection on subsequent calls. That's it.  That's why we're jumping through hoops to be able to pass in our *options provider*.
 
 We've now worked out the concepts and sketched out the piece parts of our dynamically configurable module.  Let's start assembling them.  First we'll write some *glue code* to pull this all together.  As we learned in the [dynamic modules](https://docs.nestjs.com/fundamentals/dynamic-modules) chapter, all that glue should live in the module definition class.  Let's create the `MassiveModule` class for that purpose.  We'll describe what's happening in the this code just below it.
 
@@ -259,7 +266,7 @@ export class MassiveModule {
   }
 ```
 
-If we were to insert a logging statement displaying the return value from `registerAsync()`, we'd see an object that looks pretty much like this:
+Let's get a firm handle on what this code does.  If we were to insert a logging statement displaying the return value from `registerAsync()`, we'd see an object that looks pretty much like this:
 
 ```typescript
 {
@@ -278,7 +285,7 @@ If we were to insert a logging statement displaying the return value from `regis
 }
 ```
 
-This should be pretty recognizable. To describe it in English, we're returning a dynamic module that declares two providers.  One of the providers is obviously the `MassiveService` itself that we'll be using in our consumer modules, and so we re-export it.  The other provider is *only used internally* by the `MassiveService` to ingest the connection options it needs.  Let's take a little closer look at that factory provider. Note that it has an `inject` property to inject the `ConfigService` into the factory function.  This is described in detail [here in the Custom providers chapter](https://docs.nestjs.com/fundamentals/custom-providers#factory-providers-usefactory), but basically, the idea is that the factory function takes optional input arguments which, if specified, are resolved by injecting a provider from the `inject` property array.
+This should be pretty recognizable. To describe it in English, we're returning a dynamic module that declares two providers.  One of the providers is obviously the `MassiveService` itself, which we plan to use in our consumer's feature modules, so we re-export it.  The other provider is *only used internally* by the `MassiveService` to ingest the connection options it needs.  Let's take a little closer look at that factory provider. Note that it has an `inject` property to inject the `ConfigService` into the factory function.  This is described in detail [here in the Custom providers chapter](https://docs.nestjs.com/fundamentals/custom-providers#factory-providers-usefactory), but basically, the idea is that the factory function takes optional input arguments which, if specified, are resolved by injecting a provider from the `inject` property array.
 
 One other thing that should be obvious from looking at the generated `useFactory` syntax above is that the `ConfigService` class must implement a `createMassiveConnectOptions()` method. This should be a familiar pattern if you're already using some sort of configuration module, but now you can see how it plugs into this construct. Later, when we finalize our code, we'll make sure to use types to ensure that TypeScript, and our development tooling, assists us in making sure we supply a conforming class in `useFactory`.
 
@@ -317,11 +324,11 @@ While we mentioned using a factory in the previous section, that was *internal* 
 })
 ```
 
-In the sample above, we supplied a very simple factory *in place*, but we could of course plug in any arbitrarily sophisticated factory as long as it returns an appropriate connections object.
+In the sample above, we supplied a very simple factory *in place*, but we could of course plug in (or pass in a function implementing) any arbitrarily sophisticated factory as long as it returns an appropriate connections object.
 
 #### Alias Providers: useExisting
 
-This sometimes overlooked construct is actually extremely useful.  In our context, it means we can ensure that we re-use an existing provider rather than instantiating a new one.  For example, `useClass: ConfigService` will cause Nest to create and inject a new private instance of our `ConfigService`. In the real world, we'll probably want one shared instance of the `ConfigService` injected anywhere it's needed, not a private copy.  The `useExisting` technique is our friend here.  Here's how it would look:
+This sometimes-overlooked construct is actually extremely useful.  In our context, it means we can ensure that we re-use an existing *options provider* rather than instantiating a new one.  For example, `useClass: ConfigService` will cause Nest to create and inject a new private instance of our `ConfigService`. In the real world, we'll probably want a single shared instance of the `ConfigService` injected anywhere it's needed, not a private copy.  The `useExisting` technique is our friend here.  Here's how it would look:
 
 
 ```typescript
@@ -334,13 +341,13 @@ This sometimes overlooked construct is actually extremely useful.  In our contex
 
 ### Supporting Multiple Async Options Providers Techniques
 
-We're in the home stretch.  We're going to focus now on generalizing and abstracting our `registerAsync()` method to support the additional methods described above.  I'm going to jump right to the code, as we're all getting weary now ;).  I'll describe the key elements below.
+We're in the home stretch.  We're going to focus now on generalizing and abstracting our `registerAsync()` method to support the additional methods described above.  I'm going to jump right to the code, as we're all getting weary now :wink:.  I'll describe the key elements below.
 
 ```typescript
 @Global()
 @Module({
-  providers: [MassiveService, connectionFactory],
-  exports: [MassiveService, connectionFactory],
+  providers: [MassiveService],
+  exports: [MassiveService],
 })
 export class MassiveModule {
 
@@ -398,14 +405,14 @@ export class MassiveModule {
 }
   ```
 
-Before discussing the details of the code, let's cover a few superficiaal changes to the prior implementation to make sure we don't trip you up.  These changes are mostly just an artifact of avoiding a bit of unnecessary complexity in the earlier example.
+Before discussing the details of the code, let's cover a few superficial changes to the prior implementation to make sure they don't trip you up.  These changes are mostly just an artifact of avoiding a bit of unnecessary complexity in the earlier example.
 - Yes, we did change the name (from singular to plural) and return type (to array) of the `createConnectProvider` method.
 - We use the constant `MASSIVE_CONNECT_OPTIONS` in place of the string-valued token above.
 - Rather than listing `MassiveService` in the `providers` and `exports` properties of the dynamically constructed module, we promoted them up to the decorator.  Why? Partly style, and partly to keep the code DRY.  The two approaches are equivalent.
 
-You should be able to trace the path through this code to see how it handles each case uniquely.  I highly recommend you do the following.  Construct an arbitrary `registerAsync()` registration call, and walk through the code to predict what the returned dynamic module will look like.  This will strongly reinforce the patterns and help you firmly connect all the dots.
+You should be able to trace the path through this code to see how it handles each case uniquely.  I highly recommend you do the following.  Construct an arbitrary `registerAsync()` registration call on paper, and walk through the code to predict what the returned dynamic module will look like.  This will strongly reinforce the patterns and help you firmly connect all the dots.
 
-For example, if we were to write:
+For example, if we were to code:
 
 ```typescript
 @Module({
@@ -467,6 +474,6 @@ And our resulting dynamic module would look like this:
 
 Do you see how the pieces fit together?  If you have questions, feel free to ask in the comments below!
 
-The patterns illustrated above are used throughout Nest's add-on modules, like `@nestjs/jwt` and `@nestjs/typeorm`.  You can now confidently use them in your own code to create robust and flexible modules that work reliably in a wide variety of contexts.
+The patterns illustrated above are used throughout Nest's add-on modules, like `@nestjs/jwt` and `@nestjs/typeorm`.  As a next step, you may want to consider browsing through the source code of those modules, now that you have a roadmap.  You can now confidently begin to use these powerful patterns in your own code to create robust and flexible modules that work reliably in a wide variety of contexts.
 
 Feel free to ask questions, make comments or suggestions, or just say hello in the comments below.  And join us at [Discord](https://discord.gg/G7Qnnhy) for more happy discussions about NestJS.  I post there as *Y Prospect*.
