@@ -67,7 +67,7 @@ I recently published the [@nestjsplus/massive package](https://github.com/nestjs
 
 The primary function of the `@nestjsplus/massive` package is to make a connection to the database, and return the `db` object.  In our feature modules, we then access the database using methods hung off the `db` object, as shown above. Right off the bat, it should be clear that in order to establish a database connection, we need to pass in some connection parameters.  In our case, with PostgreSQL, those parameters would be something like:
 
-```json
+```js
 {
   user: 'john',
   password: 'password',
@@ -96,7 +96,7 @@ What's happening here?  In the *static options* case (using the `register()` met
 
 Let's look again at the object we passed to `registerAsync` above:
 
-```json
+```js
 {
   useClass: ConfigService,
   imports: [ConfigModule],
@@ -170,6 +170,7 @@ OK, so now you remember that we can define our *options provider* with a constru
   provide: 'MASSIVE_CONNECT_OPTIONS',
   useFactory: // <-- we need to get our options factory inserted here!
   imports:    // <-- we need to import a module here if our factory lives in a separate one
+  inject:     // <-- injectable parameters for useFactory
 }
 ```
 
@@ -472,8 +473,16 @@ And our resulting dynamic module would look like this:
 }
 ```
 
-Do you see how the pieces fit together?  If you have questions, feel free to ask in the comments below!
+Do you see how the pieces fit together? One thing to consider is the difference in the code paths when you use `useClass` vs. `useExisting`.  It's worth working through those details as the concepts, combined with understanding global modules (using `@Global()) will give you a full picture of how NestJS modules can fit together in a coherent way.
 
-The patterns illustrated above are used throughout Nest's add-on modules, like `@nestjs/jwt` and `@nestjs/typeorm`.  As a next step, you may want to consider browsing through the source code of those modules, now that you have a roadmap.  You can now confidently begin to use these powerful patterns in your own code to create robust and flexible modules that work reliably in a wide variety of contexts.
+If you have questions, feel free to ask in the comments below!
+
+### Conclusion
+
+The patterns illustrated above are used throughout Nest's add-on modules, like `@nestjs/jwt` and `@nestjs/typeorm`.  Hopefully you now see not only how powerful these patterns are, but how you can make use of them in your own project.
+
+As a next step, you may want to consider browsing through the source code of those modules, now that you have a roadmap. You can also see a slightly evolved version of the code in this article in the [@nestjsplus/massive repository](https://github.com/nestjsplus/massive) (while you're there, maybe give it a quick :star: if you like this article :wink:). The main difference in that repo is that it needs to handle **multiple** asynchronous options providers, so there's a tiny bit more plumbing.
+
+You can then confidently begin to use these powerful patterns in your own code to create robust and flexible modules that work reliably in a wide variety of contexts.
 
 Feel free to ask questions, make comments or suggestions, or just say hello in the comments below.  And join us at [Discord](https://discord.gg/G7Qnnhy) for more happy discussions about NestJS.  I post there as *Y Prospect*.
