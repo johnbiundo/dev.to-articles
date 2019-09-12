@@ -1,10 +1,12 @@
 published: false
 title: "Build completely dynamic NestJS modules"
-description: "tags: nestjs"
+description: "tags: nestjs, nest, dependency injection, providers"
 series:
 canonical_url:
 
-### Introduction
+*John is a member of the NestJS core team*
+
+### Intro
 
 Over on the [NestJS documentation site](https://docs.nestjs.com), we recently added a new chapter on [dynamic modules](https://docs.nestjs.com/fundamentals/dynamic-modules). This is a fairly advanced chapter, and along with some recent significant improvements to the [asynchronous providers chapter](https://docs.nestjs.com/fundamentals/asynchronous-providers), Nest developers have some great new resources to help build configurable modules that can be assembled into complex, robust applications.
 
@@ -464,3 +466,5 @@ And our resulting dynamic module would look like this:
 Do you see how the pieces fit together?  If you have questions, feel free to ask in the comments below!
 
 The patterns illustrated above are used throughout Nest's add-on modules, like `@nestjs/jwt` and `@nestjs/typeorm`.  You can now confidently use them in your own code to create robust and flexible modules that work reliably in a wide variety of contexts.
+
+Feel free to ask questions, make comments or suggestions, or just say hello in the comments below.  And join us at [Discord](https://discord.gg/G7Qnnhy) for more happy discussions about NestJS.  I post there as *Y Prospect*.
