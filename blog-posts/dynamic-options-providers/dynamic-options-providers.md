@@ -159,7 +159,7 @@ OK, so now you remember that we can define our *options provider* with a constru
 }
 ```
 
-Let's try tie a few things together. We're in pretty deep, so now's a good time to do a quick refresher on the big picture, and assess where we're at:
+Let's try to tie a few things together. We're in pretty deep, so now's a good time to do a quick refresher on the big picture, and assess where we're at:
 
 1. We're writing code that constructs, then returns, a dynamic module (our `registerAsync()` static method will house that code).
 2. The dynamic module it returns can be imported into other feature modules, and provides a service (the thing that connects to the database and returns a `db` object).
@@ -168,7 +168,17 @@ Let's try tie a few things together. We're in pretty deep, so now's a good time 
 5. That class contains a method that knows how to supply an appropriate options object.
 6. We're going to use the Nest Dependency Injection system to do the heavy lifting to manage that options object dependency for us.
 
-OK, so we're working on steps 4, 5, and 6 right now.  We're not yet ready to assemble the entire dynamic module. Before we do that, we have to work out the mechanics of our *options provider*. Returning to that task, we can now see how to fill in the blanks in the skeleton *options provider* we sketched out earlier (see the lines annotated `<-- we need to...` above). Let's fill in those values now, as if we were working with a static object, just to see what we're trying to provide:
+OK, so we're working on steps 4, 5, and 6 right now.  We're not yet ready to assemble the entire dynamic module. Before we do that, we have to work out the mechanics of our *options provider*. Returning to that task, we should be able to see how to fill in the blanks in the skeleton *options provider* we sketched out earlier (see the lines annotated `<-- we need to...` above). We can fill in those values based on how the `registerAsync()` call was made:
+
+```typescript
+@Module({
+  imports: [
+    MassiveModule.registerAsync({ useClass: ConfigService })
+  ],
+})
+```
+
+Let's go ahead and fill them in now, as if we were working with a static object, just to see what we're trying to provide:
 
 ```typescript
 {
@@ -179,9 +189,7 @@ OK, so we're working on steps 4, 5, and 6 right now.  We're not yet ready to ass
 }
 ```
 
-So we've now figured out what our *options provider* should look like. Good so far?
-
-Our next step is to do the assembly of the dynamic module.  It's important to remember that the *options provider* is just fulfilling a dependency inside that module.  Now that we mention it, we haven't really looked at the service that depends on the `'MASSIVE_CONNECT_OPTIONS'` we're working so hard to supply. Let's take a quick moment to consider our ultimate objective - providing the service that connects to the database using this fancy *options provider*.  That service is, predictably enough, the `MassiveService` class.  It's surprisingly straightforward:
+So we've now figured out what our *options provider* should look like. Good so far? It's important to remember that the `'MASSIVE_CONNECT_OPTIONS'` provider is just fulfilling a dependency *inside the dynamic module*.  Now that I mention it, we haven't really looked at the service that depends on the `'MASSIVE_CONNECT_OPTIONS'` provider we're working so hard to supply. Let's take a quick moment to consider our ultimate objective - providing the service that connects to the database using this fancy *options provider*.  That service is, predictably enough, the `MassiveService` class.  It's surprisingly straightforward:
 
 ```typescript
 @Injectable()
@@ -280,7 +288,7 @@ This should be pretty recognizable. To describe it in English, we're returning a
 
 - Finally, we have a third provider, also used only internally by our dynamic module (and hence not exported), which is our single private instance of the `ConfigService`.  So, Nest is going to instantiate a `ConfigService` inside the dynamic module context (this makes sense, right?  We told it to `useClass`, which means "create your own instance"), and that will be injected into the factory.
 
-If you made it this far - Congrats, that was the hardest part! We just worked out all the mechanics of assembling a dynamically configurable module.  The rest of the article is gravy!
+If you made it this far - congrats! That was the hardest part. We just worked out all the mechanics of assembling a dynamically configurable module.  The rest of the article is gravy!
 
 One other thing that should be obvious from looking at the generated `useFactory` syntax above is that the `ConfigService` class must implement a `createMassiveConnectOptions()` method. This should be a familiar pattern if you're already using some sort of configuration module, but now you can see how it plugs into this construct.
 
@@ -440,7 +448,7 @@ We could expect a dynamic module to be constructed with the following properties
 }
 ```
 
-(Note: because the module is preceded by an `@Module()` decorator that now lists `MassiveService` as a provider and exports it our resulting dynamic module will *also* have those properties.  Above we are just focusing on the elements that get added dynamically.)
+(Note: because the module is preceded by an `@Module()` decorator that now lists `MassiveService` as a provider and exports it our resulting dynamic module will *also* have those properties.  Above we are just showing the elements that get added dynamically.)
 
 Consider another question. How is the `ConfigService` available inside the factory for injection in this `useExisting` case? Well - heh heh - that's kind of a trick question.  In the sample above, I assumed that it was already visible inside the consuming module -- perhaps as a global module (one declared with `@Global()`).  Let's say that wasn't true, and that it lives in `ConfigModule` which has **not** somehow registered ConfigService as a global provider.  Can our code handle this?  Let's see.
 
