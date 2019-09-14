@@ -20,20 +20,20 @@ We'll start by summarizing the concepts and techniques of *ES modules* and *npm 
 
 We'll then go on to define the purpose of NestJS modules, review how they're constructed, and cover the relationship between modules, providers, and controllers.  In short, we'll create that missing *mental model* for how modules provide the cornerstone of NestJS application architecture.
 
-We'll wrap up by making sure all the conceptual pieces fit together nicely in a comprehensive mental model you can easily remember.
+After that, we'll discuss how all the conceptual pieces fit together nicely in a comprehensive mental model you can easily remember. We'll wrap up with a short discussion about *how to leverage these principals* in your approach to application architecture.
 
-### ES Modules
+### ES modules
 
-This is most definitely **not** a comprehensive review of the history and details of JavaScript modules! In fact, I plan to omit many details, and I may even get a few nuances wrong (but I promise that won't matter for our purposes).
+This is most definitely **not** a comprehensive review of the history and details of JavaScript modules! In fact, I plan to omit many details, and I may even get a few nuances slightly wrong (but I promise that won't matter for our purposes).
 
 I hope I don't provoke the wrath of the JavaScript gods by taking this loose approach, and if you want to go learn the details, by all means do so -- there are plenty of great resources (I recommend [MDN](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Modules)).  The main purpose here is to get a few concepts straight, and then untangle some of the syntax you start running into right from your very first encounter with NestJS.
 
-The basic components of ES Modules you need to understand are:
-- files, which are the basic *containers* of code (note: these are strictly speaking called *modules*, but this is one potential source of confusion as these are **not** related to NestJS modules, and we can minimize confusion by avoiding use of that term in this context; *files* works fine here)
+The basic components of ES modules you need to understand are:
+- files, which are the basic *containers* of code (note: strictly speaking these are called *modules*, but this is one potential source of confusion as these are **not** related to NestJS modules, and we can minimize confusion by avoiding use of that term in this context; *files* works fine here)
 - *bindings*, which can get exported from some files, and imported into others
 - `import` and `export` keywords to assemble these pieces together
 
-In terms of the canonical NestJS application, these are lines like
+In terms of the canonical NestJS application, ES module syntax is seen in lines like:
 
 ```typescript
 // in file src/app.service.ts
@@ -47,12 +47,12 @@ import { AppService } from './app.service';`
 ```
 
 The important things to know here are:
-- A *binding* is the thing getting exported/imported.  It can be a class, interface, constant, etc..
+- A *binding* is the thing getting exported/imported.  It can be a class, interface, constant, etc.
 - Unless it is exported, any entity is *private* to the file it lives in.  This is good, because it means the class `MyFoo` in file `foo-a.ts` won't ever collide with the class `MyFoo` in file `foo-b.ts`.  That is, unless you try to import one into the other.  The point is that both you (the importer of a binding) and someone else (the exporter of a binding) have control over the visibility of code elements.  In short, you can stay out of each others' way.
 
 What are the takeaways for the NestJS developer?
 1. For our purposes, we won't use the word *module* to describe this feature; it's really not necessary, and only causes confusion.
-2. We *will* have to be mindful of the overloaded terms `import` and `export` which have separate and unrelated functions in ES Module land and NestJS land.  Don't worry, we'll make sure that's easy by the time this article is complete.
+2. We *will* have to be mindful of the overloaded terms `import` and `export` which have separate and unrelated functions in ES module land and NestJS land.  Don't worry, we'll make sure that's easy by the time this article is complete.
 3. Whenever we want to access a *binding* (class, interface, constant, etc.) from another file, we use ES `import`, like `import { AppService } from './app.service';`.
 4. Whenever we want to share one, we use ES `export`, like `export class AppService { ... }`.
 5. It can all be boiled down to one rule: if the entity isn't declared **in the file that wants to use it**, its binding has to be imported from some other file that exports it.
@@ -62,7 +62,7 @@ What are the takeaways for the NestJS developer?
 
 The Node Package Manager, npm, is an awesome system for storing and retrieving a group of related files, collectively known as a *package*, from a well-known global registry.
 
-There's a bunch of infrastructure that makes this work (magically, all you really have to do is install `npm` to get it). At the end of the day, all you usually need to know is that *npm* can be used to **get more files onto your filesystem** that you can then use the ES Module system to `import` from.  And importing from these packages is *simple* because they live in a standard location that Node.js knows how to find, so you don't even need to include filepath info, as you do with your own code imports (i.e., the `./` part in `import { AppService } from './app.service'`).
+There's a bunch of infrastructure that makes this work (magically, all you really have to do is install `npm` to get it). At the end of the day, all you usually need to know is that *npm* can be used to **get more files onto your filesystem** that you can then use the ES module system to `import` from.  And importing from these packages is *simple* because they live in a standard location that Node.js knows how to find, so you don't even need to include filepath info, as you do with your own code imports (i.e., the `./` part in `import { AppService } from './app.service'`).
 
 In terms of the canonical NestJS application, an example of importing from a package installed via npm is:
 
@@ -87,25 +87,25 @@ The techniques we've seen so far are all about two things:
 
 We've yet to deal with actually creating NestJS components (providers and controllers), and linking them together in meaningful ways (via modules). To provide an analogy for how these two aspects of development relate, let me tell you a little story.
 
-When I was a kid, I loved doing jigsaw puzzles, and it ran in the family.  My great aunt had a fascinating approach to doing them. She'd (I swear this is true) reach into the box, pull out a piece, and try to place it into the puzzle.  If it didn't fit, she'd **put it back in the box**.  Even as a kid, I found this both fascinating and unfathomable! Nevertheless, she was **very** good (if a bit slow :wink:) at completing puzzles.  My mom had a different technique.  She'd "hoard" a bunch of similar pieces and try to complete her subsection of the puzzle off to the side.  Years later, when I introduced jigsaw puzzles to my own family, I figured it was time to set forth a few "rules" to preserve my sanity. Our family "policy" was to turn over all the pieces, find the edges, and work from there.  Some people liked to adopt my mom's approach of working on their subsection, but always on the same board so we could find the connections to the rest of the puzzle.
+When I was a kid, I loved doing jigsaw puzzles, and it ran in the family.  My great aunt had a fascinating approach to doing them. She'd (I swear this is true) reach into the box, pull out a piece, and try to place it into the puzzle.  If it didn't fit, she'd **put it back in the box**.  Even as a kid, I found this both fascinating and bizarre! Nevertheless, she was **very** good (if a bit slow :wink:) at completing puzzles.  My mom had a different technique.  She'd "hoard" a bunch of similar pieces and try to complete her subsection of the puzzle off to the side.  Years later, when I introduced jigsaw puzzles to my own family, I figured it was time to set forth a few "rules" to preserve my sanity. Our family "policy" was to turn over all the pieces, find the edges, and work from there.  Some people liked to adopt my mom's approach of working on their subsection, but always on the same board so we could find the connections to the rest of the puzzle.
 
-I like to think of the ES Module and npm technology as a means of "getting all the pieces on the board, and getting related pieces close to each other".  Doing that step has nothing to do with actually connecting piece. It simply puts us in a position to do the constructive part - actually assembling the pieces into a finished picture.  In NestJS, that constructive part of the process is where module architecture -- building controllers and providers and connecting them up via modules -- comes into play.
+I like to think of the ES module and npm technology as a means of "getting all the pieces on the board, and getting related pieces close to each other".  Doing that step has nothing to do with actually connecting puzzle pieces. It simply puts us in a position to do the constructive part -- assembling the pieces into a finished picture.  In NestJS, that constructive part of the process is where module architecture -- building controllers and providers and connecting them up via modules -- comes into play.
 
-The takeaway for a NestJS developer is that you *do* need to work with ES Modules and (usually also) npm to ensure that all of your pieces are on the board and can link up with each other, but that's **all** they do.  They have **absolutely no other involvement** in how NestJS organizes your **application functionality or architecture**. Keep that in mind as we discuss **NestJS modules, imports and exports** and you'll be fine!
+The takeaway for a NestJS developer is that you *do* need to work with ES modules and (usually also) npm to ensure that all of your pieces are on the board and can link up with each other, but that's **all** they do.  They have **absolutely no other involvement** in how NestJS organizes your **application functionality or architecture**. Keep that in mind as we discuss **NestJS modules, imports and exports** and you'll be fine!
 
 ### NestJS Modules
 
 OK, now we can get to the good stuff!  Our goal here is to have a **mental model** of the architectural components of a NestJS application.
 
-To summarize what we've learned so far, ES Modules and npm packages are a way of **getting all the pieces on the board** so they can see each other, and can be assembled.  They say **nothing** about how a NestJS application actually works.
+To summarize what we've learned so far, ES modules and npm packages are a way of **getting all the pieces on the board** so they can see each other, and can be assembled.  They say **nothing** about how a NestJS application actually works.
 
 Let's review the three major architectural components of a NestJS application:
 
-1. **Injectables**.  These are always classes, and their defining feature is that they participate in Dependency Injection.  In other words, their lifecycle (instantiation, injection, destruction) is managed automatically by NestJS. This is different from other classes, which whose lifecycle *you* manage directly (e.g., with the `new` operator).
+1. **Injectables**.  These are always classes, and their defining feature is that they participate in Dependency Injection.  In other words, their lifecycle (instantiation, injection, destruction) is managed automatically by NestJS. This is different from other classes, whose lifecycle *you* manage directly (e.g., with the `new` operator).
 2. **Controllers**.  These are also classes.  Their lifecycle is also managed by NestJS.  Their purpose, as you know, is to manage inbound requests from the outside world, and send outbound responses.
 3. **Modules**.  The key point about modules is this: they *overlay* the other components.  What do I mean by that?  Let's break it down.
 
-You may have noticed that *controllers* and *injectables* say **nothing** about a module in their declarations.  There is no association *from* an injectable or controller *to* a module.  No declaring that "this provider belongs to this module". This might come as a surprise, but go ahead and take a look now - you won't find any reference to a parent module anywhere in a controller or injectable declaration.  The association works strictly in the other direction.  Think of it like this: injectables and controllers, like any class, represent "potential objects" in the space of an application.  They don't actually exist as objects **until they are declared as part of a module** (and, of course, that module is instantiated during application bootstrapping).  That's the central image to keep in mind in your mental model.
+You may have noticed that *controllers* and *injectables* say **nothing** about a module in their declarations.  There is no association *from* an injectable or controller *to* a module.  Nothing that declares that "this provider belongs to this module". This might come as a surprise, but go ahead and take a look now -- you won't find any reference to a parent module anywhere in a controller or injectable declaration.  The association works strictly in the other direction.  Think of it like this: injectables and controllers, like any class, represent "potential objects" in the space of an application.  They don't actually exist as objects **until they are declared as part of a module** (and, of course, until that module is instantiated during application bootstrapping).  That's the central image to keep in mind in your mental model.
 
 So a module's purpose is to cause these potential objects to be instantiated, and to *anchor* them to a particular context (scope) of your application.  When Nest bootstraps your application, it uses the module's metadata to perform the necessary wiring (dependency injection, initialization, etc.) to make your application start working.  Exactly *why* the framework works this way is something we'll get to shortly.
 
@@ -138,13 +138,13 @@ export class AppModule { ... }
 
 As we have learned, that provider recipe says "Hey Nest, whenever I try to reference the `CatsService` provider token in this module, give me an instance of the `CatsService` class. Now consider why *provider* declarations appear in the `providers` property of a module. This is what binds modules and provider instances (we often call these instances "services") together. It's the `providers` property contents that give a module the information it needs to produce instances of injectable classes ("running services") when the module is bootstrapped.
 
-> Note: We're assuming `SINGLETON` scope for the sake of this discussion.  The impact of non-`SINGLETON` scope is discussed [here]().
+> Note: We're assuming `SINGLETON` scope for the sake of this discussion.  The impact of non-`SINGLETON` scope is discussed [here](https://docs.nestjs.com/fundamentals/injection-scopes).
 
 We can include the exact same provider object in another module, and we'll get another distinct instance of `CatsService`, scoped to that module.
 
 So here's the takeaway.  Declaring a *provider* in a module is what links an instance of the injectable to the scope of that module. Once again, in terms of your mental model, an injectable is just *potentially* available when declared, but is anchored to and activated within a module when it appears as part of a provider recipe in a module's `providers` metadata (and when that module is bootstrapped at runtime).
 
-We often think of these activated injectables as *services*, and that's a reasonable mental model. So now we can raise our level of abstraction for a moment, and think about modules as running one or several services which have been activated for us by NestJS. This is a nice way to think about a running application.  But understanding the mechanisms operating under the covers let's us fit the pieces together clearly.
+We often think of these activated injectables as *services*, and that's a reasonable mental model. So now we can raise our level of abstraction for a moment, and think about modules as containers that run one or several services which have been activated for us by NestJS. This is a nice way to think about a running application.  But understanding the mechanisms operating under the covers let's us fit the pieces together clearly.
 
 For example, in any moderately interesting module, you'll likely have several services running.  Often there's a main service in a module (think `AuthService` in the `AuthModule`), but it needs other services to do its work. We now have the vocabulary and mental model to understand how those services can interact.  In order for `AuthService` to access something like `UsersService`, we know `UsersService` has to be visible inside `AuthModule`. We just covered one way to do that: include `UsersService` in the `providers` list of `AuthModule`'s metadata.  That would certainly work, and would give us an instance of `UsersService` scoped to the `AuthModule`.
 
@@ -154,17 +154,17 @@ However, what if `UsersService` is needed elsewhere in our app? Wouldn't we real
 
 [Picture]
 
-This is where the `imports` and `exports` properties in module metadata come into play. While a module (let's call it `ModuleA` can see instances of classes listed in `ModuleA`'s `providers` list, it can **also** see providers from `ModuleB` if, and only if:
+This is where the `imports` and `exports` properties in module metadata come into play. While a module (let's call it `ModuleA`) can see instances of classes listed in `ModuleA`'s `providers` list, it can **also** see providers from `ModuleB` if, and only if:
 1. `ModuleA` lists `ModuleB` in it's module metadata `imports` property.
 2. `ModuleB` lists some of its providers in its module metadata `exports` property.
 
 In other words, `ModuleB` can provide stuff to itself, but also export some of its providers so `ModuleA` can see them (by simply importing `ModuleB`).
 
-Let's revisit our "pieces on the board" part of the analogy for a moment, and clear up one thing. If you want to access an injected instance from some other class inside the module, you **must do an ES `import`** of the injectable class file where you are referencing it. Again, this step operates at the *puzzle-pieces-on-the-board layer*, not at the NestJS layer.  In other words, when we want to access `CatsService` from another file, we need to do `import { CatsService } from './cats.service.ts';` before we can refer to it.  This is a basic ES Module requirement, **not a NestJS thing**.
+Let's revisit our "pieces on the board" part of the analogy for a moment, and clear up one thing. Assuming you've taken care of the necessary scoping issues (provider visibility, imports, exports as discussed above), if you want your code to access an injected instance from some other class inside the module, you **must do an ES `import`** of the injectable class file where you are referencing it. Again, this step operates at the *puzzle-pieces-on-the-board layer*, not at the NestJS layer.  In other words, when we want to access `CatsService` from another file, we need to do `import { CatsService } from './cats.service.ts';` before we can refer to it.  This is a basic ES module requirement, **not a NestJS thing**.
 
 What are the takeaways?
 1. Repeating once again: injectables are classes declared without reference to a module, and aren't *activated* until they are listed in a `providers` property of a module's metadata, at which time they are then associated with that module.
-2. Modules define the scope (visibility) for providers.
+2. Modules comprise the scope (visibility) of their providers.
 3. Modules can export providers, and import them from other modules that export them.
 4. You still need to do ES imports and exports to make the code parts visible between files.
 
@@ -187,7 +187,7 @@ I tried to be careful above to refer to *module metadata*.  The reason is that e
 
 With static modules, these appear in the `@Module()` decorator property.  With dynamic modules, they're returned from a static factory function.  Otherwise, all of the concepts for how *injectables*, *providers*, and *modules* interact apply to both types of modules.
 
-Note however, that if you think carefully about it, dynamic modules enable a sort of *nesting* that is otherwise not possible.  For example, take a look at this construct (taken from my [Asynchronous options providers article]()):
+There is, however, one interesting difference. If you think carefully about it, dynamic modules enable a sort of *nesting* that is otherwise not possible.  For example, take a look at this construct (taken from my [Asynchronous options providers article]()):
 
 ```typescript
 @Module({
@@ -267,7 +267,7 @@ The other thing to remember, of course, is that controllers often use providers 
 
 We've covered a lot of ground here.  We can now keep straight the various development technologies that have overlapping concepts and terminology.  This should help us to organize the overall architecture of our apps, and to construct syntactically correct class definition files.  To briefly summarize:
 
-1. ES Modules and npm "get the pieces on the board" -- they make it possible to reference code between files and in external libraries.
+1. ES modules and npm "get the pieces on the board" -- they make it possible to reference code between files and in external libraries.
 2. NestJS has its own module system. We can think of a running module as a container with active services running in it.  We can think of the code defining a module as a namespace that provides scope for providers that are declared in it, and optionally imports and exports providers from other modules.
 3. Controllers are simpler than providers, and simply need to be listed in the module metadata for some module that is reachable from the root module in order to be mounted.
 
