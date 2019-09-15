@@ -114,7 +114,7 @@ Let's review the three major architectural components of a NestJS application:
 
 You may have noticed that _controllers_ and _injectables_ say **nothing** about a module in their declarations. There is no association _from_ an injectable or controller _to_ a module. Nothing that declares that "this provider belongs to this module". This might come as a surprise, but go ahead and take a look now -- you won't find any reference to a parent module anywhere in a controller or injectable declaration. The association works strictly in the other direction. Think of it like this: injectables and controllers, like any class, represent "potential objects" in the space of an application. They don't actually exist as objects **until they are declared as part of a module** (and, strictly speaking, until that module is instantiated during application bootstrapping). That's the central image to keep in mind in your mental model.
 
-![modules1](https://user-images.githubusercontent.com/6937031/64923753-f6a8d400-d791-11e9-903d-c3517daa3ba2.png)
+![Modules](./assets/modules1.png 'Modules')
 
 So a module's purpose is to cause these potential objects to be instantiated, and to _anchor_ them to a particular context (scope) of your application. When Nest bootstraps your application, it uses the module's metadata to perform the necessary wiring (dependency injection, initialization, etc.) to make your application start working. Exactly _why_ the framework works this way is something we'll get to shortly.
 
