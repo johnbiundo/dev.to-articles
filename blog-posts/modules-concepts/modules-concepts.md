@@ -14,9 +14,7 @@ This article is an attempt to fill that missing _conceptual knowledge_ gap. I ho
 
 ### Intro
 
-In this article, we'll first cover some basics that are, strictly speaking, outside the scope of NestJS. Feel free to jump past those intro sections to get to the Nest-specific content if you already understand these basics.
-
-We'll start by summarizing the concepts and techniques of _ES modules_ and _npm packages_ at a **basic level** to set a baseline and to ensure we are using _consistent terminology_. This is important because some of the concepts and terminology are overlapping and can easily get confused. We're on a mission to eliminate confusion! Again, if those topics are old hat to you, by all means skip ahead to the NestJS-specific stuff!
+We'll start by summarizing the concepts and techniques of _ES modules_ and _npm packages_ at a **basic level** to set a baseline and to ensure we are using _consistent terminology_. This is important because some of the concepts and terminology are overlapping and can easily get confused. We're on a mission to eliminate confusion! If those topics are old hat to you, by all means skip ahead to the NestJS-specific stuff!
 
 We'll then go on to define the purpose of NestJS modules, review how they're constructed, and cover the relationship between modules, providers, and controllers. In short, we'll create that missing _mental model_ for how modules provide the cornerstone of NestJS application architecture.
 
@@ -24,7 +22,7 @@ After that, we'll discuss how all the conceptual pieces fit together nicely in a
 
 ### ES modules
 
-This is most definitely **not** a comprehensive review of the history and details of JavaScript modules! In fact, I plan to omit many details, but I promise that won't matter for our purposes. If you want to go learn the details, by all means do so -- there are plenty of great resources (I recommend [MDN](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Modules)). The main purpose here is to get a few concepts straight, and then untangle some of the syntax you start running into right from your very first encounter with NestJS.
+This definitely **not** intended as a comprehensive review of the history and details of JavaScript modules! In fact, I plan to omit many details, but I promise that won't matter for our purposes. If you want to go learn the details, by all means do so -- there are plenty of great resources (I recommend [MDN](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Modules)). The main purpose here is to get a few concepts straight, and then untangle some of the syntax you start running into right from your very first encounter with NestJS.
 
 The basic components of ES modules you need to understand are:
 
@@ -165,10 +163,7 @@ For example, in any moderately interesting module, you'll likely have several se
 
 ![Modules](./assets/modules4.png 'Modules')
 
-However, what if `UsersService` is needed elsewhere in our app? Wouldn't we really rather have a single running instance of the service, and _share_ it across modules? That gives rise to the need to export providers from one Nest module, and import them into another.
-
-
-This is where the `imports` and `exports` properties in module metadata come into play. While a module (let's call it `ModuleA`) can see instances of classes listed in `ModuleA`'s `providers` list, it can **also** see providers from `ModuleB` if, and only if:
+However, what if `UsersService` is needed elsewhere in our app? Maybe we'd really rather have a single running instance of the service, and _share_ it across modules? That gives rise to the need to *export* providers from one Nest module, and *import* them into another. This is where the `imports` and `exports` properties in module metadata come into play. While a module (let's call it `ModuleA`) can see instances of classes listed in `ModuleA`'s `providers` list, it can **also** see providers from `ModuleB` if, and only if:
 
 1. `ModuleA` lists `ModuleB` in it's module metadata `imports` property.
 2. `ModuleB` lists some of its providers in its module metadata `exports` property.
@@ -177,7 +172,7 @@ In other words, `ModuleB` can provide stuff to itself, but also export some of i
 
 ![Shared](./assets/shared-service.gif 'Shared Service')
 
-Let's revisit our "pieces on the board" part of the analogy for a moment, and clear up one thing. Assuming you've taken care of the necessary scoping issues (provider visibility, imports, exports as discussed above), if you want your code to access an injected instance from some other class inside the module, you **must do an ES `import`** of the injectable class file where you are referencing it. Again, this step operates at the _puzzle-pieces-on-the-board layer_, not at the NestJS layer. In other words, when we want to access `CatsService` from another file, we need to do `import { CatsService } from './cats.service.ts';` before we can refer to it. This is a basic ES module requirement, **not a NestJS thing**.
+Now, let's revisit our "pieces on the board" part of the analogy for a moment, and clear up one thing. Assuming you've taken care of the necessary scoping issues (provider visibility, imports, exports as discussed above), if you want your code to access an injected instance from some other class inside the module, you **must do an ES `import`** of the injectable class file where you are referencing it. Again, this step operates at the _puzzle-pieces-on-the-board layer_, not at the NestJS layer. In other words, when we want to access `CatsService` from another file, we need to do `import { CatsService } from './cats.service.ts';` before we can refer to it. This is a basic ES module requirement, **not a NestJS thing**.
 
 What are the takeaways?
 
@@ -263,7 +258,7 @@ One reason for mentioning this (aside from how **astonishingly elegant** the Nes
 
 So far, we've explicitly exported and imported providers between modules, with modules thereby providing an API for accessing providers. Kamil Myśliwiec, in a github issue, once gave this basic description of the purpose of modules: _"In Nest, modules compose providers and define their facades (export array)"_. This is a beautiful summary of what we've been talking about (and in so many fewer words! :smiley:).
 
-Global modules break this model. Hence, they are both powerful and dangerous. Defining a module as global (with the `@Global()` decorator) makes any exported providers from that module globally available*. This is very handy, but it also can break encapsulation (the "module facade"), and make it hard to reason about provider imports and exports. Just be aware of this when utilizing global modules. As noted in the [documentation](https://docs.nestjs.com/modules#global-modules), *"The imports array is generally the preferred way to make the module's API available to consumers."\*
+Global modules break this model. Hence, they are both powerful and dangerous. Defining a module as global (with the `@Global()` decorator) makes any exported providers from that module globally available*. This is very handy, but it also can break encapsulation (the "module facade"), and make it hard to reason about provider imports and exports. Just be aware of this when utilizing global modules. As noted in the [documentation](https://docs.nestjs.com/modules#global-modules), *"The imports array is generally the preferred way to make the module's API available to consumers."*
 
 \*A global module must still be imported once (usually in the [root module](https://docs.nestjs.com/modules), by convention usually `AppModule`) in order to become visible throughout the application.
 
@@ -296,11 +291,11 @@ We've covered a lot of ground here. We can now keep straight the various develop
 Let's revisit our discussion about how modules define the scope of providers. This is important for two key reasons:
 
 1. A module scope is like a namespace for a provider. If you use a provider called `Service1` only in `ModuleA`, you don't have to worry about `ModuleB` having something called `Service1`. This is helpful within your own code, but becomes critical in larger teams and/or when you're using library modules produced elsewhere.
-2. A module becomes the _activation context_ for a provider. This is how we can have _dynamically configured modules_, like `@nestjs/jwt`, which allows you to _configure_ the `JwtService` when you import the module. See [x]() and [y]() for more on dynamic modules and asynchronous options providers to understand the full power of these concepts. Modules are the "housing" for delivering providers that have these powerful capabilities.
+2. A module becomes the _activation context_ for a provider. This is how we can have _dynamically configured modules_, like `@nestjs/jwt`, which allows you to _configure_ the `JwtService` when you import the module. See [here](https://docs.nestjs.com/fundamentals/async-providers) for more on asynchronous options providers and [here](https://docs.nestjs.com/fundamentals/dynamic-modules) for more on dynamic modules to understand the full power of these concepts. Modules are the "housing" for delivering providers that have these powerful capabilities.
 
 #### How Should You Organize Modules, Providers and Controllers?
 
-This becomes somewhat a matter of opinion and preference. There are no hard and fast rules. But a solid architecture should do its best to achieve several goals:
+Answering this question becomes somewhat a matter of opinion and preference. There are no hard and fast rules. But a solid architecture should do its best to achieve several goals:
 
 1. Loose coupling. Create providers, and APIs to configure those providers (i.e., dynamic modules), that don't know anything about their consumer. This makes them re-usable across modules and projects.
 2. High cohesion. Where possible, keep the closely connected moving parts needed to deliver well-defined providers all within the same module. Do not break the loose coupling rule to create tight cohesion. This is the balancing act, where you need to decide how to break things up in the right way. Use modules and providers to achieve that.
@@ -308,4 +303,4 @@ This becomes somewhat a matter of opinion and preference. There are no hard and 
 
 ### Conclusion
 
-In this article, I've tried to give you both a big picture "mental model" for how NestJS modules work, and how to leverage that understanding to create a [SOLID]() architecture for your application. Loosely speaking, modules are a way to "gather up" the main pieces (controllers and providers) of your application and glue them together in a coherent way. For "utility" type services (like logging, configuration, etc.), make use of [dynamic modules]() to create a coherent API for re-using loosely coupled services within and across applications. I've offered a lot of opinion here, so I'd love to hear your comments and feedback! We're all trying to make NestJS-land a better and more productive place, so let's keep the dialog lively!
+In this article, I've tried to give you both a big picture "mental model" for how NestJS modules work, and how to leverage that understanding to create a [SOLID](https://en.wikipedia.org/wiki/SOLID) architecture for your application. Loosely speaking, modules are a way to "gather up" the main pieces (controllers and providers) of your application and glue them together in a coherent way. For "utility" type services (like logging, configuration, etc.), make use of [dynamic modules](https://docs.nestjs.com/fundamentals/dynamic-modules) to create a coherent API for re-using loosely coupled services within and across applications. I've offered a lot of opinion here, so I'd love to hear your comments and feedback! We're all trying to make NestJS-land a better and more productive place, so let's keep the dialog lively!
