@@ -131,27 +131,31 @@ As discussed in the [providers chapter](https://docs.nestjs.com/fundamentals/cus
 ```typescript
 @Module({
   providers: [{
-    provide: CatsService,
-    useClass: CatsService
+    provide: UsersService,
+    useClass: UsersService
   }]
 })
-export class AppModule { ... }
+export class UsersModule { ... }
 ```
 
 and, the shorthand version of the same:
 
 ```typescript
 @Module({
-  providers: [ CatsService ]
+  providers: [ UsersService ]
 })
-export class AppModule { ... }
+export class UsersModule { ... }
 ```
 
-As we have learned, that provider recipe says "Hey Nest, whenever I try to reference the `CatsService` provider token in this module, give me an instance of the `CatsService` class. Now let's consider why _provider_ declarations appear in the `providers` property of a module. This is what binds modules and provider instances (we often call these instances "services") together. It's the `providers` property contents that give a module the information it needs to produce instances of injectable classes ("running services") when the module is bootstrapped.
+As we have learned, that provider recipe says "Hey Nest, whenever I try to reference the `UsersService` provider token in this module, give me an instance of the `UsersService` class. Now let's consider why _provider_ declarations appear in the `providers` property of a module. This is what binds modules and provider instances (we often call these instances "services") together. It's the `providers` property contents that give a module the information it needs to produce instances of injectable classes ("running services") when the module is bootstrapped.
 
 > Note: We're assuming `SINGLETON` scope for the sake of this discussion. The impact of non-`SINGLETON` scope is discussed [here](https://docs.nestjs.com/fundamentals/injection-scopes).
 
-We can include the exact same provider object in another module, and we'll get another distinct instance of `CatsService`, scoped to that module.
+![Modules](./assets/modules2.png 'Modules')
+
+We can include the exact same provider object in another module, and we'll get another distinct instance of `UsersService`, scoped to that module.
+
+![Modules](./assets/modules3.png 'Modules')
 
 So here's the takeaway. Declaring a _provider_ in a module is what links an instance of the injectable to the scope of that module. Once again, in terms of your mental model, an injectable is just _potentially_ available when declared, but becomes anchored to and activated within a module when it appears as part of a provider recipe in a module's `providers` metadata (and that module is subsequently bootstrapped at runtime).
 
@@ -159,11 +163,10 @@ We often think of these activated injectables as _services_, and that's a helpfu
 
 For example, in any moderately interesting module, you'll likely have several services in play. Often there's a main service in a module (think `AuthService` in an `AuthModule`), but it needs other services to complete its work. We now have the vocabulary and mental model to understand how those services can interact. In order for `AuthService` to access something like `UsersService`, we know `UsersService` has to be visible inside `AuthModule`. We just covered one way to do that: include `UsersService` in the `providers` list of `AuthModule`'s metadata. That would certainly work, and would give us an instance of `UsersService` scoped to the `AuthModule`.
 
-[Picture]
+![Modules](./assets/modules4.png 'Modules')
 
 However, what if `UsersService` is needed elsewhere in our app? Wouldn't we really rather have a single running instance of the service, and _share_ it across modules? That gives rise to the need to export providers from one Nest module, and import them into another.
 
-[Picture]
 
 This is where the `imports` and `exports` properties in module metadata come into play. While a module (let's call it `ModuleA`) can see instances of classes listed in `ModuleA`'s `providers` list, it can **also** see providers from `ModuleB` if, and only if:
 
@@ -171,6 +174,8 @@ This is where the `imports` and `exports` properties in module metadata come int
 2. `ModuleB` lists some of its providers in its module metadata `exports` property.
 
 In other words, `ModuleB` can provide stuff to itself, but also export some of its providers so `ModuleA` can see them (by simply importing `ModuleB`).
+
+![Shared](./assets/shared-service.gif 'Shared Service')
 
 Let's revisit our "pieces on the board" part of the analogy for a moment, and clear up one thing. Assuming you've taken care of the necessary scoping issues (provider visibility, imports, exports as discussed above), if you want your code to access an injected instance from some other class inside the module, you **must do an ES `import`** of the injectable class file where you are referencing it. Again, this step operates at the _puzzle-pieces-on-the-board layer_, not at the NestJS layer. In other words, when we want to access `CatsService` from another file, we need to do `import { CatsService } from './cats.service.ts';` before we can refer to it. This is a basic ES module requirement, **not a NestJS thing**.
 
