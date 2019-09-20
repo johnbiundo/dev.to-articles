@@ -1,5 +1,5 @@
 ---
-published: false
+published: true
 title: "Advanced NestJS: How to build completely dynamic NestJS modules"
 description: "tags: nestjs, nest, dependency injection, providers"
 series:
