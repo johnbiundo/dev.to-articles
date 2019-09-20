@@ -119,9 +119,10 @@ The `knex` package is required. You will also need a database to **run** the mod
 
 As discussed in the [dynamic modules article](https://dev.to/nestjs/advanced-nestjs-how-to-build-completely-dynamic-nestjs-modules-1370#async-options-providers-usecase), we provide options to the service using an _async options provider_. This code has all been scaffolded for you, but to pass the appropriate options in a native TypeScript way, we need to modify the `NestKnexOptions` interface. This is contained in the file `nest-knex/src/interfaces/nest-knex-options.interface.ts`.
 
-We want to describe the available Knex.js options that will be passed to the library API. The easiest way to do this is to use the types already [provided by Knex.js](https://github.com/tgriesser/knex/blob/master/types/index.d.ts#L1590). Since this interface is exported by the `knex` package, we can simply import it,and our job is nearly done! We'll simply alias it to make it visible to our generated package. Open up `nest-knex/src/interfaces/nest-knex-options.interface.ts` and edit it to look like this:
+We want to describe the available Knex.js options that will be passed to the library API. The easiest way to do this is to use the types already [provided by Knex.js](https://github.com/tgriesser/knex/blob/master/types/index.d.ts#L1590). Since this interface is exported by the `knex` package, we can simply import it, and our job is nearly done! We'll simply alias it to make it visible to our generated package. Open up `nest-knex/src/interfaces/nest-knex-options.interface.ts` and edit it to look like this:
 
 ```typescript
+// src/interfaces/nest-knex-options.interface.ts
 import { Config } from 'knex';
 
 export interface NestKnexOptions extends Config {}
@@ -169,13 +170,15 @@ Almost all of this is boilerplate. We simply added a property to store our conne
 
 #### Test the Module
 
-As mentioned, you'll need a local database instance available to test the module. If you don't have one handy, consider [using docker](<[#run-with-docker](https://docs.docker.com/samples/library/postgres/)>) to do so. It's easy!
+As mentioned, you'll need a local database instance available to test the module. If you don't have one handy, consider [using docker](https://docs.docker.com/samples/library/postgres/) to do so. It's easy!
 
 The `@nestjsplus/dyn-schematics` `dynpkg` schematic built a small test "client" for us (assuming you answered `yes` to the prompt). We can use this to quickly test our `nest-knex` module.
 
-First, open `nest-knex/src/nest-knex-client/nest-knex-client.module.ts` and add the needed Knex.js options in the `register` method. Adjust yours appropriately:
+First, open `nest-knex/src/nest-knex-client/nest-knex-client.module.ts` and add the needed Knex.js options in the `register()` method. Adjust yours appropriately:
 
 ```typescript
+// src/nest-knex-client/nest-knex-client.module.ts
+...
 @Module({
   controllers: [NestKnexClientController],
   imports: [
@@ -191,9 +194,10 @@ First, open `nest-knex/src/nest-knex-client/nest-knex-client.module.ts` and add 
     }),
   ],
 })
+...
 ```
 
-Now, open `nest-knex/src/nest-knex-client/nest-knex-client.controller.ts` and plug in some queries. Of course this is not really a great design pattern (invoking services from your controller), but is really just a quick test that the service works. In reality, you'll want to delegate any such access to true NestJS _services_. In fact, we'll talk a bit more about this in the [bonus](#bonus) section. Here's an idea of what you can try. This test relies on the following database table being available (syntax below works with PostgreSql, but may require slight tweaks for other databases):
+Now, open `nest-knex/src/nest-knex-client/nest-knex-client.controller.ts` and plug in some queries. Of course this is not really a great design pattern (invoking database services directly from your controller), but is really just a quick test that the Knext.js integration works. In reality, you'll want to delegate any such access to true NestJS _services_. Here's an idea of what you can try. This test relies on the following database table being available (syntax below works with PostgreSql, but may require slight tweaks for other databases):
 
 ```sql
 CREATE TABLE cats
@@ -209,7 +213,7 @@ ALTER TABLE cats
    PRIMARY KEY (id);
 ```
 
-And here's a sample of what you could try in your test controller. Note that you have the full power of Knex.js available via the `knex` object. See here for [lots more samples]() of things you can do.
+And here's a sample of what you could try in your test controller. Note that you have the full power of Knex.js available via the `knex` object. See here for [lots more interesting samples](http://knexjs.org/#Builder) of things you can do with Knex. Since you have a handle to the `knex` object, all of those _Knex Query Builder_ methods should just work!
 
 ```typescript
 // src/nest-knex-client/nest-knex-client.controller.ts
@@ -239,7 +243,7 @@ export class NestKnexClientController {
 
 Now, fire up the app with `npm run start:dev`, and browse to `http://localhost:3000`, and you should see the results of your query!
 
-### Bonus
+### Bonus Section
 
 Hopefully I kept my promise of showing you how quickly you can generate a dynamic NestJS module that wraps an external resource library in just a few minutes!
 
@@ -247,7 +251,7 @@ Let's cover a couple more topics to round out the discussion.
 
 #### A Better API
 
-As mentioned, it's not a good design to access the `knex` service from our controller. We can make things a little bit better by creating a service to house our database logic. We can also make our Knex.js module a little easier to use by adding a higher level API. Let's do that. We're going to add a _provider_ that let's us directly inject the `knex` object into any service. You'll see what I mean in a moment.
+As mentioned, it's not a good design to access the `knex` object directly from our controller. We can make things a little bit better by creating a service to house our database logic. We can also make our Knex.js module a little easier to use by adding a higher level API. Let's do that. We're going to add a _provider_ that let's us directly inject the `knex` object into any service. You'll see what I mean in a moment.
 
 First, create a file called `nest-knex-connection.provider.ts` inside the `src` folder. Add the following code:
 
@@ -296,11 +300,26 @@ export class NestKnexClientController {
 }
 ```
 
-The complete solution will be to create a service that accesses the `KNEX_CONNECTION` provider, rather than doing that in our controller, but I'll leave that up to the reader. The [sample repository]() uses this preferred approach.
+To connect this new provider into our module, open up `src/nest-knex.module.ts` and make the following changes:
+
+1. Import the `connectionFactory`
+2. Add the `connectionFactory` to the `@Module` metadata `providers` and `exports` properties. This section of the file will now look like this:
+
+```typescript
+import { connectionFactory } from './nest-knex-connection.provider';
+
+@Global()
+@Module({
+  providers: [NestKnexService, connectionFactory],
+  exports: [NestKnexService, connectionFactory],
+})
+```
+
+The complete implementation of the client side would also create a service that accesses the `KNEX_CONNECTION` provider, rather than doing that in a controller, but I'll leave that as an exercise for the reader. :wink: The [sample repository]() uses this preferred approach.
 
 #### Dynamic Registration (with a Config Factory)
 
-In the [dynamic modules article](), we talked about using _dynamic_ providers. By that, we meant that rather than use a construct like this, from above:
+In the [dynamic modules article](https://dev.to/nestjs/advanced-nestjs-how-to-build-completely-dynamic-nestjs-modules-1370#async-options-providers-usecase), we talked about using _asynchronous options providers_. By that, we meant that rather than use a construct like this, from above:
 
 ```typescript
     NestKnexModule.register({
@@ -315,9 +334,10 @@ In the [dynamic modules article](), we talked about using _dynamic_ providers. B
     }),
 ```
 
-We'd like to supply our connection options in a dynamic fashion. Good news! This is of course already built-in to the generated package. Let's test it out. For simplicity, we'll just use an _in-place_ factory, but you can use the full power of _class-based_, _factory based_, and _existing_ providers. To test it, we'll update the registration of the `NestKnexModule` in `nest-knex-client/nest-knex-client.module.ts` to look like this:
+We'd like to supply our connection options in a dynamic fashion. Good news! This is of **already built-in** to the generated package. Let's test it out. For simplicity, we'll just use an _in-place_ factory, but you can use the full power of _class-based_, _factory based_, and _existing_ providers. To test it, we'll update the registration of the `NestKnexModule` in `nest-knex-client/nest-knex-client.module.ts` to look like this:
 
 ```typescript
+// src/nest-knex-client/nest-knex-client/module.ts
     NestKnexModule.registerAsync({
       useFactory: () => {
         return {
@@ -341,15 +361,15 @@ It's not a terribly exciting example, but you get the idea. You can take advanta
 
 If you read my earlier [Publishing NestJS Packages with npm](https://dev.to/nestjs/publishing-nestjs-packages-with-npm-21fm) article, you may have noticed that the _structure_ of this package (e.g., the `package.json` file, the `tsconfig.json` file, the presence of the `index.ts` file in the root folder) follows that pattern exactly. As a result, publishing this package is as simple as this:
 
-`npm publish`
+> npm publish
 
 Assuming you have an `npmjs.com` account, that is. Seriously, that's it!
 
-Of course, you can always use this [ready-made @nestjsplus/knex]() pacakge, built _exactly_ as describe in this article.
+Of course, you can always use this [ready-made @nestjsplus/knex]() package, built _exactly_ as describe in this article.
 
 ### Conclusion
 
-If you've been following this series, you've now learned an important architectural pattern for building modular NestJS services and modules, and composing them into applications. With the power of schematics, you can now automatically generate the boilerplate code to implement this powerful pattern. In future articles, I'll show you how to build your own schematics to extend the power of NestJS and the NestJS CLI even further!
+If you've been following this series, you've previousl learned an important architectural pattern for building modular NestJS services and modules, and composing them into applications. Now, with the power of schematics, you can automatically generate the boilerplate code to implement this powerful pattern. In future articles, I'll show you how to build your own schematics to extend the power of NestJS and the NestJS CLI even further!
 
 Feel free to ask questions, make comments or suggestions, or just say hello in the comments below. And join us at [Discord](https://discord.gg/G7Qnnhy) for more happy discussions about NestJS. I post there as _Y Prospect_.
 
