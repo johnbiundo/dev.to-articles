@@ -1,7 +1,7 @@
 ---
 published: false
-title: "Build a NestJS Module for Knex.JS (or almost **any** library) in 5 Minutes"
-description: "tags: nestjs, nest, knexjs, sql"
+title: "Build a NestJS Module for Knex.JS (or almost ANY Node.js library) in 5 Minutes"
+description: "tags: nestjs, nest, knexjs, sql, node.js"
 series:
 canonical_url:
 ---
