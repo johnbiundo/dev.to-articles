@@ -188,7 +188,7 @@ Let's go ahead and fill them in now based on what we know. We'll sketch a static
 }
 ```
 
-So we've now figured out what our generated _options provider_ should look like. Good so far? It's important to remember that the `'MASSIVE_CONNECT_OPTIONS'` provider is just fulfilling a dependency _inside the dynamic module_. Now that I mention it, we haven't really looked at the service that depends on the `'MASSIVE_CONNECT_OPTIONS'` provider we're working so hard to supply. Let's connect a few more dots there and take a quick moment to to consider that service. The service -- the one that connects and returns a `db` object -- is, predictably enough, declared in the `MassiveService` class. It's surprisingly straightforward:
+So we've now figured out what our generated _options provider_ should look like. Good so far? It's important to remember that the `'MASSIVE_CONNECT_OPTIONS'` provider is just fulfilling a dependency _inside the dynamic module_. Now that I mention it, we haven't really looked at the service that depends on the `'MASSIVE_CONNECT_OPTIONS'` provider we're working so hard to supply. Let's connect a few more dots there and take a quick moment to consider that service. The service -- the one that connects and returns a `db` object -- is, predictably enough, declared in the `MassiveService` class. It's surprisingly straightforward:
 
 ```typescript
 @Injectable()
