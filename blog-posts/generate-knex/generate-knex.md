@@ -3,7 +3,7 @@ published: false
 title: "Build a NestJS Module for Knex.js (or almost ANY Node.js library) in 5 Minutes"
 description: "tags: nestjs, nest, knexjs, sql, node.js"
 series:
-cover_image: "https://user-images.githubusercontent.com/6937031/65365946-f9148f00-dbd2-11e9-8a50-f09900059e9c.png"
+cover_image: "https://user-images.githubusercontent.com/6937031/65389455-5ca1d800-dd0b-11e9-9a8a-aefb41895009.png"
 canonical_url:
 ---
 
