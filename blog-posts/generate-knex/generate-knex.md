@@ -271,7 +271,7 @@ export class NestKnexClientController {
 
 Now, fire up the app with `npm run start:dev`, and browse to `http://localhost:3000`, and you should see the results of your query!
 
-If you want to test the module with a separate app -- really demonstrating the power of the reusable library module you just built -- read on to see how to upload it as an npm package in one step. And for convenience, you can download a [full client app that imports the module here](https://github.com/nestjsplus/knex-cats) and use it to test your newly minted knex.js module.
+If you want to test the module with a separate app -- really demonstrating the power of the reusable library module you just built -- read on to see how to upload it as an npm package in one step. And for convenience, you can download a [full client app that imports the module here](https://github.com/nestjsplus/knex-cats) and use it to test your newly minted Knex.js module.
 
 ### Bonus Section
 
