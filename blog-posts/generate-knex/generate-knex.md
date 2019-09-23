@@ -13,43 +13,44 @@ Ever wanted to integrate your favorite library into NestJS? For example, while N
 
 This might seem like a daunting task at first. But if you've been [following my blog posts](https://dev.to/johnbiundo), you saw a _design pattern_ for NestJS dynamic modules in my [last post](https://dev.to/nestjs/advanced-nestjs-how-to-build-completely-dynamic-nestjs-modules-1370) that points you in the right direction. OK, you say, but it _still_ seems like a lot of work to integrate a library.
 
-I have good news! Using the awesome power of the Nest CLI, you can **generate a complete, custom dynamic module template, following NestJS best practices, with a single command!** You can then literally have your library integrated in about 5 minutes! This technique works well for many _resource-based_ libraries that export what I'll call an _API object_,which works well with Nests' built-in _singleton provider_ model for sharing a global resource. Follow along with such an adventure as we build a quick integration to [Knex.js](http://knexjs.org/) below.
+I have good news! Using the awesome power of the Nest CLI, you can **generate a complete, custom dynamic module template, following NestJS best practices, with a single command!** You can then literally have your library integrated in about 5 minutes! This technique works for many _resource-based_ libraries that export what I'll call an _API object_, which naturally work well with Nests' built-in _singleton provider_ model for sharing a global resource. Follow along with such an adventure as we build a quick integration to [Knex.js](http://knexjs.org/) below.
 
-And stay tuned for more on the awesomeness of the Nest CLI. Built on top of the Angular CLI, the potential for this tool to revolutionize the way you use Nest is limitless. I have lots more planned for this topic in the near future!
+And stay tuned for more on the wonders of the vastly under-appreciated NestJS CLI. Built on top of the Angular CLI, the potential for this tool to revolutionize the way you use Nest is limitless. I have lots more planned for this topic in the near future!
 
 ### Intro
 
 In my [How to build completely dynamic NestJS modules](https://dev.to/nestjs/advanced-nestjs-how-to-build-completely-dynamic-nestjs-modules-1370) article last week, I covered a design pattern that is used throughout standard Nest packages like `@nestjs/passport`, `@nestjs/jwt`, and `@nestjs/typeorm`. The point of the article was two-fold:
 
-- Provide a roadmap to a basic pattern used within common NestJS packages. This can help you be a better consumer of those packages.
+- Provide a roadmap to a basic pattern used within common NestJS packages to help you be a better consumer of those packages.
 - Encourage Devs to think about how to make use of this pattern in their own code to enable more easily composable modules.
 
 Some might consider the pattern a bit complex, and I wouldn't necessarily argue. However, gaining a good understanding of it is useful, and helps in the quest for mastery of some core concepts of Nest, especially around leveraging the _module system_ and _dependency injection_. Nevertheless, there's a fair amount of boilerplate code in the pattern. Wouldn't it be great to simplify the process?
 
-NestJS CLI custom schematics to the rescue! :rocket:
+Buckle up! NestJS CLI custom schematics to the rescue! :rocket:
 
 ### What We'll Build
 
-In this tutorial, we'll build a module that exports a direct API to the full [Knex.js](http://knexjs.org/) library. This is an extremely powerful DB integration library used widely across the Node.js ecosystem. Here's what we'll do. These are the _same_ steps you'll use to integrate any other basic callable API (for example, [MassiveJS](https://massivejs.org/), [ioredis](https://github.com/luin/ioredis), etc.).
+In this tutorial, we'll build a module that exports a direct API to the full [Knex.js](http://knexjs.org/) library. This is a powerful DB integration library used widely across the Node.js ecosystem. Here's what we'll do. The following represent the _exact same steps_ you can use to integrate any other basic callable API (for example, [ioredis](https://github.com/luin/ioredis), [Cassandra](https://github.com/datastax/nodejs-driver#readme), [Neo4J](https://github.com/neo4j/neo4j-javascript-driver#readme), [Elasticsearch](https://www.elastic.co/blog/new-elasticsearch-javascript-client-released), [LevelDb](https://github.com/Level/levelup) to name just a few).
 
-1. Use a _custom schematic_ to generate a customized package, based on the [dynamic module pattern](https://dev.to/nestjs/advanced-nestjs-how-to-build-completely-dynamic-nestjs-modules-1370) I've been discussing above.
+1. Use the [dynpkg](https://github.com/nestjsplus/dyn-schematics#use-case-1-generating-a-standalone-package) _custom schematic_ to generate a customized package (the schematic automates the [dynamic module pattern](https://dev.to/nestjs/advanced-nestjs-how-to-build-completely-dynamic-nestjs-modules-1370) I've been discussing above).
 2. Fill in a few quick details to customize the package for Knex.js.
 3. Use the auto-generated test client to demonstrate that it works.
-4. As a bonus, we'll cover a few more advanced features.
 
-Thanks to the power of the Nest CLI, coupled with a _custom schematic_, we can complete steps 1 to 3 above in about 5 minutes!
+Thanks to the power of the Nest CLI, coupled with a _custom schematic_, we can complete these steps in about 5 minutes! As a bonus, we'll cover a few more advanced features at the end of this article, including how to publish the generated package on npm with a single click.
 
-If you want to see a completed version of this (a fully useable Knex.js module), you can [find the completed module here](https://github.com/nestjsplus/knex).
+If you want to see a completed version of the steps presented in the remainder of this article (a _fully useable NestJS/Knex.js module_), you can find a [github repo with the completed code here](https://github.com/nestjsplus/knex).
 
 ### Nest CLI and Schematics
 
-You probably already use the Nest CLI on a regular basis. `nest new myProject` and `nest generate controller user` are common examples. They use the `@nestjs/schematics` package that ships with the CLI out-of-the-box. What's very cool is that you can easily use other schematics to do highly customized work. A feature common to all schematics is that they _understand_ your project, and have a smart way of scaffolding new architectural components and wiring them into your project. Think of a schematic as a blueprint, and of the CLI machinery as a _set of standards_ for how each blueprint works. Because of this, new schematics "just work", and inherit all of the features provided by the CLI and its standard capabilities.
+You probably already use the Nest CLI on a regular basis. `nest new myProject` and `nest generate controller user` are common examples. They use the `@nestjs/schematics` package that ships with the CLI out-of-the-box. What's very cool is that you can easily use other schematics to do highly customized work. A feature common to all schematics is that they _understand_ your project, and have a smart way of scaffolding new architectural components and wiring them into your project. Think of an individual schematic as a blueprint, and of the CLI machinery as a _set of standards_ for how each blueprint works. Because of this, new schematics "just work", and inherit all of the features provided by the CLI and its standard capabilities.
 
-You can write your own schematics, and I plan to show you how in some upcoming blog posts. For now, I've built one that you can use to do the library integration project we've undertaken today. To use any external schematics, you of course need to install them. One important note: you **must** install a schematics collection as a global package, due to the way the CLI works.
+You can write your own schematics, and I plan to show you how in some upcoming blog posts. For now, I've built one that you can use to do the library integration project we've undertaken today. Let's get started!
+
+To use any external schematics, you of course need to install them. One important note: you **must** install a schematics collection as a global package, due to the way the CLI works.
 
 #### Installing a Custom Schematics Collection
 
-Schematics are packaged as _collections_ and can be bundled up as npm packages, so installing them is simple. Do so now with:
+Schematics are packaged as _collections_ and can be bundled up as npm packages, so installing them is simple. You can do so now with:
 
 ```bash
 npm install @nestjsplus/dyn-schematics -g
@@ -127,7 +128,7 @@ Great! At this point, we've scaffolded the _framework_ of our dynamic module, an
 
 You now have a project scaffolded to do the library integration. We have to make just a few edits to perform the actual integration. Let's talk them through:
 
-1. We need to install `knex` as a dependency. Note, in order to **run** this project, you'll need access to a live SQL database. Knex.js doesn't bundle any database libraries, so you'll need to install the appropriate one ([read more here](http://knexjs.org/#Installation-node)). In this tutorial, I'll use PostgreSql, which I have available on localhost. If you do not have a local DB available, you can consider [using a docker setup](https://docs.docker.com/samples/library/postgres/).
+1. We need to install `knex` as a dependency. Note, in order to **run** this project, you'll need access to a live SQL database. Knex.js doesn't bundle any database libraries, so you'll need to install the appropriate one ([you can read more here](http://knexjs.org/#Installation-node)). In this tutorial, I'll use PostgreSql, which I have available on localhost. If you do not have a local DB available, you can consider [using a docker setup](https://docs.docker.com/samples/library/postgres/).
 2. We need a way to provide the configuration options to the Knex.js API.
 3. We need to call the Knex.js API in the way it wants to be initialized, returning a handle to a `knex` object which we can use to access Knex.js features.
 4. To test things out, we can use the client controller that was auto-generated by the schematic.
@@ -161,7 +162,7 @@ The job of our module is pretty simple: connect to the API and return a re-usabl
 
 > Note: I'm less familiar with Knex than other DB libraries, and also less familiar with other DBs like MySQL, so if you are using this module for such databases, be sure you understand the right pattern for sharing a `knex` connection object within your application. This topic is **not** a NestJS issue -- it's all about the architecture of the Knex.js library and the database client library.
 
-So we'll implement a simple pattern to return our `knex` object. Open up `src/nest-knex.service.ts`. Have a quick look to see what the generated code looks like, then replace that code with the following:
+Now we'll implement a simple pattern to return our `knex` object. Open up `src/nest-knex.service.ts`. Have a quick look to see what the generated code looks like, then replace that code with the following:
 
 ```typescript
 // src/nest-knex.service.ts
@@ -199,7 +200,7 @@ Almost all of this is unchanged from the generated boilerplate. We simply added 
 
 As mentioned, you'll need a local database instance available to test the module. If you don't have one handy, consider [using docker](https://docs.docker.com/samples/library/postgres/) to do so. It's easy!
 
-The `@nestjsplus/dyn-schematics` `dynpkg` schematic built a small test "client" for us (assuming you answered `yes` to the prompt). We can use this to quickly test our `nest-knex` module.
+The `@nestjsplus/dyn-schematics` `dynpkg` schematic built a small test _client module_ for us (assuming you answered `yes` to the prompt). We can use this to quickly test our `nest-knex` module.
 
 First, open `src/nest-knex-client/nest-knex-client.module.ts` and add the needed Knex.js options in the `register()` method. Adjust yours appropriately:
 
@@ -242,7 +243,7 @@ ALTER TABLE cats
    PRIMARY KEY (id);
 ```
 
-And here's a sample of what you could try in your test controller. Note that you have the full power of Knex.js available via the `knex` object. See here for [lots more interesting samples](http://knexjs.org/#Builder) of things you can do with Knex. Since you have a handle to the `knex` object, all of those _Knex Query Builder_ methods should just work!
+And here's a sample of what you could try in your test controller. Note that you have the full power of Knex.js available via the `knex` object. See here for [lots more interesting samples](http://knexjs.org/#Builder) of things you can do with Knex. Since you have a handle to the `knex` object, all of those _Knex Query Builder_ methods should just work! In this admittedly silly example, we are both creating and querying some cats in our index route, using the `knex` object to access the database.
 
 ```typescript
 // src/nest-knex-client/nest-knex-client.controller.ts
@@ -271,7 +272,7 @@ export class NestKnexClientController {
 
 Now, fire up the app with `npm run start:dev`, and browse to `http://localhost:3000`, and you should see the results of your query!
 
-If you want to test the module with a separate app -- really demonstrating the power of the reusable library module you just built -- read on to see how to upload it as an npm package in one step. And for convenience, you can download a [full client app that imports the module here](https://github.com/nestjsplus/knex-cats) and use it to test your newly minted Knex.js module.
+If you want to test the module with a separate app -- really demonstrating the power of the reusable library module you just built -- [read on](#publish-the-package) to see how to upload it as an npm package in one step. And for convenience, you can download a [full client app that imports the module here](https://github.com/nestjsplus/knex-cats) and use it to test your newly minted Knex.js module. In fact, [knex-cats](https://github.com/nestjsplus/knex-cats) is a fully working example, so if you've been reading along without coding, that's the easiest way to see the finished product.
 
 ### Bonus Section
 
@@ -281,7 +282,7 @@ Let's cover a couple more topics to round out the discussion.
 
 #### A Better API
 
-As mentioned, it's not good practice to access the `knex` object directly from our controller. We can make things a little bit better by creating a service to house our database logic. We can also make our Knex.js module a little easier to use by adding a higher level API. Let's do that. We're going to add a _provider_ that let's us directly inject the `knex` object into any service. You'll see how this cleans the API up a bit in a moment.
+As mentioned, it's not good practice to access the `knex` object directly from our controller. We can make things a little bit better by creating a service to house our database logic. We can also make our Knex.js module a little easier to use by adding a higher level API. Let's do that. We're going to add a _provider_ that let's us directly inject the `knex` object into any service. You'll see how this cleans the API up in a moment.
 
 First, create a file called `nest-knex-connection.provider.ts` inside the `src` folder. Add the following code:
 
@@ -305,7 +306,7 @@ To follow best practices for providers, we are using the `KNEX_CONNECTION` const
 export const KNEX_CONNECTION = 'KNEX_CONNECTION';
 ```
 
-See what we're doing here? We're binding an injection token (`KNEX_CONNECTION`) to a factory so that we can use our `knex` API object directly, avoiding the need to instantiate the service. For example, once we complete one more step (below), we'll be able to access the `knex` object in our controller like this. Notice the slightly simplified technique between _old_ and _new_ in the sample code:
+See what we're doing here? We're binding an injection token (`KNEX_CONNECTION`) to a factory so that we can use our `knex` API object directly, avoiding the need to instantiate the service. For example, once we complete one more step (below), we'll be able to access the `knex` object in our controller as follows (notice the slightly simplified technique between _old_ and _new_ in the sample code):
 
 ```typescript
 // src/nest-knex-client/nest-knex-client.controller.ts
@@ -355,7 +356,7 @@ The complete implementation of our best practices for database access would also
 
 #### Dynamic Registration (with a Config Factory)
 
-In the [dynamic modules article](https://dev.to/nestjs/advanced-nestjs-how-to-build-completely-dynamic-nestjs-modules-1370#async-options-providers-usecase), we talked about using _asynchronous options providers_. By that, we meant that rather than use a construct like this, from above:
+In the [dynamic modules article](https://dev.to/nestjs/advanced-nestjs-how-to-build-completely-dynamic-nestjs-modules-1370#async-options-providers-usecase), we talked about using _asynchronous options providers_. By that, we meant that rather than use a _statically declared_ object containing our connection params like this:
 
 ```typescript
     NestKnexModule.register({
@@ -395,21 +396,21 @@ It's not a terribly exciting example, but you get the idea. You can take advanta
 
 #### Publish the Package
 
-If you read my earlier [Publishing NestJS Packages with npm](https://dev.to/nestjs/publishing-nestjs-packages-with-npm-21fm) article, you may have noticed that the _structure_ of this package (e.g., the `package.json` file, the `tsconfig.json` file, the presence of the `index.ts` file in the root folder) follows that pattern exactly. As a result, publishing this package is as simple as this:
+If you read my earlier [Publishing NestJS Packages with npm](https://dev.to/nestjs/publishing-nestjs-packages-with-npm-21fm) article, you may have noticed that the _structure_ of this package (e.g., the `package.json` file, the `tsconfig.json` file, the presence of the `index.ts` file in the root folder) follows that pattern exactly. As a result, publishing this package is as simple as this (assuming you have an `npmjs.com` account, that is):
 
 ```bash
 npm publish
 ```
 
-Assuming you have an `npmjs.com` account, that is. Seriously, that's it!
+Seriously, that's it!
 
-Of course, you can always use this [ready-made @nestjsplus/knex]() package, built _exactly_ as describe in this article.
+Of course, you can always use this ready-made [@nestjsplus/knex]() package, built _exactly_ as describe in this article.
 
 ### Not Just External APIs!
 
-The [@nestjsplus/dyn-schematics package](https://github.com/nestjsplus/dyn-schematics) not only supports generating a standalone package, as described so far, but also generating a regular dynamic module _inside your own existing project_. I won't cover that in detail here, but the use-case is simple. Let's say you're building a _ConfigModule_ for use within a project. Simply scaffold it with the `dynmod` schematic (instead of `dynpkg`), and it will generate a new dynamic module _into your existing project_.
+The [@nestjsplus/dyn-schematics package](https://github.com/nestjsplus/dyn-schematics) not only supports generating a standalone package, as described so far, but also generating a regular dynamic module _inside an existing project_. I won't cover that in detail here, but the use-case is simple. Let's say you're building a _ConfigModule_ for use within a project. Simply scaffold it with the `dynmod` schematic (instead of `dynpkg`), and it will generate a new dynamic module _into your existing project_, fully ready for you to implement the details of your `register()` and `registerAsync()` static methods.
 
-This works _exactly_ like the normal CLI commands for adding elements like _controllers_, _services_, and _modules_. In fact, its behavior is very parallel to `nest generate module`. It builds the _dynamic module_ and all its parts (which look quite similar to what we've seen in this article, minus the top level Nest application components) in a folder inside your project, and _wires it up to the rest of the project_ just as the normal `module` schematic does. Read more about it [at the github page for @nestjsplus/dyn-schematics](https://github.com/nestjsplus/dyn-schematics). This use-case (adding a dynamic module to an existing project) is [covered here](https://github.com/nestjsplus/dyn-schematics#use-case-2-adding-a-dynamic-module-to-an-existing-project). You can easily give it a quick _dry run_ inside an existing Nest project with:
+This works _exactly_ like the normal CLI commands for adding elements like _controllers_, _services_, and _modules_. In fact, its behavior is very parallel to `nest generate module`. It builds the _dynamic module_ and all its parts (which look quite similar to what we've seen in this article, minus the top level Nest application components) in a folder inside your project, and _wires them up to the rest of the project_ just as the normal `module` schematic does. Read more about it at the github page for [@nestjsplus/dyn-schematics](https://github.com/nestjsplus/dyn-schematics). This use-case (adding a dynamic module to an existing project) is [covered here](https://github.com/nestjsplus/dyn-schematics#use-case-2-adding-a-dynamic-module-to-an-existing-project). You can easily give it a quick _dry run_ inside an existing Nest project with:
 
 ```bash
 nest g -c @nestjsplus/dyn-schematics dynmod myNewModule --dry-run
