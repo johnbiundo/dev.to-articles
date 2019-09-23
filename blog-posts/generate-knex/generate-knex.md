@@ -1,5 +1,5 @@
 ---
-published: false
+published: true
 title: "Build a NestJS Module for Knex.js (or other resource-based libraries) in 5 Minutes"
 description: "tags: nestjs, nest, knexjs, sql, node.js"
 series:
