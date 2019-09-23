@@ -1,6 +1,6 @@
 ---
 published: false
-title: "Build a NestJS Module for Knex.js (or almost ANY Node.js library) in 5 Minutes"
+title: "Build a NestJS Module for Knex.js (or other resource-based libraries) in 5 Minutes"
 description: "tags: nestjs, nest, knexjs, sql, node.js"
 series:
 cover_image: "https://user-images.githubusercontent.com/6937031/65389455-5ca1d800-dd0b-11e9-9a8a-aefb41895009.png"
@@ -13,7 +13,7 @@ Ever wanted to integrate your favorite library into NestJS? For example, while N
 
 This might seem like a daunting task at first. But if you've been [following my blog posts](https://dev.to/johnbiundo), you saw a _design pattern_ for NestJS dynamic modules in my [last post](https://dev.to/nestjs/advanced-nestjs-how-to-build-completely-dynamic-nestjs-modules-1370) that points you in the right direction. OK, you say, but it _still_ seems like a lot of work to integrate a library.
 
-I have good news! Using the awesome power of the Nest CLI, you can **generate a complete, custom dynamic module template with a single command!** You can then literally have your library integrated in about 5 minutes! Follow along with such an adventure as we build a quick integration to [Knex.js](http://knexjs.org/) below.
+I have good news! Using the awesome power of the Nest CLI, you can **generate a complete, custom dynamic module template, following NestJS best practices, with a single command!** You can then literally have your library integrated in about 5 minutes! This technique works well for many _resource-based_ libraries that export what I'll call an _API object_,which works well with Nests' built-in _singleton provider_ model for sharing a global resource. Follow along with such an adventure as we build a quick integration to [Knex.js](http://knexjs.org/) below.
 
 And stay tuned for more on the awesomeness of the Nest CLI. Built on top of the Angular CLI, the potential for this tool to revolutionize the way you use Nest is limitless. I have lots more planned for this topic in the near future!
 
