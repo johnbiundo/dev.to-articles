@@ -1,16 +1,19 @@
 ---
 published: false
-title: "Integrate NestJS with External Services using NATS"
+title: "Integrate NestJS with External Services using Microservice Transporters"
 description: "tags: nestjs, nest, NATS, microservices, node.js"
-series:
+series: "NestJS Microservices in Action"
 cover_image:
 canonical_url:
 ---
+
+*John is a member of the NestJS core team*
+
 ### Article Series Overview
 
-This article series covers the topic of integrating NestJS applications with other applications.  This can be accomplished in several different ways; the approach covered in this series is to use a combination of Nest microservices and a message broker as the "glue".  (**Note**: some of the concepts here are common to all Nest microservices transporters, while others are specific to [NATS](https://docs.nats.io/).  I try to identify those differences in the text).
+This article series covers the topic of integrating NestJS applications with other applications and services.  This can be accomplished in several different ways; the approach covered in this series is to use a combination of Nest microservices and a message broker as the *glue*.  In these examples, we use NATS as the message broker. **Note**: some of the concepts here are common to all Nest microservices transporters, while others are specific to [NATS](https://docs.nats.io/).  I try to identify those differences in the text.
 
-Nest's microservices package is one of those technologies that can be a little hard to wrap your mind around.  Not that it's overly complex -- to the contrary, it presents an application programming model that is quite simple. I think the confusion comes from the use of the term "microservices", which has become so over-used as to be virtually meaningless, and from the fact that Nest's microservices package supports several considerably different use cases:
+Nest's microservices package is one of those technologies that can be a little hard to wrap your mind around.  Not that it's overly complex &#8212; to the contrary, it presents an application programming model that is quite simple. I think the confusion comes from the use of the term "microservices", which has become so over-used as to be virtually meaningless, and from the fact that Nest's microservices package supports several considerably different use cases:
 
 * Used internally as a **transport layer**, there is little beyond the surface level that a developer needs to understand to effectively use it.  It simply "works", and provides a mechanism for adding features such as scalability and fault tolerance to your Nest application(s).
 
@@ -18,7 +21,7 @@ Nest's microservices package is one of those technologies that can be a little h
 
 This blog post series covers the integration use case.  To get there, it first covers some Nest microservices basics.  Some of these basics might be of interest to you even if you are using the package for the first use case described above (inter-Nest-app communication layer).  The articles are organized such that if you don't need the basics, or if you want to come back later for reference, you can just read the parts you need.
 
-* **[Part 1]()** covers introductory material, including the basic microservices communication model, brokers, and how Nest uses publish/subscribe and request/response communication models. It introduces external integration use-cases that will be covered in the series. It also lays out a vocabulary for describing all the moving parts in these sometimes-complex interactions.
+* **Part 1** covers introductory material, including the basic microservices communication model, brokers, and how Nest uses publish/subscribe and request/response communication models. It introduces external integration use-cases that will be covered in the series. It also lays out a vocabulary for describing all the moving parts in these sometimes-complex interactions.
 * **Part 2** digs a little deeper, extending the vocabulary to describe the modalities in which Nest operates when interacting with external systems. It introduces a pair of sample external (NATS-based) apps that we will use as part of the integration case study.  It introduces the potential challenges arising from Nest's use of a proprietary message format.
 * **Part 3** describes the Nest approach for solving the message format challenge. It goes on to work through code samples that implement this approach.  It uses the vocabulary introduced earlier in an attempt to help you keep a simple cognitive model in mind as you address this problem.
 * **Part 4** covers some leftover, some advanced use cases, and some tips and tricks.
@@ -113,3 +116,5 @@ In case C, we could be writing a new app, in Nest, that needs to query our custo
 In case D, we could be somewhere in the middle of a complex migration process, where both types of communications are happening. Nest apps need to be able to speak to both other Nest apps and non-Nest apps, all via NATS. Non-nest apps similarly need to be able to talk to both types of apps. Going forward, we call this the **Nest as duplex requestor/responder** use case.
 
 We'll examine each use case in more detail below, including sample code you need to make this work (reminder [full repository with usage notes here]()). Before we can do that, we need to understand a little more about how Nest components interact with the broker.
+
+Feel free to ask questions, make comments or suggestions, or just say hello in the comments below. And join us at [Discord](https://discord.gg/G7Qnnhy) for more happy discussions about NestJS. I post there as _Y Prospect_.
