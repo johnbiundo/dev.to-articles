@@ -42,7 +42,7 @@ I hope you find this article series helpful!
 A concrete example of a built-in Nest transporter is [NATS](https://docs.nats.io/). With the NATS-flavored transporter plugged in, Nest applications can communicate using the NATS messaging system. Since NATS is the intermediary for these communications, Nest can communicate not only with other Nest apps, but also with non-Nest apps, or a combination of both. This leads to four interesting use cases <a name="figure1"></a>(Figure 1 below).
 
 ![Transporter Use Cases](./assets/transporter-use-cases.png 'Transporter Use Cases')
-<a name="figure1"><figcaption>Figure 1: Transporter Use Cases</figcaption></a>
+<a name="figure1"></a><figcaption>Figure 1: Transporter Use Cases</figcaption>
 
 The current [Nest microservices](https://docs.nestjs.com/microservices/basics) documentation focuses almost entirely on the first use case (Case A). And rightly so. If you simply want to benefit from a robust communication layer (e.g., easily adding load balancing and fault tolerance to increase the horizontal scalability of your Nest application), you really don't need to know about 90% of the material in this article series! (You may still benefit from a deeper understanding of the Nest microservices architecture, however, so I invite you to read on. Much of the material is still relevant background for leveraging Nest microservices).
 
