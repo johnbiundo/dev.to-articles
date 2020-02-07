@@ -1,6 +1,6 @@
 ---
 published: false
-title: "Integrate NestJS with External Services using Microservice Transporters"
+title: "Integrate NestJS with External Services using Microservice Transporters (Part 1)"
 description: "tags: nestjs, nest, NATS, microservices, node.js"
 series: "NestJS Microservices in Action"
 cover_image:
@@ -39,9 +39,8 @@ I hope you find this article series helpful!
 
 A concrete example of a built-in Nest transporter is [NATS](https://docs.nats.io/). With the NATS-flavored transporter plugged in, Nest applications can communicate using the NATS messaging system. Since NATS is the intermediary for these communications, Nest can communicate not only with other Nest apps, but also with non-Nest apps, or a combination of both. This leads to four interesting use cases <a name="figure1"></a>(Figure 1 below).
 
-![Transporter Use Cases](https://dev-to-uploads.s3.amazonaws.com/i/lhfygt1owdu6zuh1l1rq.png)
-
-<div align="center">Figure 1: Transporter Use Cases</div><br/>
+![Transporter Use Cases](./assets/transporter-use-cases.png 'Transporter Use Cases')
+<figcaption>Figure 1: Transporter Use Cases</figcaption>
 
 The current [Nest microservices](https://docs.nestjs.com/microservices/basics) documentation focuses almost entirely on the first use case (Case A). And rightly so. If you simply want to benefit from a robust communication layer (e.g., easily adding load balancing and fault tolerance to increase the horizontal scalability of your Nest application), you really don't need to know about 90% of the material in this article series! (You may still benefit from a deeper understanding of the Nest microservices architecture, however, so I invite you to read on. Much of the material is still relevant background for leveraging Nest microservices).
 
@@ -73,7 +72,8 @@ Nest makes use of a small set of features that are typically available across mo
 
 From Nest's perspective, brokers implement a basic message-oriented communication protocol that is usually described as **publish/subscribe**. Publish/subscribe can be generally understood in terms of the following diagram, with the red circles indicating the order of events in a publish/subscribe "conversation".
 
-![diagram2](https://user-images.githubusercontent.com/6937031/73613840-689d8080-45ae-11ea-810d-00ba0b58c256.png)
+![Broker Message Protocol](./assets/broker-message-protocol.png 'Broker Message Protocol')
+<figcaption>Figure 2: Broker Message Protocol</figcaption>
 
 In that diagram, each client component is either a _publisher_ or a _subscriber_. The salient point is that subscribers "register interest in a **topic**" and publishers publish messages about a topic. The broker sits in the middle and performs the following functions:
 
