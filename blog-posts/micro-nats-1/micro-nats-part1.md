@@ -9,13 +9,13 @@ canonical_url:
 
 *John is a member of the NestJS core team*
 
-### Article Series Overview
+### Introduction
 
 This article series covers the topic of integrating NestJS applications with other applications and services.  This can be accomplished in several different ways; the approach covered in this series is to use a combination of [Nest microservices](https://docs.nestjs.com/microservices/basics) and a message broker as the *glue*.  In other words, Nest apps and external apps communicate with each other asynchronously through a message broker.
 
 In these examples, we use [NATS](https://docs.nats.io/) as the message broker. **Note**: some of the concepts here are common to all Nest microservices transporters, while others are specific to NATS.  I try to identify those differences in the text.
 
-### Background
+### Nest Microservices Background
 
 Nest's microservices package is one of those technologies that can be a little hard to wrap your mind around.  Not that it's overly complex &#8212; to the contrary, it presents an application programming model that is quite simple. I think the confusion comes from the use of the term "microservices", which has become so over-used as to be virtually meaningless, and from the fact that Nest's microservices package supports several considerably different use cases:
 
@@ -23,12 +23,14 @@ Nest's microservices package is one of those technologies that can be a little h
 
 * Used as an **integration technology**, one needs to dig a bit deeper.  Because the microservices package plays this dual role, when using it for integration there are important implementation details that surface and can get in the way.  Fortunately, as is usually the case, the elegance of the Nest architecture provides mechanisms that make this use case possible (if not immediately obvious).
 
+### Article Series Overview
+
 This blog post series covers the **integration use case**.  To get there, it first covers some Nest microservices basics.  Some of these basics might be of interest to you even if you are using the package for the first use case described above (inter-Nest-app communication layer).  The articles are organized such that if you don't need the basics, or if you want to come back later for reference, you can just read the parts you need.
 
 * **Part 1** (this article!) covers introductory material, including the basic microservices communication model, brokers, and how Nest uses publish/subscribe and request/response communication models. It introduces external integration use-cases that will be covered in the series. It also lays out a vocabulary for describing all the moving parts in these sometimes-complex interactions.
 * **Part 2** (coming soon) digs a little deeper, extending the vocabulary to describe the modalities in which Nest operates when interacting with external systems. It introduces a pair of simple external (non-Nest, NATS-based) apps that we will use as part of the integration case study.  It introduces the potential challenges arising from Nest's use of a proprietary *message format*.
-* **Part 3** (coming soon) describes the Nest approach for solving the message format challenge. It goes on to work through code samples that implement this approach.  It uses the vocabulary introduced earlier in an attempt to help you keep a simple cognitive model in mind as you address this problem.
-* **Part 4** (coming soon) covers some leftover, some advanced use cases, and some tips and tricks.
+* **Part 3** (coming soon) describes the Nest approach for solving the message format challenge. It goes on to work through code samples that implement this approach.  It uses the vocabulary introduced earlier to help you keep a simple cognitive model in mind as you address this problem.
+* **Part 4** (coming soon) covers some leftovers, some advanced use cases, and some tips and tricks.
 
 
 I hope you find this article series helpful!
@@ -40,11 +42,11 @@ I hope you find this article series helpful!
 A concrete example of a built-in Nest transporter is [NATS](https://docs.nats.io/). With the NATS-flavored transporter plugged in, Nest applications can communicate using the NATS messaging system. Since NATS is the intermediary for these communications, Nest can communicate not only with other Nest apps, but also with non-Nest apps, or a combination of both. This leads to four interesting use cases <a name="figure1"></a>(Figure 1 below).
 
 ![Transporter Use Cases](./assets/transporter-use-cases.png 'Transporter Use Cases')
-<figcaption>Figure 1: Transporter Use Cases</figcaption>
+<a name="figure1"><figcaption>Figure 1: Transporter Use Cases</figcaption></a>
 
 The current [Nest microservices](https://docs.nestjs.com/microservices/basics) documentation focuses almost entirely on the first use case (Case A). And rightly so. If you simply want to benefit from a robust communication layer (e.g., easily adding load balancing and fault tolerance to increase the horizontal scalability of your Nest application), you really don't need to know about 90% of the material in this article series! (You may still benefit from a deeper understanding of the Nest microservices architecture, however, so I invite you to read on. Much of the material is still relevant background for leveraging Nest microservices).
 
-The rest of this article series focuses mainly on the last three use cases - namely, using Nest microservices running on NATS to integrate with external systems.
+The rest of this article series focuses mainly on the last three use cases &#8212; namely, using Nest microservices running on NATS to integrate with external systems.
 
 To get there we need to lay some conceptual groundwork. Let's get started.
 
@@ -66,7 +68,7 @@ Message flow diagrams typically only label the broker component (in our case, as
 
 The key advantage of broker-based messaging systems is they allow you to decouple the various application components from each other. Each need only connect to the broker, and can remain unaware of the existence of, location of, or implementation details of other components. The only thing the components need to share is a message protocol.
 
-Nest makes use of a small set of features that are typically available across most brokers. This is a bit of an over-generalization -- one we'll revisit later on -- but for now, let's examine the common broker features that Nest relies on.
+Nest makes use of a small set of features that are typically available across most brokers. This is a bit of an over-generalization &#8212; one we'll revisit later on &#8212; but for now, let's examine the common broker features that Nest relies on.
 
 ### Broker Message Protocol
 
