@@ -15,6 +15,8 @@ This article series covers the topic of integrating NestJS applications with oth
 
 In these examples, we use [NATS](https://docs.nats.io/) as the message broker. **Note**: some of the concepts here are common to all Nest microservices transporters, while others are specific to NATS.  I try to identify those differences in the text.
 
+### Background
+
 Nest's microservices package is one of those technologies that can be a little hard to wrap your mind around.  Not that it's overly complex &#8212; to the contrary, it presents an application programming model that is quite simple. I think the confusion comes from the use of the term "microservices", which has become so over-used as to be virtually meaningless, and from the fact that Nest's microservices package supports several considerably different use cases:
 
 * Used internally as a **transport layer**, there is little beyond the surface level that a developer needs to understand to effectively use it.  It simply "works", and provides a mechanism for adding features such as scalability and fault tolerance to your Nest application(s).
