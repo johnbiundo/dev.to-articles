@@ -30,6 +30,7 @@ This blog post series covers the **integration use case**.  To get there, it fir
 * **Part 3** (coming soon) describes the Nest approach for solving the message format challenge. It goes on to work through code samples that implement this approach.  It uses the vocabulary introduced earlier in an attempt to help you keep a simple cognitive model in mind as you address this problem.
 * **Part 4** (coming soon) covers some leftover, some advanced use cases, and some tips and tricks.
 
+
 I hope you find this article series helpful!
 
 ### Part 1: Introduction to Nest Transporters
