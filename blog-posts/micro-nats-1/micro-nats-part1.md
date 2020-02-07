@@ -39,7 +39,7 @@ I hope you find this article series helpful!
 
 A concrete example of a built-in Nest transporter is [NATS](https://docs.nats.io/). With the NATS-flavored transporter plugged in, Nest applications can communicate using the NATS messaging system. Since NATS is the intermediary for these communications, Nest can communicate not only with other Nest apps, but also with non-Nest apps, or a combination of both. This leads to four interesting use cases <a name="figure1"></a>(Figure 1 below).
 
-![diagram1](https://user-images.githubusercontent.com/6937031/73670458-1a47ba80-465e-11ea-9243-b4df7ff30b73.png)
+![Transporter Use Cases](https://dev-to-uploads.s3.amazonaws.com/i/lhfygt1owdu6zuh1l1rq.png)
 
 <div align="center">Figure 1: Transporter Use Cases</div><br/>
 
@@ -122,4 +122,4 @@ In case D, we could be somewhere in the middle of a complex migration process, w
 
 We'll examine each use case in more detail below, including sample code you need to make this work (reminder [full repository with usage notes here]()). Before we can do that, we need to understand a little more about how Nest components interact with the broker.
 
-Feel free to ask questions, make comments or suggestions, or just say hello in the comments below. And join us at [Discord](https://discord.gg/G7Qnnhy) for more happy discussions about NestJS. I post there as _Y Prospect_.
+Feel free to ask questions, make comments or suggestions, or just say hello in the comments below. And join us at [Discord](https://discord.gg/nestjs) for more happy discussions about NestJS. I post there as _Y Prospect_.
