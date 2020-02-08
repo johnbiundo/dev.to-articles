@@ -86,7 +86,8 @@ getCustomers(@Payload() data: any) {
 
 We can now update [Figure 1 Case B]() to reflect this understanding.
 
-![diagram3b](https://user-images.githubusercontent.com/6937031/73672835-744a7f00-4662-11ea-8753-7eb2d6121542.png)
+![Case b](./assets/case-b.png 'Case C')
+<a name="figure2"></a><figcaption>Figure 2: Nest as Responder</figcaption>
 
 The other roles discussed earlier - emitter and subscriber - are similar (and simpler). For brevity, we'll omit the diagrams and just describe the differences. An emitter is like a requestor except it does not expect a response, so it does not subscribe to a response message. Like a requestor, it's issued via a `ClientProxy` instance. A subscriber is like a responder except it does not issue a response message. Like a responder, it's housed as a handler within a microservice listener.
 
@@ -102,7 +103,8 @@ To give us something concrete to look at, let's quickly construct basic implemen
 
 As native NATS apps, these can immediately and seamlessly communicate with each other.
 
-![external-apps-nocode](https://user-images.githubusercontent.com/6937031/73675719-d063d200-4667-11ea-8f36-b0c7cc8cdafd.png)
+![external apps](./assets/external-apps-nats.png 'External Apps')
+<a name="figure2"></a><figcaption>Figure 2: External NATS Apps</figcaption>
 
 #### The customerApp application
 
@@ -285,7 +287,8 @@ With this in mind, we can layout the standard format for all Nest messages, thus
 
 Clearly, we'll have a problem communicating between our Nest and non-Nest apps based on these different message formats. For example, in the **Nest as responder** case, we have the following issue, where an external request is not understood by the Nest responder due to the message format incompatibility.
 
-![mismatch](https://user-images.githubusercontent.com/6937031/73691149-a8379b80-4686-11ea-88b0-401308b795e6.png)
+![message format mismatch](./assets/mismatch.png 'Message Format Mismatch')
+<a name="figure3"></a><figcaption>Figure 3: Message Format Mismatch</figcaption>
 
 As you can imagine, we have the reverse issue in the **Nest as requestor** case, where it issues requests wrapped in the Nest request format, which aren't understood by the external app, and the external app also responds with an incompatible message format.
 
