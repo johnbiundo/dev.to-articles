@@ -3,7 +3,7 @@ published: false
 title: "Integrate NestJS with External Services using Microservice Transporters (Part 1)"
 description: "tags: nestjs, nest, NATS, microservices, node.js"
 series: "NestJS Microservices in Action"
-cover_image: "./assets/cover.png"
+cover_image: "https://dev-to-uploads.s3.amazonaws.com/i/1khd2pysk1o2go9e0oxs.jpg"
 canonical_url:
 ---
 
@@ -32,6 +32,9 @@ This blog post series covers the **integration use case**.  To get there, it fir
 * **Part 3** (coming soon) describes the Nest approach for solving the message format challenge. It goes on to work through code samples that implement this approach.  It uses the vocabulary introduced earlier to help you keep a simple cognitive model in mind as you address this problem.
 * **Part 4** (coming soon) covers some leftovers, some advanced use cases, and some tips and tricks.
 
+### Source Code
+
+Working examples and all source code is available [here](). The articles work best if you follow along with the repository.  Full installation instructions, along with myriad other details, are available [here]().
 
 I hope you find this article series helpful!
 
