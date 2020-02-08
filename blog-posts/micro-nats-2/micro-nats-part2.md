@@ -1,3 +1,14 @@
+---
+published: false
+title: "Integrate NestJS with External Services using Microservice Transporters (Part 2)"
+description: "tags: nestjs, nest, NATS, microservices, node.js"
+series: "NestJS Microservices in Action"
+cover_image: "https://dev-to-uploads.s3.amazonaws.com/i/1khd2pysk1o2go9e0oxs.jpg"
+canonical_url:
+---
+
+*John is a member of the NestJS core team*
+
 ### Part 2: Digging into Transporter Communications
 
 This is Part 2 of a series on using Nest microservices as an integration technology. [Part 1]() lays the foundation with an introduction to the basic communication concepts used by Nest microservices.
@@ -39,7 +50,8 @@ async getCustomers(): Observable<customers> {
 
 Let's update the diagram from [Figure 1, Case C]() to reflect this terminology.
 
-![diagram3a](https://user-images.githubusercontent.com/6937031/73614253-40178580-45b2-11ea-9966-35f624f44f0a.png)
+![Case C](./assets/case-c.png 'Case C')
+<a name="figure1"></a><figcaption>Figure 1: Nest as Requestor</figcaption>
 
 #### Nest as Responder
 
@@ -281,3 +293,4 @@ Now the big question: How do we reconcile these message format differences to co
 
 The good news is that **Nest anticipates this need and provides a neat solution.** We now have all the pieces in place to start seeing how Nest solves this problem and how to craft a solution. We'll dive into this in Part 3!
 
+Feel free to ask questions, make comments or suggestions, or just say hello in the comments below. And join us at [Discord](https://discord.gg/nestjs) for more happy discussions about NestJS. I post there as _Y Prospect_.
