@@ -212,19 +212,19 @@ We've nearly arrived at our final destination. With the understanding we've gain
 Here are the requirements:
 1. The "nestHttpApp", in its role as a requestor, must implement:
    * A) an *outbound message external serializer* that translates a Nest request into a request understood by our external service. For example:
-      * From Nest: `{}`
+      * From Nest: `{pattern: 'get-customers', data: {}, id: 'abc...'}`
       * To external: `{}`
    * B) an *inbound response external serializer* that translates an external response into a format understood by Nest. For example:
-      * From external: `{}`
-      * To Nest: `{}`
+      * From external: `{customers: [{id: 1, name: 'nestjs.com'}]}`
+      * To Nest: `{err: undefined, response: {customers: [{id: 1, name: 'nestjs.com'}]}, isDisposed: true}`
 
 2. The "nestMicroservice" app, in its role as a responder, must implement:
     * A) an *inbound message external deserializer* that translates an external request into a format understood by Nest.  For example:
       * From external: `{}`
-      * To Nest: `{}`
+      * To Nest: `{pattern: 'get-customers', data: {}, id: 'abc...}`
     * B) an *outbound response external serializer* that translates a Nest response into a response understood by our external service.  For example:
-      * From Nest: `{}`
-      * To external: `{}`
+      * From Nest: `{err: undefined: response: {customers: [{id: 1, name: 'nestjs.com'}]}, isDisposed: true}`
+      * To external: `{customers: [{id: 1, name: 'nestjs.com'}]}`
 
 With that in mind, let's get busy!  The italicized descriptions above inform the names of our classes.
 
