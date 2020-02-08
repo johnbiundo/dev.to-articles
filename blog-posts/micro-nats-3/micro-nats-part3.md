@@ -73,13 +73,15 @@ This feature results in the following diagrams -- ones that remove all those ugl
 
 Here's the diagram to keep in mind when writing **serializers/deserializers for Nest responders**.
 
-![responder-serialization](https://user-images.githubusercontent.com/6937031/73694924-ebe1d380-468d-11ea-9460-d27408079cab.png)
+![Nest Responder (De)serialization](./assets/responder-serialization.png 'Nest Responder (De)serialization')
+<a name="figure1"></a><figcaption>Figure 1: Nest Responder (De)serialization</figcaption>
 
 In the above diagram, the Nest responder serializer and deserializer are configured in the `NestFactory.creatMicroservice()` call.
 
 And here's the corresponding diagram for **Nest requestors**.
 
-![requestor-serialization](https://user-images.githubusercontent.com/6937031/73694797-af15dc80-468d-11ea-86d4-21a43e7421cf.png)
+![Nest Requestor (De)serialization](./assets/requestor-serialization.png 'Nest Requestor (De)serialization')
+<a name="figure2"></a><figcaption>Figure 2: Nest Requestor (De)serialization</figcaption>
 
 In the above diagram, the Nest requestor serializer and deserializer are configured in the `ClientProxy` configuration (decorator or injectable, depending on [which method](https://docs.nestjs.com/microservices/basics#client) you use).
 
