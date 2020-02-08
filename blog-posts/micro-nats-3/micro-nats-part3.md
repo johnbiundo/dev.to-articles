@@ -124,6 +124,7 @@ export class OutboundResponseIdentitySerializer implements Serializer {
 Now simply plug this serializer into the `main.ts` file for the Nest responder app:
 
 ```typescript
+// src/main.ts
 const app = await NestFactory.createMicroservice(AppModule, {
   transport: Transport.NATS,
   options: {
@@ -184,6 +185,7 @@ export class InboundMessageIdentityDeserializer
 Like our identity serializer, we can quickly plug in an identity deserializer to spy on the incoming messages from our requestor.
 
 ```typescript
+// src/main.ts
 const app = await NestFactory.createMicroservice(AppModule, {
   transport: Transport.NATS,
   options: {
@@ -221,9 +223,9 @@ Here are the requirements:
 2. The "nestMicroservice" app, in its role as a responder, must implement:
     * A) an *inbound message external deserializer* that translates an external request into a format understood by Nest.  For example:
       * From external: `{}`
-      * To Nest: `{pattern: 'get-customers', data: {}, id: 'abc...}`
+      * To Nest: `{pattern: 'get-customers', data: {}, id: 'abc...'}`
     * B) an *outbound response external serializer* that translates a Nest response into a response understood by our external service.  For example:
-      * From Nest: `{err: undefined: response: {customers: [{id: 1, name: 'nestjs.com'}]}, isDisposed: true}`
+      * From Nest: `{err: undefined, response: {customers: [{id: 1, name: 'nestjs.com'}]}, isDisposed: true}`
       * To external: `{customers: [{id: 1, name: 'nestjs.com'}]}`
 
 With that in mind, let's get busy!  The italicized descriptions above inform the names of our classes.
@@ -231,7 +233,7 @@ With that in mind, let's get busy!  The italicized descriptions above inform the
 For requirement 1-A, we have `src/common/serializers/outbound-message-external.serializer.ts` in our `nestHttpApp` project.  Here's the code.  The comment explains its intent.
 
 ```typescript
-// src/common/serializers/outbound-message-external-serializer.ts
+// src/common/serializers/outbound-message-external.serializer.ts
 import { Logger } from '@nestjs/common';
 import { Serializer } from '@nestjs/microservices';
 
@@ -345,6 +347,7 @@ export class OutboundResponseExternalSerializer implements Serializer {
 The last step is to plug in these (de)serializers in at the appropriate "hook points".  We've seen this before.  For the `nestHttpApp`, this is done wherever you configure the `ClientProxy`.  In our case, for ease of code organization, we've done this with the `@Client()` decorator in the `src/app.controller.ts` file.  To enable the external (de)serializers, update that file to look like this:
 
 ```typescript
+// src/app.controller.ts
   @Client({
     transport: Transport.NATS,
     options: {
@@ -370,6 +373,7 @@ The last step is to plug in these (de)serializers in at the appropriate "hook po
 For the `nestMicroservice`, this is done in the `src/main.ts` file.  To enable the external (de)serializers, update that file to look like this:
 
 ```typescript
+// src/main.ts
   const app = await NestFactory.createMicroservice(AppModule, {
     transport: Transport.NATS,
     options: {
