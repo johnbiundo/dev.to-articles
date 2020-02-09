@@ -225,7 +225,7 @@ We've nearly arrived at our final destination. With the understanding we've gain
 
 Here are the requirements:
 1. The *nestHttpApp*, in its role as a requestor, must implement:
-   * A) <a name="1-a"></a>an **outbound message external serializer** that translates a Nest formatted request into a request understood by our external service. For example:
+   * A) <a name="1a"></a>an **outbound message external serializer** that translates a Nest formatted request into a request understood by our external service. For example:
       * From Nest format
           * topic: `'get-customers'`
           * reply topic: `'_INBOX.XVRL...'`

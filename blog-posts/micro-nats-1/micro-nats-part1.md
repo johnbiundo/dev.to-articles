@@ -78,7 +78,7 @@ Nest makes use of a small set of features that are typically available across mo
 
 From Nest's perspective, brokers provide a basic message-oriented communication protocol that is usually described as **publish/subscribe**. Publish/subscribe can be generally understood in terms of the following diagram, with the red circles indicating the order of events in a publish/subscribe "conversation".
 
-![Broker Message Protocol](./assets/broker-message-protocol.png 'Broker Message Protocol')
+![Broker Message Protocol](./assets/broker-message-protocol2.png 'Broker Message Protocol')
 <figcaption><a name="figure2"></a>Figure 2: Broker Message Protocol</figcaption>
 
 In that diagram, each client component is either a _publisher_ or a _subscriber_. The salient point is that subscribers "register interest in a **topic**" and publishers publish messages about a topic. The broker sits in the middle and performs the following functions:
