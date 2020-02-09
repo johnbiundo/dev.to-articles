@@ -13,7 +13,7 @@ canonical_url:
 
 This is Part 2 of a series on using Nest microservices as an integration technology. [Part 1]() lays the foundation with an introduction to the basic communication concepts used by Nest microservices.
 
-This article focuses on laying out the concepts and challenges of integrating Nest apps with non-Nest apps.
+This article lays out the concepts and challenges of integrating Nest apps with non-Nest apps.
 
 ### Get the Code
 
@@ -21,13 +21,13 @@ Reminder: all the code for these articles is available [here](https://github.com
 
 ### Roles in Action
 
-In the prior article, I covered [the roles](#a-vocabulary-for-transporter-use-cases) a Nest app plays in various communication scenarios. Let's dig further into those roles and how they matter in the integration use case.
+In the prior article, I covered [the roles](#a-vocabulary-for-transporter-use-cases) a Nest app plays in various communication scenarios. Let's dig further into those roles and how they matter in each integration use case.
 
 #### Nest as Requestor
 
 Let's start with a quick review of Nest's transporter application-level protocol. This is covered in depth [in the Nest documentation](https://docs.nestjs.com/microservices/basics#client), but we'll summarize briefly here, marrying Nest concepts with our freshly minted terminology covered at the end of [Part 1](#a-vocabulary-for-transporter-use-cases).
 
-When a Nest component is in the role of **Nest as requestor**, it performs its role through an instance of the `ClientProxy` class which has been configured to work with a specific transporter. Such a requestor may be housed in any sort of Nest app. For example, to make a `'get-customers'` request from a Nest HTTP-based app (e.g., from within a REST route handler), via NATS, we would instantiate a `ClientProxy` with code something like this:\*
+When a Nest component is in the role of [**Nest as requestor**](), it performs its role through an instance of the `ClientProxy` class which has been configured to work with a specific transporter. Such a requestor may be housed in any sort of Nest app. For example, to make a `'get-customers'` request from a Nest HTTP-based app (e.g., from within a REST route handler), via NATS, we would instantiate a `ClientProxy` with code something like this:\*
 
 ```typescript
 // app.controller.ts
@@ -40,7 +40,7 @@ When a Nest component is in the role of **Nest as requestor**, it performs its r
 client: ClientProxy;
 ```
 
-\*Note: we use the `@Client()` decorator as a convenience, but it is recommended to use the dependency injection method for creating a `ClientProxy` instance. See the [Nest documentation](https://docs.nestjs.com/microservices/basics#client) for more details.
+\*Note: we use the `@Client()` decorator as a convenience, but Nest recommends using the dependency injection method for creating a `ClientProxy` instance. Both work for our purposes, but the DI method has some advantages for production development. See the [Nest documentation](https://docs.nestjs.com/microservices/basics#client) for more details.
 
 Using this `ClientProxy` instance, we would then add code to our REST route handler (e.g., one that responds to the REST `GET customers` request) to issue the NATS request with code something like this:
 
@@ -59,7 +59,7 @@ Let's update the diagram from [Figure 1, Case C]() to reflect this terminology.
 
 #### Nest as Responder
 
-When a Nest component is in the role of **Nest as responder**, things are slightly more complex. We need the component to function **inside the context of a network listener** (in order to receive inbound messages from remote senders). This concept gives us an understanding of what we can now refer to as a Nest **microservice**. A Nest microservice is a component that binds some behavior to incoming network messages bearing specific **topics** (and, optionally, **payloads**). Obviously, the microservice listener must connect to the correct broker, and possibly be configured with other parameters. Making this association between a microservice listener and a particular broker, and specifying configuration parameters for that association, is the job of the transporter. For example, a Nest component that can respond to `'get-customer'` would need several moving parts.
+When a Nest component is in the role of [**Nest as responder**](), things are slightly more complex. We need the component to function **inside the context of a network listener** (in order to receive inbound messages from remote senders). This concept gives us an understanding of what we can now refer to as a Nest **microservice**. A Nest microservice is a component that binds some behavior to incoming network messages bearing specific **topics** (and, optionally, **payloads**). Obviously the microservice listener must connect to the correct broker, and possibly be configured with other parameters. Making this association between a microservice listener and a particular broker, and specifying configuration parameters for that association, is the job of the transporter. For example, a Nest component that can respond to a NATS `'get-customer'` message would need several moving parts.
 
 First, we need to start up a network listener. This is covered in detail [in the Nest documentation here](https://docs.nestjs.com/microservices/basics#getting-started), but the code is straightforward if you're familiar with a typical Nest `main.ts` file:
 
@@ -76,7 +76,7 @@ async function bootstrap() {
 }
 ```
 
-All the transporter-specific details -- such as how to connect to the NATS broker -- are passed in as an options object to the `createMicroservice()` call.
+All the transporter-specific details &#8212; such as how to connect to the NATS broker &#8212; are passed in as an options object to the `createMicroservice()` call.
 
 Then we need to register the handler for any inbound request we want to handle. This is covered in detail [here](https://docs.nestjs.com/microservices/basics#getting-started), but the handler code, running inside a microservice controller, is straightforward if you're familiar with typical Nest HTTP controllers:
 
@@ -93,7 +93,7 @@ We can now update [Figure 1 Case B]() to reflect this understanding.
 ![Case b](./assets/case-b.png 'Case C')
 <a name="figure2"></a><figcaption>Figure 2: Nest as Responder</figcaption>
 
-The other roles discussed earlier - emitter and subscriber - are similar (and simpler). For brevity, we'll omit the diagrams and just describe the differences. An emitter is like a requestor except it does not expect a response, so it does not subscribe to a response message. Like a requestor, it's issued via a `ClientProxy` instance. A subscriber is like a responder except it does not issue a response message. Like a responder, it's housed as a handler within a microservice listener.
+The other roles discussed earlier &#8212; emitter and subscriber &#8212; are similar (and simpler). For brevity, we'll omit the diagrams and just describe the differences. An emitter is like a requestor except it does not expect a response, so it does not subscribe to a response message. Like a requestor, it's issued via a `ClientProxy` instance. A subscriber is like a responder except it does not issue a response message. Like a responder, it's housed as a handler within a microservice listener.
 
 #### Running an All Nest Stack
 
@@ -181,7 +181,7 @@ The full source code for these apps is available [here](https://github.com/johnb
 
 You may have noticed we made a call to `request()` in the customerApp above, and wondered why (perhaps you were expecting us to call something like `publish()`). Nice catch! Here's a quick geeky aside on that topic that also provides a little insight into the Nest transporter abstraction layer.
 
-If you dig into the NATS client API libraries (for example, the [TypeScript client](https://github.com/nats-io/nats.ts)), you'll notice that they provide API calls to both the NATS `PUB` verb (usually `publish()`) and `SUB` verb (usually `subscribe()`), but also offer a `request()` method that doesn't have a direct counterpart in the NATS protocol (see an example [here](https://github.com/nats-io/nats.ts#basic-usage)). By now, you should probably be able to guess what `request()` does. It uses essentially the same pattern we [described earlier](#broker-message-protocol) -- implemented by NEST to provide request/response semantics on top of publish/subscribe messaging -- **within the NATS TypeScript client library itself**. To be clear: this is a convenience provided by the client library (not a native feature of NATS).
+If you dig into the NATS client API libraries (for example, the [TypeScript client](https://github.com/nats-io/nats.ts)), you'll notice that they provide API calls to both the NATS `PUB` verb (usually `publish()`) and `SUB` verb (usually `subscribe()`), but also offer a `request()` method that doesn't have a direct counterpart in the NATS protocol (see an example [here](https://github.com/nats-io/nats.ts#basic-usage)). By now, you should probably be able to guess what `request()` does. It uses essentially the same pattern we [described earlier](#broker-message-protocol)  &#8212;  implemented by NEST to provide request/response semantics on top of publish/subscribe messaging  &#8212;  **within the NATS TypeScript client library itself**. To be clear: this is a convenience provided by the client library (not a native feature of NATS).
 
 In the case of the NATS transporter, Nest takes advantage of this client library feature directly, rather than emulating it. For other transporters, where no such "request/response abstraction" exists, Nest emulates this functionality. In the end, both Nest and the client libraries share a similar need to add request/response behavior on top of a publish/subscribe model.
 
@@ -229,7 +229,7 @@ MSG_PAYLOAD: {"err": null,"response": [{ "id": 1, "name":"nestjs.com" }],
 "isDisposed": true,"id": "84d9259e-fd00-4456-83b8-408311ca72cc"}
 ```
 
-The differences should be clear. Nest wraps your message payloads inside a JSON object. For requests, your payload is wrapped ina `data` property. For responses, your payload is wrapped in a `response` property.
+The differences should be clear. Nest wraps your message payloads inside a JSON object. For requests, your payload is wrapped in a `data` property. For responses, your payload is wrapped in a `response` property.
 
 Why the differences? Consider that Nest must properly route and manage the lifetime of messages **within and between Nest apps** (e.g., our "Pure NestJS" <a href="#figure1">Case A in Figure 1</a>). Nest needs to pass some metadata, along with the actual application-specific message content, with each message. Nest encodes this metadata in the **payload** itself (because NATS doesn't allow you to add fields anywhere else in a message), resulting in the extra fields we see.
 

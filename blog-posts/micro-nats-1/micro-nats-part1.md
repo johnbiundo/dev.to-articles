@@ -17,7 +17,7 @@ In these examples, we use [NATS](https://docs.nats.io/) as the message broker. *
 
 ### Source Code
 
-Working examples and all source code is available [here](https://github.com/johnbiundo/nest-nats-sample). The articles work best if you follow along with the repository.  Full installation instructions, along with myriad other details, are available [here](https://github.com/johnbiundo/nest-nats-sample#sample-repository-for-nestnatsmicroservice-article-series).
+Working examples and all source code is available [here](https://github.com/johnbiundo/nest-nats-sample). The articles work best if you follow along with the repository.  Full installation instructions, along with many other details, are available [here](https://github.com/johnbiundo/nest-nats-sample#sample-repository-for-nestnatsmicroservice-article-series).
 
 
 ### Nest Microservices Background
@@ -56,7 +56,7 @@ To get there we need to lay some conceptual groundwork. Let's get started.
 
 ### Concepts
 
-There's a lot going on in those diagrams, even viewed at the highest level. As soon as we begin diving into the details, the terminology soup can easily get in the way of deeper understanding. So without further ado, let's take a crack at some basic concepts and terminology.
+There's a lot going on in [that diagram](#figure1), even viewed at the highest level. As soon as we begin diving into the details, the terminology soup can easily get in the way of deeper understanding. So without further ado, let's take a crack at some basic concepts and terminology.
 
 First, let's acknowledge that there are two main flavors of Nest transporters, which I'll refer to as:
 
@@ -118,11 +118,11 @@ So requestors are a special case of publishers, and we use this term to remember
 
 Most of the above is background that "just works" in an all-Nest world.  Let's turn our attention now to integrating Nest apps with non-Nest apps using NATS as the communication intermediary.
 
-In <a href="#figure1">Figure 1</a>, cases B, C, and D illustrate the different topologies for Nest-based apps to integrate with non-Nest apps using NATS. Note, we'll use the generic term **"app"** to describe these communicating components. Let's briefly motivate these use cases.
+In <a href="#figure1">Figure 1</a>, cases B, C, and D illustrate the different topologies for Nest-based apps to integrate with non-Nest apps using NATS. Note, we'll use the generic term **"app"** to describe these communicating components. As we'll see, these "apps" could be web apps, app services written in NestJS or some other platform, "microservices", etc., but the rules we'll describe are common regardless of the type of app involved.  Let's briefly motivate the use cases.
 
-In case B, we could be migrating a legacy app service, responsible for managing our customer DB, to Nest. In this case, Nest needs to play the role of **responder** that we described above. Going forward, we call this the **Nest as responder** use case.
+<a name="nest-as-responder"></a>In case B, we could be migrating a legacy app service, responsible for managing our customer DB, to Nest. In this case, our Nest app needs to play the role of **responder** that we described above. Going forward, we call this the **Nest as responder** use case.
 
-In case C, we could be writing a new app, in Nest, that needs to query our customer DB using the existing (legacy) service. In this case, Nest needs to play the role of **requestor** that we described above. Going forward, we call this the **Nest as requestor** use case.
+<a name="nest-as-requestor"></a>In case C, we could be writing a new app, in Nest, that needs to query our customer DB using the existing (legacy) service. In this case, our Nest app needs to play the role of **requestor** that we described above. Going forward, we call this the **Nest as requestor** use case.
 
 In case D, we could be somewhere in the middle of a complex migration process, where both types of communications are happening. Nest apps need to be able to speak to both other Nest apps and non-Nest apps, all via NATS. Non-nest apps similarly need to be able to talk to both types of apps. Going forward, we call this the **Nest as duplex requestor/responder** use case.
 
