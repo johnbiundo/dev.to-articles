@@ -185,7 +185,7 @@ In the case of the NATS transporter, Nest takes advantage of this client library
 
 #### Different Message Formats
 
-One thing we can do, now that we have an all-Nest version and a native TypeScript/NATS version of the requestor and responder, is examine the actual NATS messages exchanged. You can and should do this yourself, but let's cut right to the chase. Nest encodes message payloads in a format that is probably **not directly compatible with the format used by your external app**. We'll address why that is, and how to resolve the incompatibility, below. Now we're getting to the meaty part of the article series!
+One thing we can do, now that we have an all-Nest version and a native TypeScript/NATS version of the requestor and responder, is examine the actual NATS messages exchanged. You can and should do this yourself (for now, you can examine the NATS logs produced by following [these instructions](https://github.com/johnbiundo/nest-nats-sample#running-the-all-nest-configuration) and [these instructions](https://github.com/johnbiundo/nest-nats-sample#running-the-all-native-app-configuration)), but let's cut right to the chase. Nest encodes message payloads in a format that is probably **not directly compatible with the format used by your external app**. We'll address why that is, and how to resolve the incompatibility, below. Now we're getting to the meaty part of the article series!
 
 **Note**: the following representations of the actual messages as seen in the NATS server log take a few **small** liberties to simplify and clarify. What you'll actually see in the logs is slightly more verbose. To see the NATS log messages yourself, follow [these instructions]().
 
@@ -203,7 +203,7 @@ Here, you see the message topic (`get-customers`) and the reply topic (`_INBOX.6
 The "customerApp" receives a response back from "customerService" (because it included a response topic in the request - `_INBOX.6EADK` - that it subscribed to) that looks like this:
 
 ```bash
-MSG_PAYLOAD: [{ "id": 1, "name": "nestjs.com" }]
+MSG_PAYLOAD: {"customers": [{ "id": 1, "name": "nestjs.com" }]}
 ```
 
 Here, payload is just a "stringified" version of our JSON response.
@@ -221,20 +221,19 @@ MSG_PAYLOAD: {"pattern": "get-customers","data": {},
 It receives a response back from "nestMicroservice" that looks like this:
 
 ```bash
-MSG_PAYLOAD: {"err": null,"response": [{ "id": 1, "name":"nestjs.com" }],"isDisposed": true,"id": "84d9259e-fd00-4456-83b8-408311ca72cc"}
+MSG_PAYLOAD: {"err": null,"response": [{ "id": 1, "name":"nestjs.com" }],
+"isDisposed": true,"id": "84d9259e-fd00-4456-83b8-408311ca72cc"}
 ```
 
-The differences should be clear. Nest wraps your application payloads inside a JSON object. For requests, your payload is carried inside a `data` property. For responses, your payload is carried inside a `response` property.
+The differences should be clear. Nest wraps your message payloads inside a JSON object. For requests, your payload is wrapped ina `data` property. For responses, your payload is wrapped in a `response` property.
 
-Why the differences? Consider that Nest must properly route and manage the lifetime of messages **within and between Nest apps** (e.g., our <a href="#figure1">Case A in Figure 1</a>). Nest needs to pass some metadata, along with the actual application-specific message content, with each message. Nest encodes this metadata in the **payload** (NATS doesn't allow you to add fields anywhere else in a message), resulting in the extra fields we see.
+Why the differences? Consider that Nest must properly route and manage the lifetime of messages **within and between Nest apps** (e.g., our "Pure NestJS" <a href="#figure1">Case A in Figure 1</a>). Nest needs to pass some metadata, along with the actual application-specific message content, with each message. Nest encodes this metadata in the **payload** itself (because NATS doesn't allow you to add fields anywhere else in a message), resulting in the extra fields we see.
 
 With this in mind, we can layout the standard format for all Nest messages, thus defining Nest's transporter message protocol.
 
 #### Nest Transporter Message Protocol
 
-1. Request messages (coming from **Nest requestors**)
-
-   Requests are wrapped in a structure that we can depict as follows:
+1. Request messages (coming from **Nest requestors**) are wrapped in a structure that we can depict as follows:
 
    ```typescript
    {
@@ -257,9 +256,7 @@ With this in mind, we can layout the standard format for all Nest messages, thus
    }
    ```
 
-2. Response messages (coming from **Nest responders**)
-
-   Responses are wrapped in a structure we can depict as follows:
+1. Response messages (coming from **Nest responders**) are wrapped in a structure we can depict as follows:
 
    ```typescript
    {
@@ -290,9 +287,9 @@ Clearly, we'll have a problem communicating between our Nest and non-Nest apps b
 ![message format mismatch](./assets/mismatch.png 'Message Format Mismatch')
 <a name="figure3"></a><figcaption>Figure 3: Message Format Mismatch</figcaption>
 
-As you can imagine, we have the reverse issue in the **Nest as requestor** case, where it issues requests wrapped in the Nest request format, which aren't understood by the external app, and the external app also responds with an incompatible message format.
+As you can imagine, we have the reverse issue in the **Nest as requestor** case, where Nest issues requests wrapped in the Nest request format, which aren't understood by the external app, and the external app also responds with an incompatible message format (missing fields expected by Nest).
 
-Now the big question: How do we reconcile these message format differences to connect Nest and external NATS apps, as in <a href="#figure1">Figure 1 Cases B, C and D</a>?
+**Now the big question**: How do we reconcile these message format differences to connect Nest and external NATS apps, as in <a href="#figure1">Figure 1 Cases B, C and D</a>?
 
 The good news is that **Nest anticipates this need and provides a neat solution.** We now have all the pieces in place to start seeing how Nest solves this problem and how to craft a solution. We'll dive into this in Part 3!
 
