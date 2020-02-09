@@ -139,10 +139,10 @@ const app = await NestFactory.createMicroservice(AppModule, {
 });
 ```
 
-If you now send some requests to the *nestMicroservice* app from the *nestHttpApp* ([here's how](https://github.com/johnbiundo/nest-nats-sample#running-the-all-nest-configuration)), you'll see logging information that looks something like this, showing you the internal layout of the incoming message:
+If you now send some requests to the *nestMicroservice* app from the *nestHttpApp* ([here's how](https://github.com/johnbiundo/nest-nats-sample#running-the-all-nest-configuration)), you'll see logging information that looks something like this, showing you the internal layout of the outbound message:
 
 ```bash
-[Nest] 8786   - 02/04/2020, 10:19:04 AM   [OutboundResponseIdentitySerializer] -->> Serializing outgoing response:
+[Nest] 8786   - 02/04/2020, 10:19:04 AM   [OutboundResponseIdentitySerializer] -->> Serializing outbound response:
 {"err":null,"response":[],"isDisposed":true,"id":"41da72e8-09d0-4720-9404-bd0977b034a0"}
 ```
 
@@ -201,10 +201,10 @@ const app = await NestFactory.createMicroservice(AppModule, {
 });
 ```
 
-If you again send some requests to the *nestMicroservice* app from the *nestHttpApp* ([like this](https://github.com/johnbiundo/nest-nats-sample#running-the-all-nest-configuration)), you'll see logging information that looks something like this, showing you the layout of the incoming message:
+If you again send some requests to the *nestMicroservice* app from the *nestHttpApp* ([like this](https://github.com/johnbiundo/nest-nats-sample#running-the-all-nest-configuration)), you'll see logging information that looks something like this, showing you the layout of the inbound message:
 
 ```bash
-[Nest] 8786   - 02/04/2020, 10:19:04 AM   [InboundMessageIdentityDeserializer] <<-- deserializing incoming message:
+[Nest] 8786   - 02/04/2020, 10:19:04 AM   [InboundMessageIdentityDeserializer] <<-- deserializing inbound message:
 {"pattern":"get-customers","data":{},"id":"41da72e8-09d0-4720-9404-bd0977b034a0"}
         with options: {"channel":"get-customers","replyTo":"_INBOX.IDML09N4JB6W0MF4P6GBPB.IDML09N4JB6W0MF4P6GCX2"}
 ```
@@ -217,20 +217,40 @@ We've nearly arrived at our final destination. With the understanding we've gain
 
 Here are the requirements:
 1. The *nestHttpApp*, in its role as a requestor, must implement:
-   * A) an __outbound message external serializer__ that translates a Nest request into a request understood by our external service. For example:
-      * From Nest: `{pattern: 'get-customers', data: {}, id: 'abc...'}`
-      * To external: `{}`
+   * A) an __outbound message external serializer__ that translates a Nest formatted request into a request understood by our external service. For example:
+      * From Nest format
+        * topic: `'get-customers'`
+        * reply topic: `'_INBOX.XVRL...'     // <-- sample reply topic name`
+        * payload: `{pattern: 'get-customers', data: {}, id: 'abc...'}`
+      * To external format
+        * topic: `'get-customers'`
+        * reply topic: `'_INBOX.XVRL...'     // <-- sample reply topic name`
+        * payload: `{}`
    * B) an __inbound response external serializer__ that translates an external response into a format understood by Nest. For example:
-      * From external: `{customers: [{id: 1, name: 'nestjs.com'}]}`
-      * To Nest: `{err: undefined, response: {customers: [{id: 1, name: 'nestjs.com'}]}, isDisposed: true}`
+      * From external format
+        * topic: `'_INBOX.XVRL...'     // <-- sample reply topic name`
+        * payload: `{customers: [{id: 1, name: 'nestjs.com'}]}`
+      * To Nest format
+        * topic:`'_INBOX.XVRL...'     // <-- sample reply topic name`
+        * payload: `{err: undefined, response: {customers: [{id: 1, name: 'nestjs.com'}]}, isDisposed: true}`
 
 2. The *nestMicroservice* app, in its role as a responder, must implement:
     * A) an __inbound message external deserializer__ that translates an external request into a format understood by Nest.  For example:
-      * From external: `{}`
-      * To Nest: `{pattern: 'get-customers', data: {}, id: 'abc...'}`
-    * B) an __outbound response external serializer__ that translates a Nest response into a response understood by our external service.  For example:
-      * From Nest: `{err: undefined, response: {customers: [{id: 1, name: 'nestjs.com'}]}, isDisposed: true}`
-      * To external: `{customers: [{id: 1, name: 'nestjs.com'}]}`
+      * From external format
+        * topic: `'get-customers'`
+        * reply: `'_INBOX.XVRL...'     // <-- sample reply topic name`
+        * payload: `{}`
+      * To Nest format
+        * topic `'get-customers'`
+        * reply topic: `'_INBOX.XVRL...'     // <-- sample reply topic name`
+        * payload: `{pattern: 'get-customers', data: {}, id: 'abc...'}`
+    * B) an __outbound response external serializer__ that translates a Nest formatted response into a response understood by our external service.  For example:
+      * From Nest format
+        * topic: `'_INBOX.XVRL...'     // <-- sample reply topic name`
+        * payload: `{err: undefined, response: {customers: [{id: 1, name: 'nestjs.com'}]}, isDisposed: true}`
+      * To external format
+        * topic: `'_INBOX.XVRL...'     // <-- sample reply topic name`
+        * payload: `{customers: [{id: 1, name: 'nestjs.com'}]}`
 
 With that in mind, let's get busy!  The __underlined__ descriptions above inform the names of our classes.
 
