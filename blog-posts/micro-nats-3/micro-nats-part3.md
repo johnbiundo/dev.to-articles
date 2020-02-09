@@ -134,6 +134,10 @@ const app = await NestFactory.createMicroservice(AppModule, {
   options: {
     queue: 'customers',
     url: 'nats://localhost:4222',
+    /**
+      * Use the "Identity" (de)serializers for observing messages for
+      * nest-only deployment.
+      */
     serializer: new OutboundResponseIdentitySerializer(),
   },
 });
@@ -195,6 +199,10 @@ const app = await NestFactory.createMicroservice(AppModule, {
   options: {
     queue: 'customers',
     url: 'nats://localhost:4222',
+    /**
+      * Use the "Identity" (de)serializers for observing messages for
+      * nest-only deployment.
+      */
     serializer: new OutboundResponseIdentitySerializer(),
     deserializer: new InboundMessageIdentityDeserializer(),
   },
@@ -217,44 +225,44 @@ We've nearly arrived at our final destination. With the understanding we've gain
 
 Here are the requirements:
 1. The *nestHttpApp*, in its role as a requestor, must implement:
-   * A) an **outbound message external serializer** that translates a Nest formatted request into a request understood by our external service. For example:
+   * A) <a name="1-a"></a>an **outbound message external serializer** that translates a Nest formatted request into a request understood by our external service. For example:
       * From Nest format
           * topic: `'get-customers'`
-          * reply topic: `'_INBOX.XVRL...'     // <-- sample reply topic name`
+          * reply topic: `'_INBOX.XVRL...'`
           * payload: `{pattern: 'get-customers', data: {}, id: 'abc...'}`
       * To external format
           * topic: `'get-customers'`
-          * reply topic: `'_INBOX.XVRL...'     // <-- sample reply topic name`
+          * reply topic: `'_INBOX.XVRL...'`
           * payload: `{}`
-   * B) an **inbound response external serializer** that translates an external response into a format understood by Nest. For example:
+   * B) <a name="1b"></a>an **inbound response external serializer** that translates an external response into a format understood by Nest. For example:
       * From external format
-          * topic: `'_INBOX.XVRL...'     // <-- sample reply topic name`
+          * topic: `'_INBOX.XVRL...'`
           * payload: `{customers: [{id: 1, name: 'nestjs.com'}]}`
       * To Nest format
-          * topic:`'_INBOX.XVRL...'     // <-- sample reply topic name`
+          * topic:`'_INBOX.XVRL...'`
           * payload: `{err: undefined, response: {customers: [{id: 1, name: 'nestjs.com'}]}, isDisposed: true}`
 
 2. The *nestMicroservice* app, in its role as a responder, must implement:
-    * A) an **inbound message external deserializer** that translates an external request into a format understood by Nest.  For example:
+    * A) <a name="2a"></a>an **inbound message external deserializer** that translates an external request into a format understood by Nest.  For example:
       * From external format
           * topic: `'get-customers'`
-          * reply: `'_INBOX.XVRL...'     // <-- sample reply topic name`
+          * reply: `'_INBOX.XVRL...'`
           * payload: `{}`
       * To Nest format
           * topic `'get-customers'`
-          * reply topic: `'_INBOX.XVRL...'     // <-- sample reply topic name`
+          * reply topic: `'_INBOX.XVRL...'`
           * payload: `{pattern: 'get-customers', data: {}, id: 'abc...'}`
-    * B) an **outbound response external serializer** that translates a Nest formatted response into a response understood by our external service.  For example:
+    * B) <a name="2b"></a>an **outbound response external serializer** that translates a Nest formatted response into a response understood by our external service.  For example:
       * From Nest format
-          * topic: `'_INBOX.XVRL...'     // <-- sample reply topic name`
+          * topic: `'_INBOX.XVRL...'`
           * payload: `{err: undefined, response: {customers: [{id: 1, name: 'nestjs.com'}]}, isDisposed: true}`
       * To external format
-          * topic: `'_INBOX.XVRL...'     // <-- sample reply topic name`
+          * topic: `'_INBOX.XVRL...'`
           * payload: `{customers: [{id: 1, name: 'nestjs.com'}]}`
 
 With that in mind, let's get busy!  The **bolded** descriptions above inform the names of our classes.
 
-For requirement 1-A, we have `src/common/serializers/outbound-message-external.serializer.ts` in our *nestHttpApp* project.  Here's the code.  The comments explain its intent.
+For [requirement 1-A](#1a), we have `src/common/serializers/outbound-message-external.serializer.ts` in our *nestHttpApp* project.  Here's the code.  The comments explain its intent.
 
 ```typescript
 // src/common/serializers/outbound-message-external.serializer.ts
@@ -265,7 +273,7 @@ export class OutboundMessageExternalSerializer implements Serializer {
   private readonly logger = new Logger('OutboundMessageExternalSerializer');
   serialize(value: any) {
     this.logger.debug(
-      `-->> Serializing outgoing message: \n${JSON.stringify(value)}`,
+      `-->> Serializing outbound message: \n${JSON.stringify(value)}`,
     );
 
     /**
@@ -277,7 +285,7 @@ export class OutboundMessageExternalSerializer implements Serializer {
 }
 ```
 
-For requirement 1-B, we have `src/common/deserializers/inbound-response-external.deserializer.ts` in our *nestHttpApp* project.  Here's the code.  The comments explain its intent.
+For [requirement 1-B](#1b), we have `src/common/deserializers/inbound-response-external.deserializer.ts` in our *nestHttpApp* project.  Here's the code.  The comments explain its intent.
 
 ```typescript
 // src/common/deserializers/inbound-response-external.deserializer.ts
@@ -289,7 +297,7 @@ export class InboundResponseExternalDeserializer implements Deserializer {
 
   deserialize(value: any): WritePacket {
     this.logger.verbose(
-      `<<-- deserializing incoming response:\n${JSON.stringify(value)}`,
+      `<<-- deserializing inbound response:\n${JSON.stringify(value)}`,
     );
 
     /**
@@ -311,7 +319,7 @@ export class InboundResponseExternalDeserializer implements Deserializer {
 }
 ```
 
-For requirement 2-A, we have `src/common/deserializers/inbound-message-external.deserializer.ts` in our *nestMicroservice* project.  Here's the code.  The comments explain its intent.
+For [requirement 2-A](#2a), we have `src/common/deserializers/inbound-message-external.deserializer.ts` in our *nestMicroservice* project.  Here's the code.  The comments explain its intent.
 
 ```typescript
 // src/common/serializers/inbound-message-external.deserializer.ts
@@ -324,7 +332,7 @@ export class InboundMessageExternalDeserializer
   private readonly logger = new Logger('InboundMessageExternalDeserializer');
   deserialize(value: any, options?: Record<string, any>) {
     this.logger.verbose(
-      `<<-- deserializing incoming external message:\n${JSON.stringify(
+      `<<-- deserializing inbound external message:\n${JSON.stringify(
         value,
       )}\n\twith options: ${JSON.stringify(options)}`,
     );
@@ -342,7 +350,7 @@ export class InboundMessageExternalDeserializer
 }
 ```
 
-For requirement 2-B, we have `src/common/serializers/outbound-response-external.serializer.ts` in our *nestMicroservice* project.  Here's the code.  The comments explain its intent.
+For [requirement 2-B](#2b), we have `src/common/serializers/outbound-response-external.serializer.ts` in our *nestMicroservice* project.  Here's the code.  The comments explain its intent.
 
 ```typescript
 // src/common/serializers/outbound-response-external.serializer.ts
@@ -353,7 +361,7 @@ export class OutboundResponseExternalSerializer implements Serializer {
   private readonly logger = new Logger('OutboundResponseExternalSerializer');
   serialize(value: any): OutgoingResponse {
     this.logger.debug(
-      `-->> Serializing outgoing response: \n${JSON.stringify(value)}`,
+      `-->> Serializing outbound response: \n${JSON.stringify(value)}`,
     );
 
     /**
@@ -366,7 +374,7 @@ export class OutboundResponseExternalSerializer implements Serializer {
 }
 ```
 
-#### Enabling the External (De)Serializers
+#### Enabling the External (De)serializers
 
 The last step is to plug in these (de)serializers in at the appropriate "hook points".  We've seen this before.  For the `nestHttpApp`, this is done wherever you configure the `ClientProxy`.  In our case, for ease of code organization, we've done this with the `@Client()` decorator in the `src/app.controller.ts` file.  To enable the external (de)serializers, update that file to look like this:
 
@@ -377,14 +385,14 @@ The last step is to plug in these (de)serializers in at the appropriate "hook po
     options: {
       url: 'nats://localhost:4222',
       /**
-       * Use the "Identity" (De)Serializers for observing messages for
+       * Use the "Identity" (de)serializers for observing messages for
        * nest-only deployment.
        */
       // serializer: new OutboundMessageIdentitySerializer(),
       // deserializer: new InboundResponseIdentityDeserializer(),
 
       /**
-       * Use the "External" (De)Serializers for transforming messages to/from
+       * Use the "External" (de)serializers for transforming messages to/from
        * (only) an external responder
        */
       serializer: new OutboundMessageExternalSerializer(),
@@ -404,14 +412,14 @@ For the `nestMicroservice`, this is done in the `src/main.ts` file.  To enable t
       queue: 'customers',
       url: 'nats://localhost:4222',
       /**
-       * Use the "Identity" (De)Serializers for observing messages for
+       * Use the "Identity" (de)serializers for observing messages for
        * nest-only deployment.
        */
       // serializer: new OutboundResponseIdentitySerializer(),
       // deserializer: new InboundMessageIdentityDeserializer(),
 
       /**
-       * Use the "External" (De)Serializers for transforming messages to/from
+       * Use the "External" (de)serializers for transforming messages to/from
        * an external requestor
        */
       serializer: new OutboundResponseExternalSerializer(),
@@ -420,9 +428,11 @@ For the `nestMicroservice`, this is done in the `src/main.ts` file.  To enable t
   });
 ```
 
-At this point, you should be able to send and receive requests between any combination of apps.  For example, from *nestHttpApp* to *customerService*, from *customerApp* to *nestMicroservice*, and all other combinations.  I highly recommend you do so now, using the instructions from [here](https://github.com/johnbiundo/nest-nats-sample#running-the-all-nest-configuration) and [here](https://github.com/johnbiundo/nest-nats-sample#running-the-all-native-app-configuration) to run all components at the same time. Pay close attention to the log outputs which show how (de)serialization is happening at each step.
+At this point, you should be able to send and receive requests between any combination of apps.  For example, from *nestHttpApp* to *customerService*, from *customerApp* to *nestMicroservice*, and all other combinations.  I highly recommend you do so now, using the instructions from [here](https://github.com/johnbiundo/nest-nats-sample#running-the-all-nest-configuration) and [here](https://github.com/johnbiundo/nest-nats-sample#running-the-all-native-app-configuration) to run all components at the same time\*. Pay close attention to the log outputs which show how (de)serialization is happening at each step.
 
-Here's a nice surprise! We've magically covered [Figure 1 Case D]() along the way.  If you think carefully about it, this is both not a surprise, and has a somewhat strict limitation.  The reason this works is that we're now serializing and deserializing to and from a canonical external format.  So **all** requests look like they come from an external requestor, and **all** responses look like they come from an external responder.  With this in place, our serializers and deserializers work in all combinations.  We've created a "lingua franca" message protocol.  The limitation with this approach is perhaps a subtle one, and is something we'll address later (see bullet point #2 in **What's Next?** below).
+\*We haven't described the use of `queues`, but when you start running the full mixed configuration (Nest and non-Nest components), one thing you'll notice is that requests will be randomly routed between the *nestMicroservice* app and the *customerService* app.  This is because they are members of a **NATS queue**. If you want to send a request to a particular responder, you'll need to shut down the other one to guarantee the message is sent there.  I'll discuss NATS queues in more detail the final article of this series.
+
+Here's a nice surprise! We've magically handled [Figure 1 Case D]() along the way.  If you think carefully about it, this is both not a surprise, and has a somewhat strict limitation.  The reason this works is that we're now serializing and deserializing to and from a canonical external format.  So **all** requests look like they come from an external requestor, and **all** responses look like they come from an external responder.  With this in place, our serializers and deserializers work in all combinations.  We've created a "lingua franca" message protocol.  The limitation with this approach is perhaps a subtle one, and is something we'll address later (see bullet point #2 in **What's Next?** below).
 
 ### Conclusion :rocket:
 
@@ -435,6 +445,7 @@ There are a few remaining subtle topics to cover, which I'll do in the next inst
 1. Can we run both the `nestMicroservice` app and the external `customerService` app at the same time, and load balance requests across them?  Spoiler: yes!  This is simple to do with NATS [distributed queues](), which we'll cover briefly in the next article.
 2. We covered the case where we're running our modified `nestHttpApp` in this hybrid (Nest and non-Nest) environment.  What happens if we have a mixture of Nest apps that are unmodified -- that is, they are deployed apps that we don't want to touch to implement our "lingua franca" message protocol (i.e., they're running out-of-the-box standard de(serializers))?  Can they be made to play nicely in this hybrid environment?  Spoiler: yes!
 3. What about **events**?  We've covered what seems to be the trickier case here with request/response style messaging, but how about plain old events?  In fact, you may have noticed we've built a feature around **adding a customer** (see the `'add-customer'` messages and handlers sprinkled through our code).  Go ahead and try them now. You'll see you have mixed results. Can we make events cooperate in this hybrid environment?  Spoiler: yes!
+4. Can we talk more about NATS queues?  Yes!
 
 Stay tuned for the answers to these and other exciting questions in our next installment! :smiley:
 
