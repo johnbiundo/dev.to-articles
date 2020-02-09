@@ -217,16 +217,16 @@ We've nearly arrived at our final destination. With the understanding we've gain
 
 Here are the requirements:
 1. The *nestHttpApp*, in its role as a requestor, must implement:
-   * A) an __outbound message external serializer__ that translates a Nest formatted request into a request understood by our external service. For example:
+   * A) an **outbound message external serializer** that translates a Nest formatted request into a request understood by our external service. For example:
       * From Nest format
-        * topic: `'get-customers'`
-        * reply topic: `'_INBOX.XVRL...'     // <-- sample reply topic name`
-        * payload: `{pattern: 'get-customers', data: {}, id: 'abc...'}`
+          * topic: `'get-customers'`
+          * reply topic: `'_INBOX.XVRL...'     // <-- sample reply topic name`
+          * payload: `{pattern: 'get-customers', data: {}, id: 'abc...'}`
       * To external format
-        * topic: `'get-customers'`
-        * reply topic: `'_INBOX.XVRL...'     // <-- sample reply topic name`
-        * payload: `{}`
-   * B) an __inbound response external serializer__ that translates an external response into a format understood by Nest. For example:
+          * topic: `'get-customers'`
+          * reply topic: `'_INBOX.XVRL...'     // <-- sample reply topic name`
+          * payload: `{}`
+   * B) an **inbound response external serializer** that translates an external response into a format understood by Nest. For example:
       * From external format
         * topic: `'_INBOX.XVRL...'     // <-- sample reply topic name`
         * payload: `{customers: [{id: 1, name: 'nestjs.com'}]}`
@@ -235,7 +235,7 @@ Here are the requirements:
         * payload: `{err: undefined, response: {customers: [{id: 1, name: 'nestjs.com'}]}, isDisposed: true}`
 
 2. The *nestMicroservice* app, in its role as a responder, must implement:
-    * A) an __inbound message external deserializer__ that translates an external request into a format understood by Nest.  For example:
+    * A) an **inbound message external deserializer** that translates an external request into a format understood by Nest.  For example:
       * From external format
         * topic: `'get-customers'`
         * reply: `'_INBOX.XVRL...'     // <-- sample reply topic name`
@@ -244,7 +244,7 @@ Here are the requirements:
         * topic `'get-customers'`
         * reply topic: `'_INBOX.XVRL...'     // <-- sample reply topic name`
         * payload: `{pattern: 'get-customers', data: {}, id: 'abc...'}`
-    * B) an __outbound response external serializer__ that translates a Nest formatted response into a response understood by our external service.  For example:
+    * B) an **outbound response external serializer** that translates a Nest formatted response into a response understood by our external service.  For example:
       * From Nest format
         * topic: `'_INBOX.XVRL...'     // <-- sample reply topic name`
         * payload: `{err: undefined, response: {customers: [{id: 1, name: 'nestjs.com'}]}, isDisposed: true}`
@@ -252,7 +252,7 @@ Here are the requirements:
         * topic: `'_INBOX.XVRL...'     // <-- sample reply topic name`
         * payload: `{customers: [{id: 1, name: 'nestjs.com'}]}`
 
-With that in mind, let's get busy!  The __underlined__ descriptions above inform the names of our classes.
+With that in mind, let's get busy!  The **bolded** descriptions above inform the names of our classes.
 
 For requirement 1-A, we have `src/common/serializers/outbound-message-external.serializer.ts` in our *nestHttpApp* project.  Here's the code.  The comments explain its intent.
 
