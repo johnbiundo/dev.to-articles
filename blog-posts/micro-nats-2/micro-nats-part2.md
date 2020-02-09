@@ -15,6 +15,10 @@ This is Part 2 of a series on using Nest microservices as an integration technol
 
 This article focuses on laying out the concepts and challenges of integrating Nest apps with non-Nest apps.
 
+### Get the Code
+
+Reminder: all the code for these articles is available [here](https://github.com/johnbiundo/nest-nats-sample), with complete instructions [here](https://github.com/johnbiundo/nest-nats-sample#sample-repository-for-nestnatsmicroservice-article-series).
+
 ### Roles in Action
 
 In the prior article, I covered [the roles](#a-vocabulary-for-transporter-use-cases) a Nest app plays in various communication scenarios. Let's dig further into those roles and how they matter in the integration use case.

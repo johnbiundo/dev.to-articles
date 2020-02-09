@@ -15,6 +15,10 @@ In [Part 2]() of this series, we described the challenges of integrating Nest ap
 
 In this article, we explore solutions to that problem.
 
+### Get the Code
+
+Reminder: all the code for these articles is available [here](https://github.com/johnbiundo/nest-nats-sample), with complete instructions [here](https://github.com/johnbiundo/nest-nats-sample#sample-repository-for-nestnatsmicroservice-article-series).
+
 ### Serialization and Deserialization
 
 Serialization and deserialization are the steps Nest uses to translate between message formats. In other words, Nest receives inbound messages (from the broker), **deserializes** them (converts arbitrary message formats into Nest message formats), and then processes them. For outbound messages, the process is reversed: the last step before sending a message to the broker is to (optionally) **serialize** it (convert from Nest message format to some other format).
@@ -44,7 +48,7 @@ Nest requestors live in the context of a `ClientProxy` instance. It follows that
 client: ClientProxy;
 ```
 
-In the code fragment above, `OutboundRequestSerializer()` is the method that answers the question *"how do does my Nest requestor format outgoing requests so that an external app can process them?"*, while `InboundResponseDeserializer()` is the method that addresses *"how does my requestor translate incoming external responses so that Nest can process them?"*.
+In the code fragment above, `OutboundRequestSerializer` is the class that answers the question *"how do does my Nest requestor format outgoing requests so that an external app can process them?"*, while `InboundResponseDeserializer` is the class that addresses *"how does my requestor translate incoming external responses so that Nest can process them?"*.
 
 **Note**: you can choose any name for these classes, but trust me, it's **highly recommended** that you choose a naming convention similar to this to keep things straight!
 
@@ -67,9 +71,9 @@ async function bootstrap() {
 }
 ```
 
-So `InboundMessageDeserializer()` is the method that answers the question *"how does my responder translate incoming external messages so that Nest can process them?"*, while `OutboundResponseSerializer()` is the method that handles *"how does my responder format responses so that the external app can understand them?"*.
+So `InboundMessageDeserializer` is the class that answers the question *"how does my responder translate incoming external messages so that Nest can process them?"*, while `OutboundResponseSerializer` is the class that handles *"how does my responder format responses so that the external app can understand them?"*.
 
-This feature results in the following diagrams -- ones that remove all those ugly red X's in the <a href="">last diagram</a>!
+This feature results in the following diagrams &#8212; ones that remove all those ugly red X's in the <a href="">last diagram</a>!
 
 Here's the diagram to keep in mind when writing **serializers/deserializers for Nest responders**.
 
@@ -91,7 +95,7 @@ Before we start writing serializer/deserializer classes, let's take a look at th
 
 ##### Serializer Interface
 
-A serializer class needs to implement the `serialize()` method, which takes a single argument -- the outbound payload to be serialized -- and returns the serialized payload.
+A serializer class needs to implement the `serialize()` method, which takes a single argument &#8212; the outbound payload to be serialized &#8212; and returns the serialized payload.
 
 ```typescript
 export interface Serializer<TInput = any, TOutput = any> {
@@ -103,7 +107,7 @@ We'll now implement an **identity serializer** for our Nest responder as an exer
 
 ##### Responder Identity Serializer Implementation
 
-Take a look at the `src/common/serializers/outbound-response-identity.serializer.ts` file:
+Here, we'll be working in the *nestMicroservice* project (i.e., nest-nats-sample/nestMicroservice directory). Take a look at the `src/common/serializers/outbound-response-identity.serializer.ts` file:
 
 ```typescript
 // src/common/serializers/outbount-response-identity.serializer.ts
@@ -121,7 +125,7 @@ export class OutboundResponseIdentitySerializer implements Serializer {
 }
 ```
 
-Now simply plug this serializer into the `main.ts` file for the Nest responder app:
+Now simply plug this serializer into the `main.ts` file for the Nest responder app.  If you're following along with the github repository, the `main.ts` file will have all of this code (and more that we'll get to soon) in place, but commented out.  Simply uncomment the line shown below.
 
 ```typescript
 // src/main.ts
@@ -135,7 +139,7 @@ const app = await NestFactory.createMicroservice(AppModule, {
 });
 ```
 
-If you now send some requests to the [nestMicroservice]() app from the [nestHttpApp]() ([here's how]()), you'll see logging information that looks something like this, showing you the internal layout of the incoming message:
+If you now send some requests to the *nestMicroservice* app from the *nestHttpApp* ([here's how](https://github.com/johnbiundo/nest-nats-sample#running-the-all-nest-configuration)), you'll see logging information that looks something like this, showing you the internal layout of the incoming message:
 
 ```bash
 [Nest] 8786   - 02/04/2020, 10:19:04 AM   [OutboundResponseIdentitySerializer] -->> Serializing outgoing response:
@@ -152,7 +156,7 @@ export interface Deserializer<TInput = any, TOutput = any> {
 }
 ```
 
-A deserializer class needs to implement the `deserialize()` method, which takes a two arguments -- the payload to be deserialized and an optional `options` object -- and returns the deserialized payload.
+A deserializer class needs to implement the `deserialize()` method, which takes a two arguments &#8212; the payload to be deserialized and an optional `options` object &#8212; and returns the deserialized payload.
 
 The `options` object contains metadata about the incoming message. For NATS, the object contains the value of the `replyTo` message property, if one exists.
 
@@ -160,7 +164,7 @@ Let's implement a deserializer. To start with, we'll build an "identity deserial
 
 ##### Responder Identity Deserializer Implementation
 
-Take a look at the `src/common/deserializers/inbound-message-identity.deserializer.ts` file:
+We're still working on the Nest responder &#8212; the *nestMicroservice* project (i.e., nest-nats-sample/nestMicroservice directory). Take a look at the `src/common/deserializers/inbound-message-identity.deserializer.ts` file:
 
 ```typescript
 // src/common/serializers/inbound-message-identity.deserializer.ts
@@ -182,7 +186,7 @@ export class InboundMessageIdentityDeserializer
 }
 ```
 
-Like our identity serializer, we can quickly plug in an identity deserializer to spy on the incoming messages from our requestor.
+Like our identity serializer, we can quickly plug in an identity deserializer to spy on the incoming messages from our requestor.  Again, if you're following along using the github repository, simply comment out the lines so the active (de)serializers match those shown below.
 
 ```typescript
 // src/main.ts
@@ -197,7 +201,7 @@ const app = await NestFactory.createMicroservice(AppModule, {
 });
 ```
 
-If you now send some requests to the [nestMicroservice]() app from the [nestHttpApp]() ([here's how]()), you'll see logging information that looks something like this, showing you the layout of the incoming message:
+If you again send some requests to the *nestMicroservice* app from the *nestHttpApp* ([like this](https://github.com/johnbiundo/nest-nats-sample#running-the-all-nest-configuration)), you'll see logging information that looks something like this, showing you the layout of the incoming message:
 
 ```bash
 [Nest] 8786   - 02/04/2020, 10:19:04 AM   [InboundMessageIdentityDeserializer] <<-- deserializing incoming message:
@@ -212,25 +216,25 @@ Notice the value for the `replyTo` field in the logging output. You can probably
 We've nearly arrived at our final destination. With the understanding we've gained, we can specify what we need to complete our integration use cases from [Figure 1 in Part 1]().
 
 Here are the requirements:
-1. The "nestHttpApp", in its role as a requestor, must implement:
-   * A) an *outbound message external serializer* that translates a Nest request into a request understood by our external service. For example:
+1. The *nestHttpApp*, in its role as a requestor, must implement:
+   * A) an __outbound message external serializer__ that translates a Nest request into a request understood by our external service. For example:
       * From Nest: `{pattern: 'get-customers', data: {}, id: 'abc...'}`
       * To external: `{}`
-   * B) an *inbound response external serializer* that translates an external response into a format understood by Nest. For example:
+   * B) an __inbound response external serializer__ that translates an external response into a format understood by Nest. For example:
       * From external: `{customers: [{id: 1, name: 'nestjs.com'}]}`
       * To Nest: `{err: undefined, response: {customers: [{id: 1, name: 'nestjs.com'}]}, isDisposed: true}`
 
-2. The "nestMicroservice" app, in its role as a responder, must implement:
-    * A) an *inbound message external deserializer* that translates an external request into a format understood by Nest.  For example:
+2. The *nestMicroservice* app, in its role as a responder, must implement:
+    * A) an __inbound message external deserializer__ that translates an external request into a format understood by Nest.  For example:
       * From external: `{}`
       * To Nest: `{pattern: 'get-customers', data: {}, id: 'abc...'}`
-    * B) an *outbound response external serializer* that translates a Nest response into a response understood by our external service.  For example:
+    * B) an __outbound response external serializer__ that translates a Nest response into a response understood by our external service.  For example:
       * From Nest: `{err: undefined, response: {customers: [{id: 1, name: 'nestjs.com'}]}, isDisposed: true}`
       * To external: `{customers: [{id: 1, name: 'nestjs.com'}]}`
 
-With that in mind, let's get busy!  The italicized descriptions above inform the names of our classes.
+With that in mind, let's get busy!  The __underlined__ descriptions above inform the names of our classes.
 
-For requirement 1-A, we have `src/common/serializers/outbound-message-external.serializer.ts` in our `nestHttpApp` project.  Here's the code.  The comment explains its intent.
+For requirement 1-A, we have `src/common/serializers/outbound-message-external.serializer.ts` in our *nestHttpApp* project.  Here's the code.  The comments explain its intent.
 
 ```typescript
 // src/common/serializers/outbound-message-external.serializer.ts
@@ -253,7 +257,7 @@ export class OutboundMessageExternalSerializer implements Serializer {
 }
 ```
 
-For requirement 1-B, we have `src/common/deserializers/inbound-response-external.deserializer.ts` in our `nestHttpApp` project.  Here's the code.  The comment explains its intent.
+For requirement 1-B, we have `src/common/deserializers/inbound-response-external.deserializer.ts` in our *nestHttpApp* project.  Here's the code.  The comments explain its intent.
 
 ```typescript
 // src/common/deserializers/inbound-response-external.deserializer.ts
@@ -287,7 +291,7 @@ export class InboundResponseExternalDeserializer implements Deserializer {
 }
 ```
 
-For requirement 2-A, we have `src/common/deserializers/inbound-message-external.deserializer.ts` in our `nestMicroservice` project.  Here's the code.  The comment explains its intent.
+For requirement 2-A, we have `src/common/deserializers/inbound-message-external.deserializer.ts` in our *nestMicroservice* project.  Here's the code.  The comments explain its intent.
 
 ```typescript
 // src/common/serializers/inbound-message-external.deserializer.ts
@@ -318,7 +322,7 @@ export class InboundMessageExternalDeserializer
 }
 ```
 
-For requirement 2-B, we have `src/common/serializers/outbound-response-external.serializer.ts` in our `nestMicroservice` project.  Here's the code.  The comment explains its intent.
+For requirement 2-B, we have `src/common/serializers/outbound-response-external.serializer.ts` in our *nestMicroservice* project.  Here's the code.  The comments explain its intent.
 
 ```typescript
 // src/common/serializers/outbound-response-external.serializer.ts
@@ -396,7 +400,9 @@ For the `nestMicroservice`, this is done in the `src/main.ts` file.  To enable t
   });
 ```
 
-At this point, you should be able to send and receive requests between any combination of apps.  For example, from `nestHttpApp` to `customerService`, from `customerApp` to `nestMicroservice`, and all other combinations.  We've magically covered [Figure 1 Case D]() along the way.  If you think carefully about it, this is both not a surprise, and has a somewhat strict limitation.  The reason this works is that we're now serializing and deserializing to and from a canonical external format.  So **all** requests look like they come from an external requestor, and **all** responses look like they come from an external responder.  With this in place, our serializers and deserializers work in all combinations.  We've created a "lingua franca" message protocol.  The limitation with this approach is perhaps a subtle one, and is something we'll address later (see bullet point #2 in **What's Next?** below).
+At this point, you should be able to send and receive requests between any combination of apps.  For example, from *nestHttpApp* to *customerService*, from *customerApp* to *nestMicroservice*, and all other combinations.  I highly recommend you do so now, using the instructions from [here](https://github.com/johnbiundo/nest-nats-sample#running-the-all-nest-configuration) and [here](https://github.com/johnbiundo/nest-nats-sample#running-the-all-native-app-configuration) to run all components at the same time. Pay close attention to the log outputs which show how (de)serialization is happening at each step.
+
+Here's a nice surprise! We've magically covered [Figure 1 Case D]() along the way.  If you think carefully about it, this is both not a surprise, and has a somewhat strict limitation.  The reason this works is that we're now serializing and deserializing to and from a canonical external format.  So **all** requests look like they come from an external requestor, and **all** responses look like they come from an external responder.  With this in place, our serializers and deserializers work in all combinations.  We've created a "lingua franca" message protocol.  The limitation with this approach is perhaps a subtle one, and is something we'll address later (see bullet point #2 in **What's Next?** below).
 
 ### Conclusion :rocket:
 

@@ -17,7 +17,7 @@ In these examples, we use [NATS](https://docs.nats.io/) as the message broker. *
 
 ### Source Code
 
-Working examples and all source code is available [here](https://github.com/johnbiundo/nest-nats-sample). The articles work best if you follow along with the repository.  Full installation instructions, along with myriad other details, are available [here](https://github.com/johnbiundo/nest-nats-sample/blob/master/README.md).
+Working examples and all source code is available [here](https://github.com/johnbiundo/nest-nats-sample). The articles work best if you follow along with the repository.  Full installation instructions, along with myriad other details, are available [here](https://github.com/johnbiundo/nest-nats-sample#sample-repository-for-nestnatsmicroservice-article-series).
 
 
 ### Nest Microservices Background
