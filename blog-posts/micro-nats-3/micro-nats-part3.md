@@ -413,6 +413,3 @@ There are a few remaining subtle topics to cover, which I'll do in the next inst
 Stay tuned for the answers to these and other exciting questions in our next installment! :smiley:
 
 Feel free to ask questions, make comments or suggestions, or just say hello in the comments below. And join us at [Discord](https://discord.gg/nestjs) for more happy discussions about NestJS. I post there as _Y Prospect_.
-
-
-{% github johnbiundo/dev.to-articles %}

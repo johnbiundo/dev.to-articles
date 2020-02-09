@@ -93,7 +93,7 @@ The other roles discussed earlier - emitter and subscriber - are similar (and si
 
 #### Running an All Nest Stack
 
-Full implementations of these apps are included in the test repository available [here](). Running these two Nest apps as shown in <a href="#figure1">Case A of Figure 1</a>, which you can do now by following [these instructions](), is easy. Note that to do so, you'll need to run Docker on your machine. Following those steps will start up an instance of a NATS broker, in verbose mode, which is very helpful for watching the message flow. Take a few minutes to run through the full installation and to examine the code.
+Full implementations of these apps are included in the repository available [here](https://github.com/johnbiundo/nest-nats-sample). Running these two Nest apps as shown in <a href="#figure1">Case A of Figure 1</a>, which you can do now by following [these instructions](https://github.com/johnbiundo/nest-nats-sample#running-the-all-nest-configuration), is easy. Following those steps will start up an instance of a NATS broker, in verbose mode, which is very helpful for watching the message flow. Take a few minutes to run through the full installation and to examine the code.
 
 Of course so far, we haven't really had to deal with any external app components. This means there are no messy details, and the Nest components "just work". Let's move on to the topic of external app components now.
 
@@ -171,7 +171,7 @@ Most importantly, the `getCustomers()` method shows the **request-response** imp
 1. check to see if a customer id is supplied. If so retrieve that customer, otherwise retrieve all customers.
 2. **publish** a response message using the `reply` topic passed in on the request message.  Include the customer list as the payload in that response.
 
-The full source code for these apps is available [here](). Read more about running them [here](). I highly encourage you to do this to get familiar with their behavior, and to observe the NATS message flows first-hand.
+The full source code for these apps is available [here](https://github.com/johnbiundo/nest-nats-sample). Read more about running them [here](https://github.com/johnbiundo/nest-nats-sample#running-the-all-native-app-configuration). I highly encourage you to do this to get familiar with their behavior, and to observe the NATS message flows first-hand.
 
 #### NATS Client Library Native Support for Requests
 
