@@ -108,7 +108,7 @@ To give us something concrete to look at, let's quickly construct basic implemen
 As native NATS apps, these can immediately and seamlessly communicate with each other.
 
 ![external apps](./assets/external-apps-nats.png 'External Apps')
-<a name="figure2"></a><figcaption>Figure 2: External NATS Apps</figcaption>
+<a name="figure3"></a><figcaption>Figure 3: External NATS Apps</figcaption>
 
 #### The customerApp application
 
@@ -289,7 +289,7 @@ With this in mind, we can layout the standard format for all Nest messages, thus
 Clearly, we'll have a problem communicating between our Nest and non-Nest apps based on these different message formats. For example, in the **Nest as responder** case, we have the following issue, where an external request is not understood by the Nest responder due to the message format incompatibility.
 
 ![message format mismatch](./assets/mismatch.png 'Message Format Mismatch')
-<a name="figure3"></a><figcaption>Figure 3: Message Format Mismatch</figcaption>
+<a name="figure4"></a><figcaption>Figure 4: Message Format Mismatch</figcaption>
 
 As you can imagine, we have the reverse issue in the **Nest as requestor** case, where Nest issues requests wrapped in the Nest request format, which aren't understood by the external app, and the external app also responds with an incompatible message format (missing fields expected by Nest).
 

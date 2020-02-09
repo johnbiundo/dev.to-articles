@@ -228,29 +228,29 @@ Here are the requirements:
           * payload: `{}`
    * B) an **inbound response external serializer** that translates an external response into a format understood by Nest. For example:
       * From external format
-        * topic: `'_INBOX.XVRL...'     // <-- sample reply topic name`
-        * payload: `{customers: [{id: 1, name: 'nestjs.com'}]}`
+          * topic: `'_INBOX.XVRL...'     // <-- sample reply topic name`
+          * payload: `{customers: [{id: 1, name: 'nestjs.com'}]}`
       * To Nest format
-        * topic:`'_INBOX.XVRL...'     // <-- sample reply topic name`
-        * payload: `{err: undefined, response: {customers: [{id: 1, name: 'nestjs.com'}]}, isDisposed: true}`
+          * topic:`'_INBOX.XVRL...'     // <-- sample reply topic name`
+          * payload: `{err: undefined, response: {customers: [{id: 1, name: 'nestjs.com'}]}, isDisposed: true}`
 
 2. The *nestMicroservice* app, in its role as a responder, must implement:
     * A) an **inbound message external deserializer** that translates an external request into a format understood by Nest.  For example:
       * From external format
-        * topic: `'get-customers'`
-        * reply: `'_INBOX.XVRL...'     // <-- sample reply topic name`
-        * payload: `{}`
+          * topic: `'get-customers'`
+          * reply: `'_INBOX.XVRL...'     // <-- sample reply topic name`
+          * payload: `{}`
       * To Nest format
-        * topic `'get-customers'`
-        * reply topic: `'_INBOX.XVRL...'     // <-- sample reply topic name`
-        * payload: `{pattern: 'get-customers', data: {}, id: 'abc...'}`
+          * topic `'get-customers'`
+          * reply topic: `'_INBOX.XVRL...'     // <-- sample reply topic name`
+          * payload: `{pattern: 'get-customers', data: {}, id: 'abc...'}`
     * B) an **outbound response external serializer** that translates a Nest formatted response into a response understood by our external service.  For example:
       * From Nest format
-        * topic: `'_INBOX.XVRL...'     // <-- sample reply topic name`
-        * payload: `{err: undefined, response: {customers: [{id: 1, name: 'nestjs.com'}]}, isDisposed: true}`
+          * topic: `'_INBOX.XVRL...'     // <-- sample reply topic name`
+          * payload: `{err: undefined, response: {customers: [{id: 1, name: 'nestjs.com'}]}, isDisposed: true}`
       * To external format
-        * topic: `'_INBOX.XVRL...'     // <-- sample reply topic name`
-        * payload: `{customers: [{id: 1, name: 'nestjs.com'}]}`
+          * topic: `'_INBOX.XVRL...'     // <-- sample reply topic name`
+          * payload: `{customers: [{id: 1, name: 'nestjs.com'}]}`
 
 With that in mind, let's get busy!  The **bolded** descriptions above inform the names of our classes.
 
