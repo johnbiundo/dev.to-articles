@@ -181,7 +181,7 @@ The full source code for these apps is available [here](https://github.com/johnb
 
 You may have noticed we made a call to `request()` in the customerApp above, and wondered why (perhaps you were expecting us to call something like `publish()`). Nice catch! Here's a quick geeky aside on that topic that also provides a little insight into the Nest transporter abstraction layer.
 
-If you dig into the NATS client API libraries (for example, the [TypeScript client](https://github.com/nats-io/nats.ts)), you'll notice that they provide API calls to both the NATS `PUB` verb (usually `publish()`) and `SUB` verb (usually `subscribe()`), but also offer a `request()` method that doesn't have a direct counterpart in the NATS protocol (see an example [here](https://github.com/nats-io/nats.ts#basic-usage)). By now, you should probably be able to guess what `request()` does. It uses essentially the same pattern we [described earlier](#broker-message-protocol)  &#8212;  implemented by NEST to provide request/response semantics on top of publish/subscribe messaging  &#8212;  **within the NATS TypeScript client library itself**. To be clear: this is a convenience provided by the client library (not a native feature of NATS).
+If you dig into the NATS client API libraries (for example, the [TypeScript client](https://github.com/nats-io/nats.ts)), you'll notice that they provide API calls to both the NATS `PUB` verb (usually `publish()`) and `SUB` verb (usually `subscribe()`), but also offer a `request()` method that doesn't have a direct counterpart in the NATS protocol (see an example [here](https://github.com/nats-io/nats.ts#basic-usage)). By now, you should probably be able to guess what `request()` does. It uses essentially the same pattern we [described in the previous article](#broker-message-protocol)  &#8212;  implemented by Nest to provide request/response semantics on top of publish/subscribe messaging  &#8212;  **within the NATS TypeScript client library itself**. To be clear: this is a convenience provided by the client library (not a native feature of NATS).
 
 In the case of the NATS transporter, Nest takes advantage of this client library feature directly, rather than emulating it. For other transporters, where no such "request/response abstraction" exists, Nest emulates this functionality. In the end, both Nest and the client libraries share a similar need to add request/response behavior on top of a publish/subscribe model.
 
@@ -191,11 +191,11 @@ In the case of the NATS transporter, Nest takes advantage of this client library
 
 One thing we can do, now that we have an all-Nest version and a native TypeScript/NATS version of the requestor and responder, is examine the actual NATS messages exchanged. You can and should do this yourself (for now, you can examine the NATS logs produced by following [these instructions](https://github.com/johnbiundo/nest-nats-sample#running-the-all-nest-configuration) and [these instructions](https://github.com/johnbiundo/nest-nats-sample#running-the-all-native-app-configuration)), but let's cut right to the chase. Nest encodes message payloads in a format that is probably **not directly compatible with the format used by your external app**. We'll address why that is, and how to resolve the incompatibility, below. Now we're getting to the meaty part of the article series!
 
-**Note**: the following representations of the actual messages as seen in the NATS server log take a few **small** liberties to simplify and clarify. What you'll actually see in the logs is slightly more verbose. To see the NATS log messages yourself, follow [these instructions]().
+**Note**: the following representations of the actual messages as seen in the NATS server log take a few **small** liberties to simplify and clarify. What you'll actually see in the logs is slightly more verbose. To see the NATS log messages yourself, follow [these instructions](https://github.com/johnbiundo/nest-nats-sample#running-the-all-nest-configuration).
 
 #### Native App Messages
 
-The native "customerApp", when it issues the `'get-customers'` request, emits a message that looks like this:
+The native *customerApp*, when it issues the `'get-customers'` request, emits a message that looks like this:
 
 ```bash
 PUB get-customers _INBOX.6EADK
@@ -204,7 +204,7 @@ MSG_PAYLOAD: {}
 
 Here, you see the message topic (`get-customers`) and the reply topic (`_INBOX.6EADK`) on the first line (they're part of the message "header", not the payload), and an empty message payload on the second line.
 
-The "customerApp" receives a response back from "customerService" (because it included a response topic in the request - `_INBOX.6EADK` - that it subscribed to) that looks like this:
+The *customerApp* receives a response back from *customerService* (because it included a response topic in the request - `_INBOX.6EADK` - that it subscribed to) that looks like this:
 
 ```bash
 MSG_PAYLOAD: {"customers": [{ "id": 1, "name": "nestjs.com" }]}
@@ -214,7 +214,7 @@ Here, payload is just a "stringified" version of our JSON response.
 
 #### Nest App Messages
 
-On the other hand, the Nest components produce slightly different messages. The "nestHttpApp", when it runs `client.send('get-customers', {})`, emits a message that looks like this:
+On the other hand, the Nest components produce slightly different messages. The *nestHttpApp*, when it runs `client.send('get-customers', {})`, emits a message that looks like this:
 
 ```bash
 PUB get-customers _INBOX.9FEAM
@@ -222,7 +222,7 @@ MSG_PAYLOAD: {"pattern": "get-customers","data": {},
 "id": "84d9259e-fd00-4456-83b8-408311ca72cc"}
 ```
 
-It receives a response back from "nestMicroservice" that looks like this:
+It receives a response back from *nestMicroservice* that looks like this:
 
 ```bash
 MSG_PAYLOAD: {"err": null,"response": [{ "id": 1, "name":"nestjs.com" }],
@@ -237,7 +237,7 @@ With this in mind, we can layout the standard format for all Nest messages, thus
 
 #### Nest Transporter Message Protocol
 
-1. Request messages (coming from **Nest requestors**) are wrapped in a structure that we can depict as follows:
+1. Request messages (coming from [**Nest requestors**](#nest-as-requestor)) are wrapped in a structure that we can depict as follows:
 
    ```typescript
    {
@@ -260,7 +260,7 @@ With this in mind, we can layout the standard format for all Nest messages, thus
    }
    ```
 
-1. Response messages (coming from **Nest responders**) are wrapped in a structure we can depict as follows:
+2. Response messages (coming from [**Nest responders**](#nest-as-responder)) are wrapped in a structure we can depict as follows:
 
    ```typescript
    {
@@ -286,12 +286,12 @@ With this in mind, we can layout the standard format for all Nest messages, thus
    }
    ```
 
-Clearly, we'll have a problem communicating between our Nest and non-Nest apps based on these different message formats. For example, in the **Nest as responder** case, we have the following issue, where an external request is not understood by the Nest responder due to the message format incompatibility.
+Clearly, we'll have a problem communicating between our Nest and non-Nest apps based on these different message formats. For example, in the [**Nest as responder**](#nest-as-responder) case, we have the following issue, where an external request is not understood by the Nest responder due to the message format incompatibility.
 
 ![message format mismatch](./assets/mismatch.png 'Message Format Mismatch')
 <a name="figure4"></a><figcaption>Figure 4: Message Format Mismatch</figcaption>
 
-As you can imagine, we have the reverse issue in the **Nest as requestor** case, where Nest issues requests wrapped in the Nest request format, which aren't understood by the external app, and the external app also responds with an incompatible message format (missing fields expected by Nest).
+As you can imagine, we have the reverse issue in the [**Nest as requestor**](#nest-as-requestor) case, where Nest issues requests wrapped in the Nest request format, which aren't understood by the external app, and the external app also responds with an incompatible message format (missing fields expected by Nest).
 
 **Now the big question**: How do we reconcile these message format differences to connect Nest and external NATS apps, as in <a href="#figure1">Figure 1 Cases B, C and D</a>?
 

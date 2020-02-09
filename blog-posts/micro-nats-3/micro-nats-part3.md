@@ -103,7 +103,7 @@ export interface Serializer<TInput = any, TOutput = any> {
 }
 ```
 
-We'll now implement an **identity serializer** for our Nest responder as an exercise. An identity serializer simply returns the same message it receives. In addition to exercising the interface, we can use it to "spy on"" the otherwise silent serialization function that Nest always performs on our behalf.
+We'll now implement an **identity serializer** for our Nest responder as an exercise. An identity serializer simply returns the same message it receives. In addition to exercising the interface, we can use it to "spy on" the otherwise silent serialization function that Nest always performs on our behalf.
 
 ##### Responder Identity Serializer Implementation
 
@@ -118,7 +118,7 @@ export class OutboundResponseIdentitySerializer implements Serializer {
   private readonly logger = new Logger('OutboundResponseIdentitySerializer');
   serialize(value: any): OutgoingResponse {
     this.logger.debug(
-      `-->> Serializing outgoing response: \n${JSON.stringify(value)}`
+      `-->> Serializing outbound response: \n${JSON.stringify(value)}`
     );
     return value;
   }
@@ -181,7 +181,7 @@ export class InboundMessageIdentityDeserializer
 
   deserialize(value: any, options?: Record<string, any>): IncomingRequest {
     this.logger.verbose(
-      `<<-- deserializing incoming message:\n${JSON.stringify(
+      `<<-- deserializing inbound message:\n${JSON.stringify(
         value
       )}\n\twith options: ${JSON.stringify(options)}`
     );
@@ -217,7 +217,7 @@ If you again send some requests to the *nestMicroservice* app from the *nestHttp
         with options: {"channel":"get-customers","replyTo":"_INBOX.IDML09N4JB6W0MF4P6GBPB.IDML09N4JB6W0MF4P6GCX2"}
 ```
 
-Notice the value for the `replyTo` field in the logging output. You can probably guess what that is. This is detail that's going to come in handy down the line, so file that away for future reference.
+Notice the value for the `replyTo` field in the logging output. You can probably guess what that is. This is a detail that's going to come in handy down the line, so file that away for future reference.
 
 ### Implementing the Integration Use Cases
 
@@ -234,7 +234,7 @@ Here are the requirements:
           * topic: `'get-customers'`
           * reply topic: `'_INBOX.XVRL...'`
           * payload: `{}`
-   * B) <a name="1b"></a>an **inbound response external serializer** that translates an external response into a format understood by Nest. For example:
+   * B) <a name="1b"></a>an **inbound response external deserializer** that translates an external response into a format understood by Nest. For example:
       * From external format
           * topic: `'_INBOX.XVRL...'`
           * payload: `{customers: [{id: 1, name: 'nestjs.com'}]}`
@@ -430,7 +430,7 @@ For the `nestMicroservice`, this is done in the `src/main.ts` file.  To enable t
 
 At this point, you should be able to send and receive requests between any combination of apps.  For example, from *nestHttpApp* to *customerService*, from *customerApp* to *nestMicroservice*, and all other combinations.  I highly recommend you do so now, using the instructions from [here](https://github.com/johnbiundo/nest-nats-sample#running-the-all-nest-configuration) and [here](https://github.com/johnbiundo/nest-nats-sample#running-the-all-native-app-configuration) to run all components at the same time\*. Pay close attention to the log outputs which show how (de)serialization is happening at each step.
 
-\*We haven't described the use of `queues`, but when you start running the full mixed configuration (Nest and non-Nest components), one thing you'll notice is that requests will be randomly routed between the *nestMicroservice* app and the *customerService* app.  This is because they are members of a **NATS queue**. If you want to send a request to a particular responder, you'll need to shut down the other one to guarantee the message is sent there.  I'll discuss NATS queues in more detail the final article of this series.
+\*<a href="queues"></a>We haven't described the use of `queues`, but when you start running the full mixed configuration (Nest and non-Nest components), one thing you'll notice is that requests will be randomly routed between the *nestMicroservice* app and the *customerService* app.  This is because they are members of a **NATS queue**. If you want to send a request to a particular responder, you'll need to shut down the other one to guarantee the message is sent there.  I'll discuss NATS queues in more detail the final article of this series.
 
 Here's a nice surprise! We've magically handled [Figure 1 Case D]() along the way.  If you think carefully about it, this is both not a surprise, and has a somewhat strict limitation.  The reason this works is that we're now serializing and deserializing to and from a canonical external format.  So **all** requests look like they come from an external requestor, and **all** responses look like they come from an external responder.  With this in place, our serializers and deserializers work in all combinations.  We've created a "lingua franca" message protocol.  The limitation with this approach is perhaps a subtle one, and is something we'll address later (see bullet point #2 in **What's Next?** below).
 
@@ -442,10 +442,9 @@ We've covered a lot of ground.  Hopefully you've got both a conceptual framework
 
 There are a few remaining subtle topics to cover, which I'll do in the next installment of this series. As a teaser, these include:
 
-1. Can we run both the `nestMicroservice` app and the external `customerService` app at the same time, and load balance requests across them?  Spoiler: yes!  This is simple to do with NATS [distributed queues](), which we'll cover briefly in the next article.
-2. We covered the case where we're running our modified `nestHttpApp` in this hybrid (Nest and non-Nest) environment.  What happens if we have a mixture of Nest apps that are unmodified  &#8212;  that is, they are deployed apps that we don't want to touch to implement our "lingua franca" message protocol (i.e., they're running out-of-the-box standard de(serializers))?  Can they be made to play nicely in this hybrid environment?  Spoiler: yes!
-3. What about **events**?  We've covered what seems to be the trickier case here with request/response style messaging, but how about plain old events?  In fact, you may have noticed we've built a feature around **adding a customer** (see the `'add-customer'` messages and handlers sprinkled through our code).  Go ahead and try them now. You'll see you have mixed results. Can we make events cooperate in this hybrid environment?  Spoiler: yes!
-4. Can we talk more about NATS queues?  Yes!
+1. Can we run both the *nestMicroservice* app and the external *customerService* app at the same time, and load balance requests across them?  Spoiler: yes!  In fact, we already did so, as mentioned [above](#queues). This is simple to do with NATS [distributed queues](https://docs.nats.io/nats-concepts/queue), which we'll cover briefly in the next article.
+2. We covered the case where we're running our modified *nestHttpApp* in this [hybrid]() (Nest and non-Nest) environment.  What happens if we have a mixture of Nest apps that are unmodified  &#8212;  that is, they are deployed apps that we don't want to touch to implement our "lingua franca" message protocol (i.e., they're running out-of-the-box standard de(serializers))?  Can they be made to play nicely in this hybrid environment?  Spoiler: yes!
+3. What about **events**?  We've covered what seems to be the trickier case here with request/response style messaging, but how about plain old events?  In fact, you may have noticed we've built a feature for **adding a customer** (see the `'add-customer'` messages and handlers sprinkled through our code).  Go ahead and try them now. You'll see you have mixed results. Can we make events cooperate in this hybrid environment?  Spoiler: yes!
 
 Stay tuned for the answers to these and other exciting questions in our next installment! :smiley:
 
