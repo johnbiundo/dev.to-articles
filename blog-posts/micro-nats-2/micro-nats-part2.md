@@ -3,7 +3,7 @@ published: false
 title: "Integrate NestJS with External Services using Microservice Transporters (Part 2)"
 description: "tags: nestjs, nest, NATS, microservices, node.js"
 series: "NestJS Microservices in Action"
-cover_image: "https://dev-to-uploads.s3.amazonaws.com/i/v9ritssfzgrc1umi4a6k.png"
+cover_image: "https://dev-to-uploads.s3.amazonaws.com/i/kx9gtfx4lvt2u31b6461.png"
 canonical_url:
 ---
 
