@@ -237,7 +237,7 @@ With this in mind, we can layout the standard format for all Nest messages, thus
 
 #### Nest Transporter Message Protocol
 
-1. Request messages (coming from [**Nest requestors**](#nest-as-requestor)) are wrapped in a structure that we can depict as follows:
+* Request messages (coming from [**Nest requestors**](#nest-as-requestor)) are wrapped in a structure that we can depict as follows:
 
    ```typescript
    {
@@ -260,7 +260,7 @@ With this in mind, we can layout the standard format for all Nest messages, thus
    }
    ```
 
-2. Response messages (coming from [**Nest responders**](#nest-as-responder)) are wrapped in a structure we can depict as follows:
+* Response messages (coming from [**Nest responders**](#nest-as-responder)) are wrapped in a structure we can depict as follows:
 
    ```typescript
    {
