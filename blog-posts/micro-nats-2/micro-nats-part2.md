@@ -11,7 +11,7 @@ canonical_url:
 
 ### Part 2: Digging into Transporter Communications
 
-This is Part 2 of a series on using Nest microservices as an integration technology. [Part 1]() lays the foundation with an introduction to the basic communication concepts used by Nest microservices.
+This is Part 2 of a series on using Nest microservices as an integration technology. [Part 1](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-1-p3) lays the foundation with an introduction to the basic communication concepts used by Nest microservices.
 
 This article lays out the concepts and challenges of integrating Nest apps with non-Nest apps.
 
@@ -21,13 +21,13 @@ Reminder: all the code for these articles is available [here](https://github.com
 
 ### Roles in Action
 
-In the prior article, I covered [the roles](#a-vocabulary-for-transporter-use-cases) a Nest app plays in various communication scenarios. Let's dig further into those roles and how they matter in each integration use case.
+In the prior article, I covered [the roles](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-1-p3#a-vocabulary-for-transporter-use-cases) a Nest app plays in various communication scenarios. Let's dig further into those roles and how they matter in each integration use case.
 
 #### Nest as Requestor
 
-Let's start with a quick review of Nest's transporter application-level protocol. This is covered in depth [in the Nest documentation](https://docs.nestjs.com/microservices/basics#client), but we'll summarize briefly here, marrying Nest concepts with our freshly minted terminology covered at the end of [Part 1](#a-vocabulary-for-transporter-use-cases).
+Let's start with a quick review of Nest's transporter application-level protocol. This is covered in depth [in the Nest documentation](https://docs.nestjs.com/microservices/basics#client), but we'll summarize briefly here, marrying Nest concepts with our freshly minted terminology covered at the end of [Part 1](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-1-p3#a-vocabulary-for-transporter-use-cases).
 
-When a Nest component is in the role of [**Nest as requestor**](), it performs its role through an instance of the `ClientProxy` class which has been configured to work with a specific transporter. Such a requestor may be housed in any sort of Nest app. For example, to make a `'get-customers'` request from a Nest HTTP-based app (e.g., from within a REST route handler), via NATS, we would instantiate a `ClientProxy` with code something like this:\*
+When a Nest component is in the role of [**Nest as requestor**](#nest-as-requestor), it performs its role through an instance of the `ClientProxy` class which has been configured to work with a specific transporter. Such a requestor may be housed in any sort of Nest app. For example, to make a `'get-customers'` request from a Nest HTTP-based app (e.g., from within a REST route handler), via NATS, we would instantiate a `ClientProxy` with code something like this:\*
 
 ```typescript
 // app.controller.ts
@@ -52,14 +52,14 @@ async getCustomers(): Observable<customers> {
 }
 ```
 
-Let's update the diagram from [Figure 1, Case C]() to reflect this terminology.
+Let's update the diagram from [Figure 1, Case C](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-1-p3#figure1) to reflect this terminology.
 
 ![Case C](./assets/case-c.png 'Case C')
 <a name="figure1"></a><figcaption>Figure 1: Nest as Requestor</figcaption>
 
 #### Nest as Responder
 
-When a Nest component is in the role of [**Nest as responder**](), things are slightly more complex. We need the component to function **inside the context of a network listener** (in order to receive inbound messages from remote senders). This concept gives us an understanding of what we can now refer to as a Nest **microservice**. A Nest microservice is a component that binds some behavior to incoming network messages bearing specific **topics** (and, optionally, **payloads**). Obviously the microservice listener must connect to the correct broker, and possibly be configured with other parameters. Making this association between a microservice listener and a particular broker, and specifying configuration parameters for that association, is the job of the transporter. For example, a Nest component that can respond to a NATS `'get-customer'` message would need several moving parts.
+When a Nest component is in the role of [**Nest as responder**](#nest-as-responder), things are slightly more complex. We need the component to function **inside the context of a network listener** (in order to receive inbound messages from remote senders). This concept gives us an understanding of what we can now refer to as a Nest **microservice**. A Nest microservice is a component that binds some behavior to incoming network messages bearing specific **topics** (and, optionally, **payloads**). Obviously the microservice listener must connect to the correct broker, and possibly be configured with other parameters. Making this association between a microservice listener and a particular broker, and specifying configuration parameters for that association, is the job of the transporter. For example, a Nest component that can respond to a NATS `'get-customer'` message would need several moving parts.
 
 First, we need to start up a network listener. This is covered in detail [in the Nest documentation here](https://docs.nestjs.com/microservices/basics#getting-started), but the code is straightforward if you're familiar with a typical Nest `main.ts` file:
 
@@ -231,7 +231,7 @@ MSG_PAYLOAD: {"err": null,"response": [{ "id": 1, "name":"nestjs.com" }],
 
 The differences should be clear. Nest wraps your message payloads inside a JSON object. For requests, your payload is wrapped in a `data` property. For responses, your payload is wrapped in a `response` property.
 
-Why the differences? Consider that Nest must properly route and manage the lifetime of messages **within and between Nest apps** (e.g., our "Pure NestJS" <a href="#figure1">Case A in Figure 1</a>). Nest needs to pass some metadata, along with the actual application-specific message content, with each message. Nest encodes this metadata in the **payload** itself (because NATS doesn't allow you to add fields anywhere else in a message), resulting in the extra fields we see.
+Why the differences? Consider that Nest must properly route and manage the lifetime of messages **within and between Nest apps** (e.g., our "Pure NestJS" <a href="https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-1-p3#figure1">Case A in Figure 1</a>). Nest needs to pass some metadata, along with the actual application-specific message content, with each message. Nest encodes this metadata in the **payload** itself (because NATS doesn't allow you to add fields anywhere else in a message), resulting in the extra fields we see.
 
 With this in mind, we can layout the standard format for all Nest messages, thus defining Nest's transporter message protocol.
 
@@ -293,7 +293,7 @@ Clearly, we'll have a problem communicating between our Nest and non-Nest apps b
 
 As you can imagine, we have the reverse issue in the [**Nest as requestor**](#nest-as-requestor) case, where Nest issues requests wrapped in the Nest request format, which aren't understood by the external app, and the external app also responds with an incompatible message format (missing fields expected by Nest).
 
-**Now the big question**: How do we reconcile these message format differences to connect Nest and external NATS apps, as in <a href="#figure1">Figure 1 Cases B, C and D</a>?
+**Now the big question**: How do we reconcile these message format differences to connect Nest and external NATS apps, as in <a href="https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-1-p3#figure1">Figure 1 Cases B, C and D</a>?
 
 The good news is that **Nest anticipates this need and provides a neat solution.** We now have all the pieces in place to start seeing how Nest solves this problem and how to craft a solution. We'll dive into this in Part 3!
 
