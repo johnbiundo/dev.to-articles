@@ -96,7 +96,7 @@ Nest (as well as some of the brokers natively, including NATS as we'll soon see)
 - A passes the response topic as part of the initial message
 - B uses the response topic as the topic of its own subsequent response message
 
-In other words, if a response topic is included in a message received by a subscriber, the subscriber publishes a response message on that response topic. Thus, in our example, B publishes its response, including a payload containing the customer list, on the response topic it received in the "request" message. All very tidy!
+In other words, if a response topic is included in a message received by a subscriber, the subscriber publishes a response message on that response topic. Thus, in our example, B publishes its response, including a payload containing the customer list, on the response topic it received in the "request" message. Because A previously subscribed to the response topic, it receives the response as a normal message. All very tidy!
 
 ### A Vocabulary for Transporter Use Cases
 
