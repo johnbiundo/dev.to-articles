@@ -61,7 +61,7 @@ Let's update the diagram from [Figure 1, Case C](https://dev.to/nestjs/integrate
 
 When a Nest component is in the role of [**Nest as responder**](#nest-as-responder), things are slightly more complex. We need the component to function **inside the context of a network listener** (in order to receive inbound messages from remote senders). This concept gives us an understanding of what we can now refer to as a Nest **microservice**. A Nest microservice is a component that binds some behavior to incoming network messages bearing specific **topics** (and, optionally, **payloads**). Obviously the microservice listener must connect to the correct broker, and possibly be configured with other parameters. Making this association between a microservice listener and a particular broker, and specifying configuration parameters for that association, is the job of the transporter. For example, a Nest component that can respond to a NATS `'get-customer'` message would need several moving parts.
 
-First, we need to start up a network listener. This is covered in detail [in the Nest documentation here](https://docs.nestjs.com/microservices/basics#getting-started), but the code is straightforward if you're familiar with a typical Nest `main.ts` file:
+First we need to start up a network listener. This is covered in detail [in the Nest documentation here](https://docs.nestjs.com/microservices/basics#getting-started), but the code is straightforward if you're familiar with a typical Nest `main.ts` file:
 
 ```typescript
 // main.ts

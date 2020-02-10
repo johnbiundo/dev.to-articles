@@ -3,7 +3,7 @@ published: false
 title: "Integrate NestJS with External Services using Microservice Transporters (Part 3)"
 description: "tags: nestjs, nest, NATS, microservices, node.js"
 series: "NestJS Microservices in Action"
-cover_image: "https://dev-to-uploads.s3.amazonaws.com/i/1khd2pysk1o2go9e0oxs.jpg"
+cover_image: "https://dev-to-uploads.s3.amazonaws.com/i/7pdohpezsqthfk0ieab8.png"
 canonical_url:
 ---
 
@@ -50,7 +50,7 @@ client: ClientProxy;
 
 In the code fragment above, `OutboundRequestSerializer` is the class that answers the question *"how do does my Nest requestor format outgoing requests so that an external app can process them?"*, while `InboundResponseDeserializer` is the class that addresses *"how does my requestor translate incoming external responses so that Nest can process them?"*.
 
-**Note**: you can choose any name for these classes, but trust me, it's **highly recommended** that you choose a naming convention similar to this to keep things straight!
+**Note**: you can choose any name for these classes, but trust me, it's **highly recommended** that you choose a naming convention similar to the ones above to keep things straight!
 
 ##### Nest as Responder
 
