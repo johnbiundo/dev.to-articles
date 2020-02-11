@@ -225,7 +225,7 @@ MSG_PAYLOAD: {"pattern": "get-customers","data": {},
 It receives a response back from *nestMicroservice* that looks like this:
 
 ```bash
-MSG_PAYLOAD: {"err": null,"response": [{ "id": 1, "name":"nestjs.com" }],
+MSG_PAYLOAD: {"err": null,"response": {customers: [{ "id": 1, "name":"nestjs.com" }]},
 "isDisposed": true,"id": "84d9259e-fd00-4456-83b8-408311ca72cc"}
 ```
 
