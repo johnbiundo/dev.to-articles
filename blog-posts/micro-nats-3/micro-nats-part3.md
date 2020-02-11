@@ -11,7 +11,7 @@ canonical_url:
 
 ### Part 3: Solving the Message Incompatibility Problem
 
-In [Part 2]() of this series, we described the challenges of integrating Nest apps with non-Nest apps using NATS as an intermediary.
+In [Part 2](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-2-3hgd) of this series, we described the challenges of integrating Nest apps with non-Nest apps using NATS as an intermediary.
 
 In this article, we explore solutions to that problem.
 
@@ -221,7 +221,7 @@ Notice the value for the `replyTo` field in the logging output. You can probably
 
 ### Implementing the Integration Use Cases
 
-We've nearly arrived at our final destination. With the understanding we've gained, we can specify what we need to complete our integration use cases from [Figure 1 in Part 1]().
+We've nearly arrived at our final destination. With the understanding we've gained, we can specify what we need to complete our integration use cases from [Figure 1 in Part 1](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-1-p3).
 
 Here are the requirements:
 1. The *nestHttpApp*, in its role as a requestor, must implement:
@@ -432,7 +432,7 @@ At this point, you should be able to send and receive requests between any combi
 
 \*<a href="queues"></a>We haven't described the use of `queues`, but when you start running the full mixed configuration (Nest and non-Nest components), one thing you'll notice is that requests will be randomly routed between the *nestMicroservice* app and the *customerService* app.  This is because they are members of a **NATS queue**. If you want to send a request to a particular responder, you'll need to shut down the other one to guarantee the message is sent there.  I'll discuss NATS queues in more detail the final article of this series.
 
-Here's a nice surprise! We've magically handled [Figure 1 Case D]() along the way.  If you think carefully about it, this is both not a surprise, and has a somewhat strict limitation.  The reason this works is that we're now serializing and deserializing to and from a canonical external format.  So **all** requests look like they come from an external requestor, and **all** responses look like they come from an external responder.  With this in place, our serializers and deserializers work in all combinations.  We've created a "lingua franca" message protocol.  The limitation with this approach is perhaps a subtle one, and is something we'll address later (see bullet point #2 in **What's Next?** below).
+Here's a nice surprise! We've magically handled [Figure 1 Case D](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-1-p3) along the way.  If you think carefully about it, this is both not a surprise, and has a somewhat strict limitation.  The reason this works is that we're now serializing and deserializing to and from a canonical external format.  So **all** requests look like they come from an external requestor, and **all** responses look like they come from an external responder.  With this in place, our serializers and deserializers work in all combinations.  We've created a "lingua franca" message protocol.  The limitation with this approach is perhaps a subtle one, and is something we'll address later (see bullet point #2 in **What's Next?** below).
 
 ### Conclusion :rocket:
 
@@ -443,7 +443,7 @@ We've covered a lot of ground.  Hopefully you've got both a conceptual framework
 There are a few remaining subtle topics to cover, which I'll do in the next installment of this series. As a teaser, these include:
 
 1. Can we run both the *nestMicroservice* app and the external *customerService* app at the same time, and load balance requests across them?  Spoiler: yes!  In fact, we already did so, as mentioned [above](#queues). This is simple to do with NATS [distributed queues](https://docs.nats.io/nats-concepts/queue), which we'll cover briefly in the next article.
-2. We covered the case where we're running our modified *nestHttpApp* in this [hybrid]() (Nest and non-Nest) environment.  What happens if we have a mixture of Nest apps that are unmodified  &#8212;  that is, they are deployed apps that we don't want to touch to implement our "lingua franca" message protocol (i.e., they're running out-of-the-box standard de(serializers))?  Can they be made to play nicely in this hybrid environment?  Spoiler: yes!
+2. We covered the case where we're running our modified *nestHttpApp* in this [hybrid](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-1-p3) (Nest and non-Nest) environment.  What happens if we have a mixture of Nest apps that are unmodified  &#8212;  that is, they are deployed apps that we don't want to touch to implement our "lingua franca" message protocol (i.e., they're running out-of-the-box standard de(serializers))?  Can they be made to play nicely in this hybrid environment?  Spoiler: yes!
 3. What about **events**?  We've covered what seems to be the trickier case here with request/response style messaging, but how about plain old events?  In fact, you may have noticed we've built a feature for **adding a customer** (see the `'add-customer'` messages and handlers sprinkled through our code).  Go ahead and try them now. You'll see you have mixed results. Can we make events cooperate in this hybrid environment?  Spoiler: yes!
 
 Stay tuned for the answers to these and other exciting questions in our next installment! :smiley:
