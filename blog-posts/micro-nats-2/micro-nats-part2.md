@@ -97,13 +97,13 @@ The other roles discussed earlier &#8212; emitter and subscriber &#8212; are sim
 
 #### Running an All Nest Stack
 
-Full implementations of these apps are included in the repository available [here](https://github.com/johnbiundo/nest-nats-sample). Running these two Nest apps as shown in <a href="#figure1">Case A of Figure 1</a>, which you can do now by following [these instructions](https://github.com/johnbiundo/nest-nats-sample#running-the-all-nest-configuration), is easy. Following those steps will start up an instance of a NATS broker, in verbose mode, which is very helpful for watching the message flow. Take a few minutes to run through the full installation and to examine the code.
+Full implementations of these apps are included in the repository available [here](https://github.com/johnbiundo/nest-nats-sample). Running these two Nest apps as shown in <a href="https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-1-p3#figure1">Case A of Figure 1</a>, which you can do now by following [these instructions](https://github.com/johnbiundo/nest-nats-sample#running-the-all-nest-configuration), is easy. Following those steps will start up an instance of a NATS broker, in verbose mode, which is very helpful for watching the message flow. Take a few minutes to run through the full installation and to examine the code.
 
 Of course so far, we haven't really had to deal with any external app components. This means there are no messy details, and the Nest components "just work". Let's move on to the topic of external app components now.
 
 ### External NATS app
 
-To give us something concrete to look at, let's quickly construct basic implementations of our external apps. We'll build two of them: one as a requestor and one as a responder. These will serve as sandboxes for examining live message flow behavior, and play the role of the "external apps" we see in <a href="#figure1">Figure 1</a>.
+To give us something concrete to look at, let's quickly construct basic implementations of our external apps. We'll build two of them: one as a requestor and one as a responder. These will serve as sandboxes for examining live message flow behavior, and play the role of the "external apps" we see in <a href="https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-1-p3#figure1">Figure 1</a>.
 
 As native NATS apps, these can immediately and seamlessly communicate with each other.
 

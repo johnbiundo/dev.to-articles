@@ -73,7 +73,7 @@ async function bootstrap() {
 
 So `InboundMessageDeserializer` is the class that answers the question *"how does my responder translate incoming external messages so that Nest can process them?"*, while `OutboundResponseSerializer` is the class that handles *"how does my responder format responses so that the external app can understand them?"*.
 
-This feature results in the following diagrams &#8212; ones that remove all those ugly red X's in the <a href="">last diagram</a>!
+This feature results in the following diagrams &#8212; ones that remove all those ugly red X's in the <a href="https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-2-3hgd#figure4">last diagram</a>!
 
 Here's the diagram to keep in mind when writing **serializers/deserializers for Nest responders**.
 
@@ -430,7 +430,7 @@ For the `nestMicroservice`, this is done in the `src/main.ts` file.  To enable t
 
 At this point, you should be able to send and receive requests between any combination of apps.  For example, from *nestHttpApp* to *customerService*, from *customerApp* to *nestMicroservice*, and all other combinations.  I highly recommend you do so now, using the instructions from [here](https://github.com/johnbiundo/nest-nats-sample#running-the-all-nest-configuration) and [here](https://github.com/johnbiundo/nest-nats-sample#running-the-all-native-app-configuration) to run all components at the same time\*. Pay close attention to the log outputs which show how (de)serialization is happening at each step.
 
-\*<a href="queues"></a>We haven't described the use of `queues`, but when you start running the full mixed configuration (Nest and non-Nest components), one thing you'll notice is that requests will be randomly routed between the *nestMicroservice* app and the *customerService* app.  This is because they are members of a **NATS queue**. If you want to send a request to a particular responder, you'll need to shut down the other one to guarantee the message is sent there.  I'll discuss NATS queues in more detail the final article of this series.
+\*<a name="queues"></a>We haven't described the use of `queues`, but when you start running the full mixed configuration (Nest and non-Nest components), one thing you'll notice is that requests will be randomly routed between the *nestMicroservice* app and the *customerService* app.  This is because they are members of a **NATS queue**. If you want to send a request to a particular responder, you'll need to shut down the other one to guarantee the message is sent there.  I'll discuss NATS queues in more detail the final article of this series.
 
 Here's a nice surprise! We've magically handled [Figure 1 Case D](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-1-p3) along the way.  If you think carefully about it, this is both not a surprise, and has a somewhat strict limitation.  The reason this works is that we're now serializing and deserializing to and from a canonical external format.  So **all** requests look like they come from an external requestor, and **all** responses look like they come from an external responder.  With this in place, our serializers and deserializers work in all combinations.  We've created a "lingua franca" message protocol.  The limitation with this approach is perhaps a subtle one, and is something we'll address later (see bullet point #2 in **What's Next?** below).
 
