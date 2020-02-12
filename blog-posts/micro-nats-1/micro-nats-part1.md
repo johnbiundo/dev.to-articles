@@ -34,7 +34,7 @@ This article series covers the **integration use case**.  To get there, it first
 
 * **Part 1** (this article!) covers introductory material, including the basic microservices communication model, brokers, and how Nest uses publish/subscribe and request/response communication models. It introduces external integration use-cases that will be covered in the series. It also lays out a vocabulary for describing all the moving parts in these sometimes-complex interactions.
 * [**Part 2**](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-2-3hgd) digs a little deeper, extending the vocabulary to describe the modalities in which Nest operates when interacting with external systems. It introduces a pair of simple external (non-Nest, NATS-based) apps that we will use as part of the integration case study.  It introduces the potential challenges arising from Nest's use of a proprietary *message format*.
-* **Part 3** (coming soon) describes the Nest approach for solving the message format challenge. It goes on to work through code samples that implement this approach.  It uses the vocabulary introduced earlier to help you keep a simple cognitive model in mind as you address this problem.
+* [**Part 3**](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-3-4m20) describes the Nest approach for solving the message format challenge. It goes on to work through code samples that implement this approach.  It uses the vocabulary introduced earlier to help you keep a simple cognitive model in mind as you address this problem.
 * **Part 4** (coming soon) covers some leftovers, some advanced use cases, and some tips and tricks.
 
 I hope you find this article series helpful!
