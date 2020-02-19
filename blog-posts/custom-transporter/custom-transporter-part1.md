@@ -283,11 +283,11 @@ Even though the scope of this tutorial is relatively small &#8212; at the end of
 
 Where to keep all of these assets?
 
-The main thing to think about now is where to keep the Faye transporter components.  Since we'll want to easily re-use them across different Nest apps, the logical place is an NPM package.  To that end, from this point forward when we work on any of those components, they'll go into that package.
+The main thing to think about now is where to keep the Faye custom transporter components.  Since we'll want to easily re-use them across different Nest apps, the logical place is an NPM package.  To that end, from this point forward when we work on any of those components, they'll go into that package.
 
 #### The Custom Transporter Package
 
-At this point, you should check out the `part2` branch of the repo that you cloned.  [Read more here](xxx) for details.  Once you've checked out that branch, you'll notice a new folder called `nestjs-faye-transporter`.  This is organized as an NPM package (read more about creating NestJS-friendly NPM packages in my article []()).
+At this point, you should check out the `part2` branch of the repo that you cloned.  [Read more here](xxx) for details.  Once you've checked out that branch, you'll notice a new folder called `nestjs-faye-transporter`.  This is organized as an NPM package (read more about creating NestJS-friendly NPM packages in my article [Publishing NestJS Packages with npm](https://dev.to/nestjs/publishing-nestjs-packages-with-npm-21fm), including how the `tsconfig.json` file, `package.json` scripts, and file organization all cooperate to create a reusable NPM package).
 
 Here's a run-down on the contents of that package, and how we'll use it.
 
@@ -351,4 +351,6 @@ This is going to be the absolute bare-bones class needed to implement the Faye t
 - not really be type safe (we omit a bunch of typing to declutter the code)
 
 To state it in more direct terms, our requirement for this cut is to simply be able to respond to an inbound **request** (in the sense of a request from a request-response style message).  We'll test this requirement by replacing our native `customerApp` from the last chapter with our `nestMicroservices` app running our new custom transporter.
+
+**Note:** In [part 3](), we'll complete the implementation and have a fully functioning Faye Custom Transporter (server component).  At that point, you'll also have all of the concepts in place to write your own transporter server component, as well as the ability to look inside the built-in transporters (like [the MQTT transporter server]()) and understand what's going on.  That will prepare you for even more adventures, like customizing the Nest built-in transporters to add features&#8212; the subject of my next NestJS microservice tutorial (already underway, and coming very soon)!
 
