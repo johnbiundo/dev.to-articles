@@ -39,7 +39,7 @@ Here's a run-down on the contents of that package, and how we'll use it.
      * All code defining the **client** is in the `src/requestor` folder. Ultimately, this will consist of a sub-class of `ClientProxy` from the `@nestjs/microservices` package &#8212; the class which provides things like `client.send(...)` and `client.emit()`) &#8212; and a variety of related classes.
      * All code defining the **server** is in the `src/responder` folder.  Ultimately, this will consist of a sub-class of `Server` from the `@nestjs/microservices` package &#8212; the class which implements a transporter strategy &#8212; and a variety of related classes.
 
-### First Iteration of the Server Component
+### First Iteration (Take 1) of the Server Component
 
 Let's get started building the "server" side of the equation &#8212; the part of the custom transporter that you'll use to build Nest responders (see [the previous article series](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-1-p3) for more on this terminology, but think of a Nest responder as a Nest application that listens for inbound requests over a specific transport, like Faye).
 
@@ -80,7 +80,7 @@ const app = await NestFactory.createMicroservice(AppModule, {
 
 It should be clear what we're doing: instead of passing the normal [transporter options object](https://docs.nestjs.com/microservices/basics#getting-started) with `transport` and `options` properties, we pass a single property, `strategy`, whose value is an **instance** of our custom transporter class.
 
-#### Take One Requirements
+#### Take 1 Requirements
 
 Alright, we're finally ready to look at our `ServerFaye` class &#8212; the one we'll instantiate and pass as the value of that `strategy` property above.  We'll take this in a few steps.
 
@@ -95,7 +95,7 @@ To state it in more direct terms, our requirement for this cut is to simply be a
 
 **Note:** In [part 3](), we'll complete the implementation and have a fully functioning Faye Custom Transporter (server component).  At that point, you'll also have all of the concepts in place to write your own custom transporter server component, as well as the ability to look inside the built-in transporters (like [the MQTT transporter server](https://github.com/nestjs/nest/blob/master/packages/microservices/server/server-mqtt.ts)) and understand what's going on.  That will prepare you for even more adventures, like customizing the Nest built-in transporters to add features&#8212; the subject of my next NestJS microservice tutorial (already underway, and coming very soon)!
 
-#### Take One Code Review
+#### Take 1 Code Review
 
 Let's dive into the code.  Open the file `nestjs-faye-transporter/src/responder/transporters/server-faye.ts`.
 
@@ -160,21 +160,76 @@ If all this looks somewhat familiar, it's because we're basically following the 
 
 We should be ready to test out our code.  We need to do a tiny bit of setup first.  This is going to run best if you have four (or even five) separate terminals open so you can watch things unfold across the whole process as the various pieces communicate.
 
-Now's a good time to mention a couple of things about the development setup
-1. I run this kind of stuff on an Ubuntu machine.  There's **nothing** platform-specific anywhere in the code, **but**, I find running builds, starting and stopping processes, running multiple terminal sessions, etc., to be much smoother on Linux.  You can run this wherever you want, but you may have to make slight adjustments to your `package.json`.
-2. Since you kind of **need** to run multiple terminal sessions to see the full impact, I strongly recommend Tmux.  You can start multiple terminal programs, or use tabs if you prefer, but if you want what I think is the **best** DX for this kind of work, checkout Tmux.  I covered some of my recommendations [in the last article series]().
+Now's a good time to mention a couple of things about the development setup:
+1. I run this kind of stuff on an Ubuntu machine.  There's **nothing** platform-specific anywhere in the code, **but**, I find running builds, starting and stopping processes, running multiple terminal sessions, etc., to be much smoother on Linux.  You can run this wherever you want, but if you're not on Linux, you may have to make slight adjustments to your `package.json`, or other actual build steps.
+2. Since you kind of **need** to run multiple terminal sessions to see the full impact, I strongly recommend [Tmux](xxx).  You can start multiple terminal programs, or use tabs if you prefer, but if you want what I think is the **best** DX for this kind of work, checkout Tmux.  I covered some of my recommendations [in the last article series]().
 
-I'll reference these (logical) terminals as
+In the following steps, I'll reference these (logical) terminals as:
 * terminal 1: run the Faye broker here
 * terminal 2: run builds of the transporter server code we're working on here
 * terminal 3: run the customerApp and HttPie commands here (you can also use Postman, or Curl to issue HTTP requests, of course)
 * terminal 4: run the `nestMicroservice` testing application (this is the plain old Nest app that is **using** our new `ServerFaye` custom transporter)
 * terminal 5: run the `nestHttpApp` here
 
+#### Primary Acceptance Test
 
+Going back to our requirements, our main acceptance test is simple: send a well-formed message from our native `customerApp` (acting as a requestor) to our `nestMicroservice` (acting as a responder), and get back a proper response.
+
+((Diagram))
+
+##### Using `npm link` in Our Development Environment
+
+Before we can run the test, we need to cover one more preliminary.  Ask yourself this: how does our `nestMicroservice` app know that we want to use the code in our `nestjs-faye-transporter` package?  The answer is pretty simple (though it belies the awesomeness of NPM!).
+
+We're going to use the `npm link` command (read details [here]()).  There are two simple steps:
+
+1. In terminal 2, make sure you're in the folder `nestMicroservice`.  Then run `npm link` at the OS level.  You should see output like this:
+
+    ```bash
+    xxx blah
+    ```
+
+2. In terminal 4, run `npm link @faye-tut/nestjs-faye-transporter`.  This is the NPM package name (found in `nestjs-faye-transporte/package.json`) for our custom transporter.  You should see output like this:
+
+    ```bash
+    xxx blah
+    ```
+
+At this point, our `nestMicroservice` testing app is live-linked to the custom transporter code we're working on.
+
+##### Running the Test
+
+We're ready to rock and roll!
+
+In terminal 1, make sure the Faye broker is running. Make sure you're in the `faye-server` directory, then run `npm run start`.  You should see something like this:
+
+```bash
+xxx blah
+```
+
+In terminal 2, start the `nestMicroservice`.  Make sure you're in the `nestMicroservice` directory, then run `npm run start:dev`.  You should see the usual Nest startup logs, followed by the message `Microservice is listening...`.
+
+In terminal 3, we'll run the native `customerApp` to make the request.  Earlier, we used this to send requests to the native `customerService` app.  Now we're sending those messages (via the Faye broker, of course) to the `nestMicroservice`.  Make sure you're in the `customerApp` directory, then...
+
+... keep your eyes on all 3 terminal windows, and...
+
+run `npm run get-customers`.
+
+If all went well, you should see a flurry of log messages.  Do take the time to look at them and make sure you can follow the flow of what's happening.  In terminal 3, we should get a nice response that looks like this:
+
+```typescript
+{
+
+}
+```
+
+Hooray! We're done right?  :beer:?
+
+Not so fast... did you forget this is a five-part series? :smiley:
+
+Read on to see where we've still got work to do.
 
 ### Understanding the Limitations of Take 1
-
 
 
 ### Summary
