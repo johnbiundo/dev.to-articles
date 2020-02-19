@@ -53,7 +53,7 @@ Faye has a very simple &#8212; virtually canonical &#8212; publish/subscribe pro
 ![Faye Message Protocol](./assets/faye-protocol.png 'Faye Message Protocol')
 <figcaption><a name="figure1"></a>Figure 1: Faye Message Protocol</figcaption>
 
-As we've done in the [NestJS Microservices in Action](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-1-p3) series, we'll start by building simple native requestor and responder apps.  To run the code in this section, [read these instructions]() for the github repository.
+As we've done in the [NestJS Microservices in Action](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-1-p3) series, we'll start by building simple native requestor and responder apps.  This will help us make sure we understand the Faye API, and give us a convenient testbed.  To run the code in this section, [read these instructions]() for the github repository.
 
 As covered in the previous article, one of the challenges Nest microservices deals with is to layer a request/response message style **on top of** publish/subscribe semantics.  In other words, Nest requestors need to be able to run code like:
 
@@ -83,8 +83,8 @@ Nest makes this a bit easier by automatically choosing the response topic name f
 
 Nest uses the term **channel** as a generic internal name for topics (also called subjects and channels by some brokers), and to help disambiguate them from the "user land" concept of a **pattern**.  So, internally, Nest builds two channels from the above pattern:
 
-* `'get-customers_ack'` - this is the physical channel/topic/subject name we'll use in the Faye transporter to publish/subscribe to **request** messages
-* `'get-customers_res'` - this is the physical channel/topic/subject name we'll use in the Faye transporter to publish/subscribe to **response** messages
+* `'get-customers_ack'` - this is the physical channel/topic/subject name we'll use in the Faye transporter to publish/subscribe to **request** messages on the topic `'get-customers'`
+* `'get-customers_res'` - this is the physical channel/topic/subject name we'll use in the Faye transporter to publish/subscribe to **response** messages resulting from `'get-customers'` requests
 
 Let's build those native apps we mentioned.  First the responder.
 
@@ -151,6 +151,8 @@ The requestor is in `customerApp/src/customer-app.ts`.  Below is the implementat
 There's a little bit of boilerplate, including wrapping the body in a Promise, which will come in handy later when we want to orchestrate a test with multiple outstanding requests.  But the main logic should be easy to see.  We first subscribe to `'/get-customers_res'` (our **response channel**), simply printing out the result when a message on this channel comes back.  Then we publish the request on `'/get-customers_ack'`.
 
 Because we're running this as a standalone node client program and want to exit after sending a request, we wait 500ms after publishing the request, then cancel the subscription and exit.  Cancelling the subscription is important housekeeping &#8212; if we don't, subscriptions hang around (though Faye will ultimately clean them up).
+
+Finally, you'll notice that much like the responder, we have a helper utility `getPayload()` to wrap our requests in the nest message protocol.
 
 ```ts
 // src/customer-app.ts
@@ -252,9 +254,13 @@ bayeux.on('unsubscribe', (clientId, channel) => {
 });
 ```
 
-We've now completed our requestor and responder, and can test them out.  Do this by following [these instructions]().  Here's what it looks like:
+We've now completed our requestor and responder, and can test them out.  While I only reviewed the `'get-customers'` message above, the code also implements the `'add-customer'` message.  Run the code now by following [these instructions]().  Here's what it looks like:
 
 ![Native App Demo](./assets/native-app-demo.gif 'Native App Demo')
 <figcaption><a name="screen-capture-2"></a>Screen Capture 2: Native App Demo</figcaption>
+
+### What's Next
+
+In [Part 2](xxx), we'll write a basic version of the Nest transporter's **server** component.  This is the component that runs in the context of a **microservice listener** (this concept is discussed extensively in xxx ).
 
 Feel free to ask questions, make comments or suggestions, or just say hello in the comments below. And join us at [Discord](https://discord.gg/nestjs) for more happy discussions about NestJS. I post there as _Y Prospect_.
