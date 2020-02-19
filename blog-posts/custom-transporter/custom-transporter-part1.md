@@ -261,6 +261,6 @@ We've now completed our requestor and responder, and can test them out.  While I
 
 ### What's Next
 
-In [Part 2](xxx), we'll write a basic version of the Nest transporter's **server** component.  This is the component that runs in the context of a **microservice listener** (this concept is discussed extensively in xxx ).
+In [Part 2](xxx), we'll write a basic version of the Nest transporter's **server** component.  This is the component that runs in the context of a **microservice listener** to enable apps to function as Nest responders (these terms and concepts are discussed extensively in the [NestJS Microservices in Action](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-1-p3) series).
 
 Feel free to ask questions, make comments or suggestions, or just say hello in the comments below. And join us at [Discord](https://discord.gg/nestjs) for more happy discussions about NestJS. I post there as _Y Prospect_.
