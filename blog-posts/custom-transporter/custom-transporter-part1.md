@@ -86,7 +86,9 @@ Nest uses the term **channel** as a generic internal name for topics (also calle
 * `'get-customers_ack'` - this is the physical channel/topic/subject name we'll use in the Faye transporter to publish/subscribe to **request** messages
 * `'get-customers_res'` - this is the physical channel/topic/subject name we'll use in the Faye transporter to publish/subscribe to **response** messages
 
-Let's build those native apps we mentioned.  First the requestor.
+Let's build those native apps we mentioned.  First the responder.
+
+#### Native Responder App (customerService)
 
 Assuming you're [following along](xxx) on the `main` branch, open the file `customerService/src/service.ts`.
 
@@ -114,7 +116,7 @@ function getCustomers(packet): void {
 }
 ```
 
-The logic should be easy to understand.  One thing to point out is the call to `getPayload()`.  Let's discuss that.  We're going to build these native apps to speak the internal Nest message protocol (this topic is covered extensively in the [NestJS Microservices in Action](xxx) series).  This means we are going to wrap responses in an object we can depict like this:
+The logic should be easy to understand.  One thing to point out is the call to `getPayload()`.  Let's discuss that.  We're going to build these native apps to speak the internal Nest message protocol (this topic is covered extensively in the [NestJS Microservices in Action](xxx) series) so they provide a test bench for the Nest transporter and `ClientProxy` we're about to build.  This means we are going to wrap responses in an object we can depict like this:
 
    ```typescript
    {
@@ -140,6 +142,119 @@ The logic should be easy to understand.  One thing to point out is the call to `
    }
    ```
 
-   So `getPayload()` is a helper that wraps our payloads in this structure. If you're paying close attention, you'll notice that we copy the `message.id` field from the inbound request (which also has the canonical Nest transporter structure) to the outbound field.  We haven't really discussed these `id` fields yet, but they'll become very important soon.
+   So `getPayload()` is a helper that wraps our payloads in this structure. If you're paying close attention, you'll notice that we copy the `message.id` field from the inbound request (which also has the canonical Nest message protocol structure) to the outbound field.  We haven't really discussed these `id` fields yet, but they'll become very important soon.
 
+#### Native Requestor App (customerApp)
 
+The requestor is in `customerApp/src/customer-app.ts`.  Below is the implementation of the `getCustomers()` function.
+
+There's a little bit of boilerplate, including wrapping the body in a Promise, which will come in handy later when we want to orchestrate a test with multiple outstanding requests.  But the main logic should be easy to see.  We first subscribe to `'/get-customers_res'` (our **response channel**), simply printing out the result when a message on this channel comes back.  Then we publish the request on `'/get-customers_ack'`.
+
+Because we're running this as a standalone node client program and want to exit after sending a request, we wait 500ms after publishing the request, then cancel the subscription and exit.  Cancelling the subscription is important housekeeping &#8212; if we don't, subscriptions hang around (though Faye will ultimately clean them up).
+
+```ts
+// src/customer-app.ts
+async function getCustomers(customerId, requestId = 0, requestDelay = 0) {
+  // build Nest-shaped message
+  const payload = getPayload(
+    '/get-customers',
+    customerId
+      ? { customerId, requestId, requestDelay }
+      : { requestId, requestDelay },
+    uuid(),
+  );
+
+  return new Promise((resolve, reject) => {
+    // subscribe to the response message
+    const subscription = client.subscribe('/get-customers_res', result => {
+      // handle either objects or stringified results since Nest stringfies,
+      // but Faye client lib automatically serializes/deserializes objects
+      const parsedResult = parseResult(result);
+
+      console.log(
+        `==> Receiving 'get-customers' reply (request: ${requestId}): \n${JSON.stringify(
+          parsedResult.response,
+          null,
+          2,
+        )}\n`,
+      );
+    });
+
+    // once response is subscribed, publish the request
+    subscription.then(() => {
+      console.log(
+        `<== Sending 'get-customers' request with payload:\n${JSON.stringify(
+          payload,
+        )}\n`,
+      );
+      const pub = client.publish('/get-customers_ack', payload);
+      pub.then(() => {
+        // wait .5 second to ensure subscription handler executes
+        // then unsubscribe and resolve
+        setTimeout(() => {
+          subscription.cancel();
+          resolve();
+        }, 500);
+      });
+    });
+  });
+}
+```
+
+For completeness, let's take a very quick look at how we run the Faye server. Open up `faye-server/server.js`.  The code is shown below.  You can read more about running the Faye server as a node server [here](xxx), but we're basically just starting it up, and listening for a series of events that we can log to the console to make it easy to trace the handshaking and message exchange.
+
+```ts
+const http = require('http');
+const faye = require('faye');
+
+const mountPath = '/faye';
+const port = 8000;
+
+const server = http.createServer();
+const bayeux = new faye.NodeAdapter({ mount: mountPath, timeout: 45 });
+
+bayeux.attach(server);
+server.listen(port, () => {
+  console.log(
+    `listening on http://localhost:${port}${mountPath}\n========================================`,
+  );
+});
+
+bayeux.on('handshake', clientId =>
+  console.log('^^ client connect (#', clientId.substring(0, 4), ')'),
+);
+
+bayeux.on('disconnect', clientId =>
+  console.log('vv client disconnect (#', clientId.substring(0, 4), ')'),
+);
+
+bayeux.on('publish', (clientId, channel, data) => {
+  console.log(
+    `<== New message from ${clientId.substring(0, 4)} on channel ${channel}`,
+    `\n    ** Payload: ${JSON.stringify(data)}`,
+  );
+});
+
+bayeux.on('subscribe', (clientId, channel) => {
+  console.log(
+    `++ New subscription from ${clientId.substring(0, 4)} on ${JSON.stringify(
+      channel,
+    )}`,
+  );
+});
+
+bayeux.on('unsubscribe', (clientId, channel) => {
+  console.log(
+    `-- Unsubscribe by ${clientId.substring(0, 4)} on ${JSON.stringify(
+      channel,
+    )}`,
+  );
+});
+```
+
+We've now completed our requestor and responder, and can test them out.  Do this by following [these instructions]().  Here's what it looks like:
+
+![Native App Demo](./assets/native-app-demo.gif 'Native App Demo')
+<figcaption><a name="screen-capture-2"></a>Screen Capture 2: Native App Demo</figcaption>
+
+Feel free to ask questions, make comments or suggestions, or just say hello in the comments below. And join us at [Discord](https://discord.gg/nestjs) for more happy discussions about NestJS. I post there as _Y Prospect_.
