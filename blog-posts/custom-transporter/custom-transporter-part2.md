@@ -256,20 +256,26 @@ We'll explore this in greater detail in the next article, but let's start with a
 ![Nest Request Handling](./assets/transporter-try1.gif 'Nest Request Handling')
 <figcaption><a name="Nest Request Handling"></a>Figure 1: Nest Request Handling</figcaption>
 
-An inbound HTTP request kicks off the following sequence of events.  Words highlighted in red represent Nest system responsibilities.  Words highlighted in blue represent user code. There's probably nothing terribly surprising going on here, but let's just briefly walk through it.
+An inbound HTTP request kicks off the following sequence of events.  Bolded words represent Nest system responsibilities.  Underlined words represent user code. There's probably nothing terribly surprising going on here, but let's just briefly walk through it.
 1. The request is **routed** to a <u>route handling method</u>.
-2. The <font color="blue">route handling method</font> can either make a remote request directly, or <font color="blue">call a service that makes a remote request</font>.
-3. The remote request is handled by <span style="color: blue;">the broker client library</span> and sent to the broker.
-4.
+2. The <u>route handling method</u> can either make a remote request directly, or <u>call a service that makes a remote request</u>.
+3. The remote request is handled by **the broker client library** and sent to the broker.
+4. The remote request is received by **the broker client library** in the `nestMicroservice` app.
+5. The request is **routed** to the correct handler (e.g., a method decorated with `@MessagePattern('get-customers')`).
+6. The <u>request handling method</u> may make a call to other services (which in turn, could make their own internal calls or remote calls).  Let's say it does make such a call, to the `custService.getCustomers()` method, and that method has a signature like this:
+    ```typescript
+    getCustomers(id: integer): Observable<Customer>
+    ```
+7. Now we're on the return trip.  Read on for more on that sequence.
 
-Things get more fun on the return trip.
+Things get more fun on the **return trip**.  Mainly because Nest is very **observable-aware**.
 
 ![Nest Response Handling](./assets/transporter-try1.gif 'Nest Response Handling')
 <figcaption><a name="Nest Response Handling"></a>Figure 2: Nest Response Handling</figcaption>
 
 Here, we introduce the role of what I'm informally calling the "Mapper" (there's no such official term or single component inside Nest called a mapper).  Conceptually, it's the part of the system that handles dealing with Observables.
 
-> In the next article, we'll go through a few use cases for **why observables are so cool AND easy to use**.  I know this diagram doesn't make it seem that way, but hey, we're building our own transporter (trekkie kid John can't help but giggle over that :smiley:).  The beauty of it is that once we handle this case properly --xxx-- and Nest will make this easy as we'll see in the next chapter --xx-- everything we might want to do with Observables (and the potential is just, well, enormous) **just works**.
+> In the next article, we'll go through a few use cases for **why observables are so cool AND easy to use**.  I know this diagram doesn't make it seem that way, but hey, we're building our own transporter (my inner [trekky](http://sfi.org/) can't help but giggle over that :smiley:).  The beauty of it is that once we handle this case properly --xxx-- and Nest will make this easy as we'll see in the next chapter --xx-- everything we might want to do with Observables (and the potential is just, well, enormous) **just works**.
 
 Here's the walk through of the return trip flow:
 
