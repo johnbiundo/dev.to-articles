@@ -255,8 +255,10 @@ We already know we have to clean up a few things, like adding event handling, ad
 <figcaption><a name="screen-capture-2"></a>Figure 1: Nest Request Handling</figcaption>
 
 An inbound HTTP request kicks off the following sequence of events.  Words highlighted in red represent Nest system responsibilities.  Words highlighted in blue represent user code.
-1. The request is <span style="color: red;">routed</span> to a <span style="color: blue;">route handling method</span>.
-
+1. The request is **routed** to a <u>route handling method</u>.
+2. The <span style="color: blue;">route handling method</span> can either make a remote request directly, or <span style="color: blue;">call a service that makes a remote request</span>.
+3. The remote request is handled by <span style="color: blue;">the broker client library</span> and sent to the broker.
+4.
 Things work fine if our handlers return plain objects.  For example, we currently return an object in our `nestMicroservices` `getCustomers()` handler (last line below):
 
     ```typescript
