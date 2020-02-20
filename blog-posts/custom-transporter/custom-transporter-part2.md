@@ -291,7 +291,7 @@ We already know we have to clean up a few things, like adding event handling, ad
 
     This causes our handler to return an **observable** &#8212; a stream (containing only a single value in our case, but still, a stream) of values.
 
-    If you make this change, then reissue the `get-customers` message (run `npm runget-customers` in terminal 3), you'll get a rather ugly failure in the `nestMicroservice` window.  We aren't handling this case, which, again, is expected of any Nest microservice transporter.
+    If you make this change, then reissue the `get-customers` message (run `npm run get-customers` in terminal 3), you'll get a rather ugly failure in the `nestMicroservice` window.  We aren't handling this case, which, again, is expected of any Nest microservice transporter.
 
 2. So far, we've only issued a single outstanding request to our responder app at a time.  What happens if, as in the real world, we start hitting it with multiple, overlapping requests?  Let's test this.</br></br>
 
@@ -380,6 +380,10 @@ We already know we have to clean up a few things, like adding event handling, ad
     What's going on?  You can easily note in the Faye log and the `nestMicroservice` log that the requests are executing normally and in the right sequence, but somehow we're delivering them incorrectly!
 
 With these issues in mind, we're ready to step up our game and make the `ServerFaye` custom transporter much more robust.  We'll tackle that in the next article.
+
+
+![Native App Demo](./assets/transporter-try1.gif 'Native App Demo')
+<figcaption><a name="screen-capture-2"></a>Screen Capture 2: Native App Demo</figcaption>
 
 ### What's Next
 
