@@ -270,7 +270,7 @@ An inbound HTTP request kicks off the following sequence of events.  Bolded word
 
 Things get more fun on the **return trip**.  Mainly because Nest is very **observable-aware**.
 
-![Nest Response Handling](./assets/transporter-try1.gif 'Nest Response Handling')
+![Nest Response Handling](./assets/transporter-response.gif 'Nest Response Handling')
 <figcaption><a name="Nest Response Handling"></a>Figure 2: Nest Response Handling</figcaption>
 
 Here, we introduce the role of what I'm informally calling the "Mapper" (there's no such official term or single component inside Nest called a mapper).  Conceptually, it's the part of the system that handles dealing with Observables.
