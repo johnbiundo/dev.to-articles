@@ -303,13 +303,83 @@ We already know we have to clean up a few things, like adding event handling, ad
     npm run race
     ```
 
+    This exposes a serious issue.  Take a look at the code behind the `race` command:
 
+    ```typescript
+    // customerApp/src/customer-app.ts
+          await getCustomers(process.argv[3]);
+      // here we've added a new cmd line option, `race`
+      // this is to test handling multiple outstanding
+      // requests
+    } else if (process.argv[2] === 'race') {
+      await getCustomers(1, 1, 10);
+      setTimeout(async () => {
+        await getCustomers(1, 2, 5);
+      }, 1000);
+    ```
 
-### Summary
-Here's what it looks like:
+    We're issuing two `getCustomers` calls.  The first one tells the server to wait 10 seconds before returning.  We wait 1 second, then issue a second `getCustomers` call tells the server to wait 5 seconds before returning.  So we **should** expect two results: for `requestId = 2`, we should get the result in 5 seconds, and for `requestId = 1`, we should get it (about) 5 seconds later. Instead, we get **four** results, and they're all jumbled up!
 
-![Native App Demo](./assets/native-app-demo.gif 'Native App Demo')
-<figcaption><a name="screen-capture-2"></a>Screen Capture 2: Native App Demo</figcaption>
+    ```bash
+    Faye customer app starts...
+    ===========================
+    <== Sending 'get-customers' request with payload:
+    {"pattern":"/get-customers","data":{"customerId":1,"requestId":1,"requestDelay":10},"id":"cfac0da7-a4ee-47f1-8d79-7a94dd8e575d"}
+
+    <== Sending 'get-customers' request with payload:
+    {"pattern":"/get-customers","data":{"customerId":1,"requestId":2,"requestDelay":5},"id":"b4b4bd0c-373e-41f6-842c-50b33f21c0d1"}
+
+    ==> Receiving 'get-customers' reply (request: 1):
+    {
+      "customers": [
+        {
+          "id": 1,
+          "name": "nestjs.com"
+        }
+      ],
+      "requestId": 2,
+      "delay": 5000
+    }
+
+    ==> Receiving 'get-customers' reply (request: 2):
+    {
+      "customers": [
+        {
+          "id": 1,
+          "name": "nestjs.com"
+        }
+      ],
+      "requestId": 2,
+      "delay": 5000
+    }
+
+    ==> Receiving 'get-customers' reply (request: 1):
+    {
+      "customers": [
+        {
+          "id": 1,
+          "name": "nestjs.com"
+        }
+      ],
+      "requestId": 1,
+      "delay": 10000
+    }
+
+    ==> Receiving 'get-customers' reply (request: 2):
+    {
+      "customers": [
+        {
+          "id": 1,
+          "name": "nestjs.com"
+        }
+      ],
+      "requestId": 1,
+      "delay": 10000
+    }
+    ```
+    What's going on?  You can easily note in the Faye log and the `nestMicroservice` log that the requests are executing normally and in the right sequence, but somehow we're delivering them incorrectly!
+
+With these issues in mind, we're ready to step up our game and make the `ServerFaye` custom transporter much more robust.  We'll tackle that in the next article.
 
 ### What's Next
 
