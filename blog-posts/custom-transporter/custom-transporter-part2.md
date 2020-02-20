@@ -249,16 +249,32 @@ Read on to see where we've still got work to do.
 
 ### Understanding the Limitations of Take 1
 
-We already know we have to clean up a few things, like adding event handling, adding TypeScript types, and plugging in more cleanly to the framework.  But the biggest limitation of our Take 1 implementation is its handling of [RxJS observables]().  To fully appreciate this, we'll have to take a bit deeper dive into the overall flow and handling of requests through the Nest system. We'll explore this in greater detail in the next article, but let's start with a picture.  The following animation shows the path a hypothetical inbound HTTP request would take to our application.  The left hand box is our `nestHttpApp` and the right hand box is our `nestMicroservice`.  Boxes with a red background are part of the Nest infrastructure. User supplied code lives in the "user land" space with a white background.  Controllers are in blue, and "Services" are in yellow.
+We already know we have to clean up a few things, like adding event handling, adding TypeScript types, and plugging in more cleanly to the framework.  But the biggest limitation of our Take 1 implementation is its handling of [RxJS observables]().  To fully appreciate this, we'll have to take a bit deeper dive into the overall flow and handling of requests through the Nest system.
+
+We'll explore this in greater detail in the next article, but let's start with a picture.  The following animation shows the path a hypothetical inbound HTTP request would take to our application.  The left hand box is our `nestHttpApp` and the right hand box is our `nestMicroservice`.  Boxes with a red background are part of the Nest infrastructure. User supplied code lives in the "user land" space with a white background.  Controllers are in blue, and "Services" are in yellow.
 
 ![Nest Request Handling](./assets/transporter-try1.gif 'Nest Request Handling')
-<figcaption><a name="screen-capture-2"></a>Figure 1: Nest Request Handling</figcaption>
+<figcaption><a name="Nest Request Handling"></a>Figure 1: Nest Request Handling</figcaption>
 
-An inbound HTTP request kicks off the following sequence of events.  Words highlighted in red represent Nest system responsibilities.  Words highlighted in blue represent user code.
+An inbound HTTP request kicks off the following sequence of events.  Words highlighted in red represent Nest system responsibilities.  Words highlighted in blue represent user code. There's probably nothing terribly surprising going on here, but let's just briefly walk through it.
 1. The request is **routed** to a <u>route handling method</u>.
-2. The <span style="color: blue;">route handling method</span> can either make a remote request directly, or <span style="color: blue;">call a service that makes a remote request</span>.
+2. The <font color="blue">route handling method</font> can either make a remote request directly, or <font color="blue">call a service that makes a remote request</font>.
 3. The remote request is handled by <span style="color: blue;">the broker client library</span> and sent to the broker.
 4.
+
+Things get more fun on the return trip.
+
+![Nest Response Handling](./assets/transporter-try1.gif 'Nest Response Handling')
+<figcaption><a name="Nest Response Handling"></a>Figure 2: Nest Response Handling</figcaption>
+
+Here, we introduce the role of what I'm informally calling the "Mapper" (there's no such official term or single component inside Nest called a mapper).  Conceptually, it's the part of the system that handles dealing with Observables.
+
+> In the next article, we'll go through a few use cases for **why observables are so cool AND easy to use**.  I know this diagram doesn't make it seem that way, but hey, we're building our own transporter (trekkie kid John can't help but giggle over that :smiley:).  The beauty of it is that once we handle this case properly --xxx-- and Nest will make this easy as we'll see in the next chapter --xx-- everything we might want to do with Observables (and the potential is just, well, enormous) **just works**.
+
+Here's the walk through of the return trip flow:
+
+So what exactly is the issue?
+
 Things work fine if our handlers return plain objects.  For example, we currently return an object in our `nestMicroservices` `getCustomers()` handler (last line below):
 
     ```typescript
@@ -286,7 +302,7 @@ Things work fine if our handlers return plain objects.  For example, we currentl
     }
     ```
 
-    But what happens if our handler returns an observable? The framework enables this for all built-in transporters, so we should too.  Let's test this.  Replace that last line with:
+But what happens if our handler returns an observable? The framework enables this for all built-in transporters, so we should too.  Let's test this.  Replace that last line with:
 
     ```typescript
     return of({customers, requestId, delay});
@@ -300,92 +316,6 @@ Things work fine if our handlers return plain objects.  For example, we currentl
     This causes our handler to return an **observable** &#8212; a stream (containing only a single value in our case, but still, a stream) of values.
 
     If you make this change, then reissue the `get-customers` message (run `npm run get-customers` in terminal 3), you'll get a rather ugly failure in the `nestMicroservice` window.  We aren't handling this case, which, again, is expected of any Nest microservice transporter.
-
-1. So far, we've only issued a single outstanding request to our responder app at a time.  What happens if, as in the real world, we start hitting it with multiple, overlapping requests?  Let's test this.</br></br>
-
-    If you ran the previous test (returning `of({customers, requestId, delay});` from `nestMicroservice/src/app.controller.ts`, undo that now: restore the final line to `return { customers, requestId, delay };` ).</br></br>
-
-    Now, with the `nestMicroservice` app running in terminal 4, run the following command in terminal 3 (which should be in the `customerApp` directory):
-
-    ```bash
-    npm run race
-    ```
-
-    This exposes a serious issue.  Take a look at the code behind the `race` command:
-
-    ```typescript
-    // customerApp/src/customer-app.ts
-          await getCustomers(process.argv[3]);
-      // here we've added a new cmd line option, `race`
-      // this is to test handling multiple outstanding
-      // requests
-    } else if (process.argv[2] === 'race') {
-      await getCustomers(1, 1, 10);
-      setTimeout(async () => {
-        await getCustomers(1, 2, 5);
-      }, 1000);
-    ```
-
-    We're issuing two `getCustomers` calls.  The first one tells the server to wait 10 seconds before returning.  We wait 1 second, then issue a second `getCustomers` call tells the server to wait 5 seconds before returning.  So we **should** expect two results: for `requestId = 2`, we should get the result in 5 seconds, and for `requestId = 1`, we should get it (about) 5 seconds later. Instead, we get **four** results, and they're all jumbled up!
-
-    ```bash
-    Faye customer app starts...
-    ===========================
-    <== Sending 'get-customers' request with payload:
-    {"pattern":"/get-customers","data":{"customerId":1,"requestId":1,"requestDelay":10},"id":"cfac0da7-a4ee-47f1-8d79-7a94dd8e575d"}
-
-    <== Sending 'get-customers' request with payload:
-    {"pattern":"/get-customers","data":{"customerId":1,"requestId":2,"requestDelay":5},"id":"b4b4bd0c-373e-41f6-842c-50b33f21c0d1"}
-
-    ==> Receiving 'get-customers' reply (request: 1):
-    {
-      "customers": [
-        {
-          "id": 1,
-          "name": "nestjs.com"
-        }
-      ],
-      "requestId": 2,
-      "delay": 5000
-    }
-
-    ==> Receiving 'get-customers' reply (request: 2):
-    {
-      "customers": [
-        {
-          "id": 1,
-          "name": "nestjs.com"
-        }
-      ],
-      "requestId": 2,
-      "delay": 5000
-    }
-
-    ==> Receiving 'get-customers' reply (request: 1):
-    {
-      "customers": [
-        {
-          "id": 1,
-          "name": "nestjs.com"
-        }
-      ],
-      "requestId": 1,
-      "delay": 10000
-    }
-
-    ==> Receiving 'get-customers' reply (request: 2):
-    {
-      "customers": [
-        {
-          "id": 1,
-          "name": "nestjs.com"
-        }
-      ],
-      "requestId": 1,
-      "delay": 10000
-    }
-    ```
-    What's going on?  You can easily note in the Faye log and the `nestMicroservice` log that the requests are executing normally and in the right sequence, but somehow we're delivering them incorrectly!
 
 With these issues in mind, we're ready to step up our game and make the `ServerFaye` custom transporter much more robust.  We'll tackle that in the next article.
 
