@@ -3,7 +3,7 @@ published: False
 title: "Part 1: Introduction and Setup"
 description: "tags: nestjs, nest, faye, microservices, node.js"
 series: "Advanced NestJS Microservices"
-cover_image:
+cover_image: "https://dev-to-uploads.s3.amazonaws.com/i/xfufso3eksnpj0x9q1iw.gif"
 canonical_url:
 ---
 
