@@ -249,9 +249,9 @@ Read on to see where we've still got work to do.
 
 ### Understanding the Limitations of Take 1
 
-We already know we have to clean up a few things, like adding event handling, adding TypeScript types, and plugging in more cleanly to the framework.  But the biggest limitation of our Take 1 implementation is its handling of [RxJS observables]().  To fully appreciate this, we'll have to take a bit deeper dive into the overall flow and handling of requests through the Nest system.
+We already know we have to clean up a few things, like adding **event handling** (e.g., handlers decorated with `@EventPattern(...)`), adding TypeScript types, and plugging in more cleanly to the framework.  But the biggest limitation of our Take 1 implementation is its handling of [RxJS observables]().  To fully appreciate this, we'll have to take a bit deeper dive into the overall flow and handling of requests through the Nest system.
 
-We'll explore this in greater detail in the next article, but let's start with a picture.  The following animation shows the path a hypothetical inbound HTTP request would take to our application.  The left hand box is our `nestHttpApp` and the right hand box is our `nestMicroservice`.  Boxes with a red background are part of the Nest infrastructure. User supplied code lives in the "user land" space with a white background.  Controllers are in blue, and "Services" are in yellow.
+We'll explore this in greater detail in the next article, but let's start with a picture.  The following animation shows the path a hypothetical inbound HTTP request would take through our application.  The left hand box is our `nestHttpApp` and the right hand box is our `nestMicroservice`.  Boxes with a red background are part of the Nest infrastructure. User supplied code lives in the "user land" space with a white background.  Controllers are in blue, and "Services" are in yellow.
 
 ![Nest Request Handling](./assets/transporter-try1.gif 'Nest Request Handling')
 <figcaption><a name="Nest Request Handling"></a>Figure 1: Nest Request Handling</figcaption>
@@ -266,22 +266,30 @@ An inbound HTTP request kicks off the following sequence of events.  Bolded word
     ```typescript
     getCustomers(id: integer): Observable<Customer>
     ```
-7. Now we're on the return trip.  Read on for more on that sequence.
 
-Things get more fun on the **return trip**.  Mainly because Nest is very **observable-aware**.
+Once the `getCustomers` method returns, we start the *return trip*, where things get more interesting. This is mainly because Nest is very **observable-aware**.
 
 ![Nest Response Handling](./assets/transporter-response.gif 'Nest Response Handling')
 <figcaption><a name="Nest Response Handling"></a>Figure 2: Nest Response Handling</figcaption>
 
-Here, we introduce the role of what I'm informally calling the "Mapper" (there's no such official term or single component inside Nest called a mapper).  Conceptually, it's the part of the system that handles dealing with Observables.
+In this sequence, I'll introduce the role of what I'm informally calling the "Mapper" (there's no such official term or single component inside Nest called a Mapper).  Conceptually, it's the part(s) of the system that handle(s) dealing with Observables.
 
-> In the next article, we'll go through a few use cases for **why observables are so cool AND easy to use**.  I know this diagram doesn't make it seem that way, but hey, we're building our own transporter (my inner [trekky](http://sfi.org/) can't help but giggle over that :smiley:).  The beauty of it is that once we handle this case properly --xxx-- and Nest will make this easy as we'll see in the next chapter --xx-- everything we might want to do with Observables (and the potential is just, well, enormous) **just works**.
+> In the next article, we'll go through a few use cases for **why observables are so cool, such a great fit in this flow, AND how they're really easy to use**.  I know this diagram doesn't make it seem that way, but hey, we're building our own transporter (my inner [trekky](http://sfi.org/) can't help but giggle over that :smiley:).  The beauty of it is that once we handle this case properly &#8212; and Nest will make this easy as we'll see in the next chapter &#8212; everything we might want to do with Observables (and their potential is just, well, *enormous*) **just works**.
 
 Here's the walk through of the return trip flow:
 
+1. <u>Our handler</u> (on its own, perhaps, or by getting a return value from a service it calls) return the result. In terms of our example, it's returning a list of customers.
+2. Now, if the response is a "plain" value (JavaScript primitive, array or object), there's not much work to be done other than send it back to the broker. But, if the response is a Promise or Observable, **Nest steps in and makes this extremely easy** for us to work with.  That's the job of the **mapper**.
+3. Once the response is prepared from `nestMicroservice`, it's **delivered to the Faye broker** via the broker client library.
+4. The broker takes care of **publishing the response**.
+5. On the `nestHttpApp` side, the broker client library (which has previously registered for the response &#8212; though we haven't coded that part yet), **receives the response message**.
+6. The `ClientProxy` class (again, we haven't built this yet) takes care of **routing and mapping** (if it's dealing with non-Primitive responses).
+7. This routes the response to the <u>originating service</u>, then back to the <u>originating controller</u>.
+8. Finally, the Nest HttpAdapter software again, if needed, **maps responses**.  For example, if the response is an observable or a promise, it **converts it to an appropriate form** for return over HTTP.
+
 So what exactly is the issue?
 
-Things work fine if our handlers return plain objects.  For example, we currently return an object in our `nestMicroservices` `getCustomers()` handler (last line below):
+As you might expect from the above, things work fine if our handlers return plain objects.  For example, we currently return an object in our `nestMicroservices` `getCustomers()` handler (last line below):
 
     ```typescript
     // nestMicroservice/src/app.controller.ts
@@ -310,25 +318,26 @@ Things work fine if our handlers return plain objects.  For example, we currentl
 
 But what happens if our handler returns an observable? The framework enables this for all built-in transporters, so we should too.  Let's test this.  Replace that last line with:
 
-    ```typescript
-    return of({customers, requestId, delay});
-    ```
+```typescript
+return of({customers, requestId, delay});
+```
 
-    You'll also have to add this line to the top of the file:
-    ```typescript
-    import { of } from 'rxjs';
-    ```
+You'll also have to add this line to the top of the file:
+```typescript
+import { of } from 'rxjs';
+```
 
-    This causes our handler to return an **observable** &#8212; a stream (containing only a single value in our case, but still, a stream) of values.
+This causes our handler to return an **observable** &#8212; a stream (containing only a single value in our case, but still, a stream) of values.
 
-    If you make this change, then reissue the `get-customers` message (run `npm run get-customers` in terminal 3), you'll get a rather ugly failure in the `nestMicroservice` window.  We aren't handling this case, which, again, is expected of any Nest microservice transporter.
-
-With these issues in mind, we're ready to step up our game and make the `ServerFaye` custom transporter much more robust.  We'll tackle that in the next article.
-
-
+If you make this change, then reissue the `get-customers` message (run `npm run get-customers` in terminal 3), you'll get a rather ugly failure in the `nestMicroservice` window.  We aren't handling this case, which, again, is expected of any Nest microservice transporter.
 
 ### What's Next
 
-In [Part 3](xxx),
+With these issues in mind, we're ready to step up our game and make the `ServerFaye` custom transporter much more robust.  We'll tackle that in the next article.
+
+In [Part 3](xxx), we cover:
+* A
+* B
+* C
 
 Feel free to ask questions, make comments or suggestions, or just say hello in the comments below. And join us at [Discord](https://discord.gg/nestjs) for more happy discussions about NestJS. I post there as _Y Prospect_.
