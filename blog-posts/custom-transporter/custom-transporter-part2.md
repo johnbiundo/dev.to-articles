@@ -3,7 +3,7 @@ published: False
 title: "Part 2: Basic Server Component"
 description: "tags: nestjs, nest, faye, microservices, node.js"
 series: "Advanced NestJS Microservices"
-cover_image:
+cover_image: "https://dev-to-uploads.s3.amazonaws.com/i/0pg4mzdjilg9qfpn819w.gif"
 canonical_url:
 ---
 
