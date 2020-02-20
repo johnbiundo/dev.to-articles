@@ -249,9 +249,15 @@ Read on to see where we've still got work to do.
 
 ### Understanding the Limitations of Take 1
 
-We already know we have to clean up a few things, like adding event handling, adding TypeScript types, and plugging in more cleanly to the framework.  But the biggest limitations are these:
+We already know we have to clean up a few things, like adding event handling, adding TypeScript types, and plugging in more cleanly to the framework.  But the biggest limitation of our Take 1 implementation is its handling of [RxJS observables]().  To fully appreciate this, we'll have to take a bit deeper dive into the overall flow and handling of requests through the Nest system. We'll explore this in greater detail in the next article, but let's start with a picture.  The following animation shows the path a hypothetical inbound HTTP request would take to our application.  The left hand box is our `nestHttpApp` and the right hand box is our `nestMicroservice`.  Boxes with a red background are part of the Nest infrastructure. User supplied code lives in the "user land" space with a white background.  Controllers are in blue, and "Services" are in yellow.
 
-1. Things work fine if our handlers return plain objects.  For example, we currently return an object in our `nestMicroservices` `getCustomers()` handler (last line below):
+![Nest Request Handling](./assets/transporter-try1.gif 'Nest Request Handling')
+<figcaption><a name="screen-capture-2"></a>Figure 1: Nest Request Handling</figcaption>
+
+An inbound HTTP request kicks off the following sequence of events.  Words highlighted in red represent Nest system responsibilities.  Words highlighted in blue represent user code.
+1. The request is <span style="color: red;">routed</span> to a <span style="color: blue;">route handling method</span>.
+
+Things work fine if our handlers return plain objects.  For example, we currently return an object in our `nestMicroservices` `getCustomers()` handler (last line below):
 
     ```typescript
     // nestMicroservice/src/app.controller.ts
@@ -293,7 +299,7 @@ We already know we have to clean up a few things, like adding event handling, ad
 
     If you make this change, then reissue the `get-customers` message (run `npm run get-customers` in terminal 3), you'll get a rather ugly failure in the `nestMicroservice` window.  We aren't handling this case, which, again, is expected of any Nest microservice transporter.
 
-2. So far, we've only issued a single outstanding request to our responder app at a time.  What happens if, as in the real world, we start hitting it with multiple, overlapping requests?  Let's test this.</br></br>
+1. So far, we've only issued a single outstanding request to our responder app at a time.  What happens if, as in the real world, we start hitting it with multiple, overlapping requests?  Let's test this.</br></br>
 
     If you ran the previous test (returning `of({customers, requestId, delay});` from `nestMicroservice/src/app.controller.ts`, undo that now: restore the final line to `return { customers, requestId, delay };` ).</br></br>
 
@@ -382,8 +388,6 @@ We already know we have to clean up a few things, like adding event handling, ad
 With these issues in mind, we're ready to step up our game and make the `ServerFaye` custom transporter much more robust.  We'll tackle that in the next article.
 
 
-![Native App Demo](./assets/transporter-try1.gif 'Native App Demo')
-<figcaption><a name="screen-capture-2"></a>Screen Capture 2: Native App Demo</figcaption>
 
 ### What's Next
 
