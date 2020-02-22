@@ -263,9 +263,10 @@ An inbound HTTP request kicks off the following sequence of events.  Bolded word
 4. The remote request is received by **the broker client library** in the `nestMicroservice` app.
 5. The request is **routed** to the correct handler (e.g., a method decorated with `@MessagePattern('get-customers')`) based on matching the pattern in the request with the pattern in the method decorator.
 6. The <u>request handling method</u> may make a call to other services (which in turn, could make their own internal calls or remote calls).  Let's say it does make such a call, to the `custService.getCustomers()` method, and that method has a signature like this:
-```typescript
-getCustomers(id: integer): Observable<Customer>
-```
+
+    ```typescript
+    getCustomers(id: integer): Observable<Customer>
+    ```
 
 Once the `getCustomers` method returns, we start the *return trip*, where things get more interesting. This is mainly because Nest is very **observable-aware**.
 
