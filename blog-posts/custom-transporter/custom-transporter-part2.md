@@ -16,9 +16,9 @@ xxx longdash:
 
 **Reminder**: Many of the concepts and terminology here are introduced and explained in [this article series](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-1-p3). That series serves as a good foundation for understanding the more advanced concepts covered in this series.
 
-** Get the code **
+** get the code **
 
-** Build the apps **
+** build the apps **
 
 ### Organizing the Code
 
