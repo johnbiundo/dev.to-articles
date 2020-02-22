@@ -295,7 +295,7 @@ We already know we have to clean up a few things, like adding **event handling**
 
 We'll explore this in greater detail in the next article, but let's start with a picture.  The following animation shows the path a hypothetical inbound HTTP request would take through our application.  The left hand box is our `nestHttpApp` and the right hand box is our `nestMicroservice`.  Inner boxes with a red background are part of the Nest infrastructure. User supplied code lives in the "user land" space with a white background.  Controllers are in light blue, and "Services" are in yellow.
 
-![Nest Request Handling](./assets/transporter-try1.gif 'Nest Request Handling')
+![Nest Request Handling](./assets/transporter-request.gif 'Nest Request Handling')
 <figcaption><a name="Nest Request Handling"></a>Figure 1: Nest Request Handling</figcaption>
 
 An inbound HTTP request kicks off the following sequence of events.  Bolded words represent Nest system responsibilities.  Underlined words represent user code. There's probably nothing terribly surprising going on here, but let's just briefly walk through it.
@@ -312,7 +312,7 @@ An inbound HTTP request kicks off the following sequence of events.  Bolded word
 
 Once the `getCustomers` method returns, we start the *return trip*, where things get more interesting. This is mainly because Nest is very **observable-aware**.
 
-![Nest Response Handling](./assets/transporter-response.gif 'Nest Response Handling')
+![Nest Response Handling](./assets/transporter-response2.gif 'Nest Response Handling')
 <figcaption><a name="Nest Response Handling"></a>Figure 2: Nest Response Handling</figcaption>
 
 In this sequence, I'll introduce the role of what I'm informally calling the "Mapper" (there's no such official term or single component inside Nest called a Mapper).  Conceptually, it's the part(s) of the system that handle(s) dealing with Observables.
