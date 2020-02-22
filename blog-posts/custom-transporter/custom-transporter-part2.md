@@ -291,15 +291,15 @@ Not so fast... did you forget this is a five-part series :smiley:? Read on to se
 
 ### Understanding the Limitations of Take 1
 
-We already know we have to clean up a few things, like adding **event handling** (e.g., handlers decorated with `@EventPattern(...)`), adding TypeScript types, and plugging in more cleanly to the framework.  But the biggest limitation of our Take 1 implementation is its (lack of) handling of [RxJS observables]().  To fully appreciate this, we'll have to take a bit deeper dive into the overall flow and handling of requests through the Nest system.
+We already know we have to clean up a few things, like adding **event handling** (e.g., handlers decorated with `@EventPattern(...)`), adding TypeScript types, and plugging in more cleanly to the framework.  But the biggest limitation of our Take 1 implementation is its (lack of) handling of [RxJS observables](http://reactivex.io/).  To fully appreciate this, we'll have to take a bit deeper dive into the overall flow and handling of requests through the Nest system.
 
-We'll explore this in greater detail in the next article, but let's start with a picture.  The following animation shows the path a hypothetical inbound HTTP request would take through our application.  The left hand box is our `nestHttpApp` and the right hand box is our `nestMicroservice`.  Inner boxes with a red background are part of the Nest infrastructure. User supplied code lives in the "user land" space with a white background.  Controllers are in light blue, and "Services" are in yellow.
+We'll explore this in greater detail in the next article, but let's start with a picture.  The following animation shows the path a hypothetical inbound HTTP request would take through our application. Inner boxes with a red background are part of the Nest infrastructure. User supplied code lives in the "user land" space with a white background.  Controllers are in light blue, and "Services" are in yellow.
 
 ![Nest Request Handling](./assets/transporter-request.gif 'Nest Request Handling')
 <figcaption><a name="Nest Request Handling"></a>Figure 1: Nest Request Handling</figcaption>
 
 An inbound HTTP request kicks off the following sequence of events.  Bolded words represent Nest system responsibilities.  Underlined words represent user code. There's probably nothing terribly surprising going on here, but let's just briefly walk through it.
-1. The request is **routed** to a <u>route handling method</u> (like `getCustomers` in ouor controller).
+1. The request is **routed** to a <u>route handling method</u> (like `getCustomers` in our controller).
 2. The <u>route handling method</u> can either make a remote request directly, or <u>call a service that makes a remote request</u>.
 3. The remote request is handled by **the broker client library** and sent to the broker.
 4. The remote request is received by **the broker client library** in the `nestMicroservice` app.
@@ -317,18 +317,18 @@ Once the `getCustomers` method returns, we start the *return trip*, where things
 
 In this sequence, I'll introduce the role of what I'm informally calling the "Mapper" (there's no such official term or single component inside Nest called a Mapper).  Conceptually, it's the part(s) of the system that handle(s) dealing with Observables.
 
-> In the next article, we'll go through a few use cases for **why observables are so cool, why they're a perfect fit in this flow, AND how they're actually really easy to use**.  I know this diagram doesn't make it seem that way, but hey, we're building our own transporter (my inner [trekky](http://sfi.org/) can't help but giggle over that :smiley:).  The beauty of it is that once we handle this case properly &#8212; and the framework will make this easy as we'll see in the next chapter &#8212; everything we might want to do with Observables (and their potential is just, well, *enormous*) **just works**.
+> In the next article, we'll go through a few use cases for **why observables are so cool, why they're a perfect fit in this flow, AND how they're actually really easy to use**.  I know this diagram doesn't make it seem that way, but hey, we're building our own transporter (my inner [trekky](http://sfi.org/) can't help but giggle over that :rocket:).  The beauty of it is that once we handle this case properly &#8212; and the framework will make this easy as we'll see in the next chapter &#8212; everything we might want to do with Observables (and their potential is just, well, *enormous*) **just works**.
 
 Here's the walk through of the return trip flow:
 
-1. <u>Our handler</u> (on its own, perhaps, or by getting a return value from a service it calls) return the result. In terms of our example, it's returning a list of customers.
+1. <u>Our handler</u> in `nestMicroservice` (on its own, perhaps, or by getting a return value from a service it calls) returns the result. In terms of our example, it's returning a list of customers.
 2. Now, if the response is a "plain" value (JavaScript primitive, array or object), there's not much work to be done other than send it back to the broker. But, if the response is a Promise or Observable, **Nest steps in and makes this extremely easy** for everything downstream to work with.  That's the job of the **mapper**.
 3. Once the response is prepared from `nestMicroservice`, it's **delivered to the Faye broker** via the broker client library.
 4. The broker takes care of **publishing the response**.
-5. On the `nestHttpApp` side, the broker client library (which has previously registered for the response &#8212; though we haven't coded that part yet), **receives the response message**.
-6. The `ClientProxy` class (again, we haven't built this yet) takes care of **routing and mapping** (if it's dealing with non-primitive responses).
+5. On the `nestHttpApp` side, the broker client library (which has previously subscribed to the broker on the *response channel* &#8212; though we haven't coded that part yet), **receives the response message**.
+6. The `ClientProxy` class (again, we haven't built this yet) takes care of **routing** (and **mapping**, if it's dealing with non-primitive responses).
 7. This routes the response to the <u>originating service</u>, then back to the <u>originating controller</u>.
-8. Finally, the Nest HttpAdapter software again, if needed, **maps responses** to a suitable for for HTTP transport.  For example, if the response is an observable or a promise, it **converts it to an appropriate form** for return over HTTP.
+8. Finally, the Nest HttpAdapter software again, if needed, **maps responses** to a suitable form for HTTP transport.  For example, if the response is an observable or a promise, it **converts it to an appropriate form** for return over HTTP.
 
 So what exactly is the issue?
 
@@ -338,28 +338,15 @@ As you might expect from the above, things work fine if our handlers return plai
 // nestMicroservice/src/app.controller.ts
 @MessagePattern('/get-customers')
 async getCustomers(data: any): Promise<any> {
-  const delay = (data.requestDelay && data.requestDelay * 1000) || 0;
-  const requestId = data.requestId || 0;
-  console.log(`delay: ${delay}, requestId: ${requestId}`);
-
-  function sleep() {
-    return new Promise(resolve => {
-      setTimeout(() => {
-        resolve();
-      }, delay);
-    });
-  }
-
-  await sleep();
   const customers =
     data && data.customerId
       ? customerList.filter(cust => cust.id === parseInt(data.customerId, 10))
       : customerList;
-  return { customers, requestId, delay };
+  return { customers };
 }
-    ```
+```
 
-But what happens if our handler returns an observable? The framework enables this for all built-in transporters, so we should too.  Let's test this.  Replace that last line with:
+But what happens if our handler returns an observable? The framework enables this for all built-in transporters, so we should handle it too.  Let's test this.  Replace that last line in `app.controller.ts` with:
 
 ```typescript
 return of({customers, requestId, delay});
