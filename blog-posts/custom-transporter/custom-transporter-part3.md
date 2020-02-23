@@ -166,7 +166,11 @@ Let's go from the specific case above to the recipe you should use when building
     c. Build a `publish()` function.  That function should always take a single input argument, and return a function call that runs the native `publish()` call (or the broker client API equivalent).<br/>
     d. Invoke the built-in inherited `this.send()` helper method, passing in the observable constructed in step b and the publish function built in step c.
 
-Your construction will probably look something like the Faye strategy above, but the details can vary because the protocols and APIs for different brokers can vary.  In [Part 6] of this series, we'll take a look at a few different broker implementations to see how they vary.
+Your construction will probably look something like the Faye strategy above, but the details can vary because the protocols and APIs for different brokers can vary.  In [Part 6]() of this series, we'll take a look at a few different broker implementations to see how they vary.
+
+### Handle Events
+
+We skipped handling events &#8212; those user-written handlers that are decorated with `@EventPattern(...)`.  Let's take care of those now.  They turn out to be a lot easier than *request/response* type messages precisely because they don't require any response.
 
 ### What's Next
 
