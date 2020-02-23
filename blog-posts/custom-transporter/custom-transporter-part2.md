@@ -179,10 +179,10 @@ The interesting thing in `start()` is the call to `this.bindHandlers()`.  Take a
   }
 ```
 
-The comments should help with understanding what's happening, but at a high level, the concept is pretty clear:
-1. Iterate over all of our "message handlers" (these are the user-land Controller methods decorated with `@MessagePattern()`; they're made available to us by the framework which performs introspection using the `Reflect` API  during the bootstrap process).\*
+The comments should help with understanding what's happening, but at a high level, the strategy should be pretty clear:
+1. Iterate over all of our "message handlers" (these are the user-land Controller methods decorated with `@MessagePattern()`; a list of them is made available to us  (`this.messageHandlers`) by the framework which performs introspection using the `Reflect` API  during the bootstrap process).\*
 2. For each one, subscribe to the inbound channel (the `_ack` form of the topic).  Remember, a Faye client's `subscribe()` call registers a callback handler to be invoked whenever the Faye client library receives an inbound message matching this topic.  So this is the step where we map *patterns* to *handlers*. In short, this is our "router".
-3. The subscription handler in step 2, when invoked, runs the *actual* pattern handler (the user-land handler method decorated with something like `@MessagePattern('get-customer')`), and *returns* the result it gets from that method.  When we say "return", we mean **publishing a reply** on the outbound channel (the `_res` form of the topic).
+3. The subscription handler in step 2, when invoked, runs the *actual* user supplied handler (the user-land handler method decorated with something like `@MessagePattern('get-customer')`), and *returns* the result it gets from that method.  When we say "returns", we mean **publishes a reply** on the outbound channel (the `_res` form of the topic).
 4. Along the way, we run our deserializer on the inbound message, our serializer on the outbound response, and we package up the data produced by the user's pattern handler in an appropriately shaped standard Nest transporter message object.
 
 \*We are omitting *event handlers* (methods decorated with `@EventPattern(...)`) for now.  We'll handle these in Take 2 of our server component, in the next article.
@@ -200,15 +200,15 @@ Now's a good time to mention a couple of things about the development setup:
 In the following steps, I'll reference these (logical) terminals as:
 * terminal 1: run the Faye broker here
 * terminal 2: run live builds (`npm build:watch`) of the transporter server code we're working on here
-* terminal 3: run the "client" code.  This is usually the customerApp; we also sometimes interact with `nestHttpApp` using HttPie commands here (you can also use Postman, or Curl to issue HTTP requests, of course). We can use one terminal for this since we don't typically run both the `customerApp` and the `nestHttpApp` at the same time
-* terminal 4: run the `nestMicroservice` testing application (this is the plain old Nest microservice app that will be **using** our new `ServerFaye` custom transporter)
+* terminal 3: run the "requestor code".  This is usually the customerApp; in the future, we'll also interact with `nestHttpApp` (making **it** the requestor) using HttPie commands from the OS prompt (you can also use Postman, or Curl to issue HTTP requests, of course). We can use one terminal for this since we don't typically run both the `customerApp` and the `nestHttpApp` at the same time
+* terminal 4: run the `nestMicroservice` Nest responder application (this is the plain old Nest microservice app that will be **using** our new `ServerFaye` custom transporter)
 
 #### Primary Acceptance Test
 
 Going back to our requirements, our main acceptance test is simple: send a well-formed message from our native `customerApp` (acting as a requestor) to our `nestMicroservice` (acting as a responder), and get back a proper response.
 
-((Diagram))
-
+![Faye Transporter Acceptance Test](./assets/acceptance-test.png 'Faye Transporter Acceptance Test')
+<figcaption><a name="figure1"></a>Figure 1: Faye Transporter Acceptance Test</figcaption>
 
 ##### Using `npm link` in Our Development Environment
 
@@ -218,18 +218,20 @@ We're going to use the `npm link` command ([read details here](https://medium.co
 
 1. In terminal 2, make sure you're in the folder `nestjs-faye-transporter` (our NPM package folder).  Then run `npm link` at the OS level.  You should see output like this:
 
-    > $ npm link
-    >
-    > @faye-tut/nestjs-faye-transporter@1.0.1 prepare /home/john/code/nest-micro/nestjs-faye/nestjs-faye-transporter
-    > npm run build
-    >
-    > @faye-tut/nestjs-faye-transporter@1.0.1 build /home/john/code/nest-micro/nestjs-faye/nestjs-faye-transporter
-    > tsc
-    >
-    > (... some lines omitted ...)
-    >
-    > /home/john/.nvm/versions/node/v10.18.1/lib/node_modules/@faye-tut/nestjs-faye-transporter ->
-    > /home/john/code/nest-micro/nestjs-faye/nestjs-faye-transporter
+    ```bash
+    $ npm link
+
+    @faye-tut/nestjs-faye-transporter@1.0.1 prepare /home/john/code/nest-micro/nestjs-faye/nestjs-faye-transporter
+    npm run build
+
+    @faye-tut/nestjs-faye-transporter@1.0.1 build /home/john/code/nest-micro/nestjs-faye/nestjs-faye-transporter
+    tsc
+
+     (... some lines omitted ...)
+
+    /home/john/.nvm/versions/node/v10.18.1/lib/node_modules/@faye-tut/nestjs-faye-transporter ->
+    /home/john/code/nest-micro/nestjs-faye/nestjs-faye-transporter
+    ```
 
 2. In terminal 4, make sure you're in the folder `nestMicroservice`.  Then run `npm link @faye-tut/nestjs-faye-transporter` at the OS level.  This command references the NPM package name (found in `nestjs-faye-transporter/package.json`) for our custom transporter.  You should see output like this:
 
