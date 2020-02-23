@@ -235,9 +235,11 @@ We're going to use the `npm link` command ([read details here](https://medium.co
 
 2. In terminal 4, make sure you're in the folder `nestMicroservice`.  Then run `npm link @faye-tut/nestjs-faye-transporter` at the OS level.  This command references the NPM package name (found in `nestjs-faye-transporter/package.json`) for our custom transporter.  You should see output like this:
 
-    > $ npm link @faye-tut/nestjs-faye-transporter
-    > /home/john/code/nest-micro/nestjs-faye/nestMicroservice/node_modules/@faye-tut/nestjs-faye-transporter ->
-    > /home/john/code/nest-micro/nestjs-faye/nestjs-faye-transporter
+    ```bash
+    $ npm link @faye-tut/nestjs-faye-transporter
+    /home/john/code/nest-micro/nestjs-faye/nestMicroservice/node_modules/@faye-tut/nestjs-faye-transporter ->
+    /home/john/code/nest-micro/nestjs-faye/nestjs-faye-transporter
+    ```
 
 
 At this point, our `nestMicroservice` testing app is live-linked to the custom transporter code in the `@faye-tut/nestjs-faye-transporter` NPM package we're working on.
@@ -248,20 +250,25 @@ We're ready to rock and roll :musical_note:!
 
 In terminal 1, make sure the Faye broker is running. First make sure you're in the `faye-server` directory, then run `npm run start`.  You should see something like this:
 
-> $ npm run start
-> \> simple-fay-eserver@1.0.0 start /home/john/code/nest-micro/nestjs-faye/faye-server
-> \> node server.js
->
-> listening on http://localhost:8000/faye
-> \========================================
+```bash
+$ npm run start
+simple-faye-server@1.0.0 start /home/john/code/nest-micro/nestjs-faye/faye-server
+node server.js
+
+listening on http://localhost:8000/faye
+========================================
+```
 
 In terminal 2, start the `nestMicroservice`.  First make sure you're in the `nestMicroservice` directory, then run `npm run start:dev`.  You should see the usual Nest startup logs, followed by the message `Microservice is listening...`.
 
-In terminal 3, we'll run the native `customerApp` to make the request.  Earlier, we used this to send requests to the native `customerService` app.  Now we're sending those messages (via the Faye broker, of course) to the `nestMicroservice`.  Make sure you're in the `customerApp` directory, then...
+In terminal 3, we'll run the native `customerApp` to make the request.  Earlier, we used this app to send requests to the native `customerService` app.  Now we're sending those messages (via the Faye broker, of course) to the `nestMicroservice`.  Make sure you're in the `customerApp` directory, then...
 
-... keep your eyes on all 3 terminal windows, and...
+... keep your eyes on all three terminal windows so you don't miss the magic, and...
 
-run `npm run get-customers`.
+```bash
+# in terminal 3 window...
+npm run get-customers
+```
 
 If all went well, you should see a flurry of log messages.  I strongly encourage you to take the time to look at them and make sure you can follow the flow of what's happening.  In terminal 3, we should get a nice response that looks like this:
 
@@ -319,11 +326,11 @@ Once the `getCustomers` method returns, we start the *return trip*, where things
 
 In this sequence, I'll introduce the role of what I'm informally calling the "Mapper" (there's no such official term or single component inside Nest called a Mapper).  Conceptually, it's the part(s) of the system that handle(s) dealing with Observables.
 
-> In the next article, we'll go through a few use cases for **why observables are so cool, why they're a perfect fit in this flow, AND how they're actually really easy to use**.  I know this diagram doesn't make it seem that way, but hey, we're building our own transporter (my inner [trekky](http://sfi.org/) can't help but giggle over that :rocket:).  The beauty of it is that once we handle this case properly &#8212; and the framework will make this easy as we'll see in the next chapter &#8212; everything we might want to do with Observables (and their potential is just, well, *enormous*) **just works**.
+> In the next article, we'll go through a few use cases for **why observables are so cool, why they're a perfect fit in this flow, AND how they're actually really easy to use**.  I know this diagram doesn't make it seem that way, but hey, we're building our own transporter (my inner [trekky](http://sfi.org/) can't help but giggle over that :rocket:).  The beauty of it is that once we handle this case properly &#8212; and the framework will make this easy as we'll see in the next chapter &#8212; everything we might want to do with Observables (and their potential is just, well... *mind bending*) **just works**.
 
 Here's the walk through of the return trip flow:
 
-1. <u>Our handler</u> in `nestMicroservice` (on its own, perhaps, or by getting a return value from a service it calls) returns the result. In terms of our example, it's returning a list of customers.
+1. <u>Our handler</u> in `nestMicroservice` (perhaps directly, or perhaps by calling a service) returns the result. In terms of our example, it's returning a list of customers.
 2. Now, if the response is a "plain" value (JavaScript primitive, array or object), there's not much work to be done other than send it back to the broker. But, if the response is a Promise or Observable, **Nest steps in and makes this extremely easy** for everything downstream to work with.  That's the job of the **mapper**.
 3. Once the response is prepared from `nestMicroservice`, it's **delivered to the Faye broker** via the broker client library.
 4. The broker takes care of **publishing the response**.
@@ -348,18 +355,18 @@ async getCustomers(data: any): Promise<any> {
 }
 ```
 
-But what happens if our handler returns an observable? The framework enables this for all built-in transporters, so we should handle it too.  Let's test this.  Replace that last line in `app.controller.ts` with:
+But what happens if our handler returns an observable? The framework enables this for all built-in transporters, so we should handle it too.  Let's test this really quickly.  Replace that last line in `app.controller.ts` with:
 
 ```typescript
-return of({customers, requestId, delay});
+return of({customers});
 ```
 
-You'll also have to add this line to the top of the file:
+You'll also have to add the following line to the top of the file:
 ```typescript
 import { of } from 'rxjs';
 ```
 
-This causes our handler to return an **observable** &#8212; a stream (containing only a single value in our case, but still, a stream) of values.
+This construct causes our handler to return an **observable** &#8212; a stream (containing only a single value in our case, but still, a stream) of values.
 
 If you make this change, then re-issue the `get-customers` message (run `npm run get-customers` in terminal 3), you'll get a rather ugly failure in the `nestMicroservice` window.  We aren't handling this case, which, again, is expected of any Nest microservice transporter.
 
@@ -368,8 +375,9 @@ If you make this change, then re-issue the `get-customers` message (run `npm run
 With these issues in mind, we're ready to step up our game and make the `ServerFaye` custom transporter much more robust.  We'll tackle that in the next article.
 
 In [Part 3](xxx), we cover:
-* A
-* B
-* C
+* A little side expedition on how and why you should care about the "Observables issue" we just uncovered
+* Handling events (e.g., `@EventPattern(...)` decorated methods in our responder app)
+* Adding types
+* A few other minor items to clean up our app and make it production worthy
 
 Feel free to ask questions, make comments or suggestions, or just say hello in the comments below. And join us at [Discord](https://discord.gg/nestjs) for more happy discussions about NestJS. I post there as _Y Prospect_.
