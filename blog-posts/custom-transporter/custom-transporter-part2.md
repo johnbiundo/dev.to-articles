@@ -16,7 +16,7 @@ xxx longdash:
 
 **Reminder**: Many of the concepts and terminology here are introduced and explained in [this article series](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-1-p3). That series serves as a good foundation for understanding the more advanced concepts covered in this series.
 
-All of the code in these articles is available [here]().  As always, these tutorials work best if you follow along with the code.  The [READM]() covers all the steps you need to get the repository, build the apps, and follow along.  It's easy!  I strongly encourage you to do so.
+All of the code in these articles is available [here]().  As always, these tutorials work best if you follow along with the code.  The [README]() covers all the steps you need to get the repository, build the apps, and follow along.  It's easy!  I strongly encourage you to do so.
 
 #### Building the Apps for this Article
 
