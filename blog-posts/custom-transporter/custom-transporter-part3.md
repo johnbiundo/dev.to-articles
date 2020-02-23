@@ -162,16 +162,16 @@ Let's go from the specific case above to the recipe you should use when building
 1. Implement the code that handles responding to requests (that is, code that **typically** runs a broker client API `subscribe()`-like command responsible for registering the response handler with the broker).  In our example, this is done with the `bindHandlers()` method.  In this method, you **must dynamically construct** the call you are registering with `subscribe()`.  That's the job of the next step.
 2. Call a method to dynamically construct the call to the response handler being registered.  In our example, this is done with the `getMessageHandler()` method.  That method is responsible for the following steps:
 
-    1. Deserialize the inbound request<br/>
-    2. Build an observable response using the built-in inherited `this.transformToObservable()` utility, passing in an awaited call to the target handler (this is the user-supplied method bound to a pattern with `@MessagePattern()`)<br/>
-    3. Build a `publish()` function.  That function should always take a single input argument, and return a function call that runs the native `publish()` call (or the broker client API equivalent).<br/>
-    4. Invoke the built-in inherited `this.send()` helper method, passing in the observable constructed in step  and the publish function built in step c.
+    1. Deserialize the inbound request
+    2. Build an observable response using the built-in inherited `this.transformToObservable()` utility, passing in an *awaited* call to the *target handler* (the *target handler* is the user-supplied method bound to a pattern with `@MessagePattern()`).
+    3. Build a `publish()` function.  That function should always take a single input argument, and return a function call that runs the native `publish()` call (or the broker client API equivalent).
+    4. Invoke the built-in inherited `this.send()` helper method, passing in the observable constructed in step  and the publish function built in step 3.
 
-Your construction will probably look something like the Faye strategy above, but the details can vary because the protocols and APIs for different brokers can vary.  In [Part 6]() of this series, we'll take a look at a few different broker implementations to see how they vary.
+An implementation for another broker will probably look something like the Faye strategy above, but the details can vary because the protocols and APIs for different brokers vary.  In [Part 6]() of this series, we'll take a look at a few different broker implementations to see how they vary.
 
 ### Handle Events
 
-We skipped handling events &#8212; those user-written handlers that are decorated with `@EventPattern(...)`.  Let's take care of those now.  They turn out to be a lot easier than *request/response* type messages precisely because they don't require any response.
+Thus far we've skipped handling events &#8212; those user-written handlers that are decorated with `@EventPattern(...)`.  Let's take care of those now.  They turn out to be a lot easier than *request/response* type messages precisely because they don't require any response.
 
 ### What's Next
 
