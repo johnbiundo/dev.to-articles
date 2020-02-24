@@ -337,7 +337,71 @@ With this in place, any user written deserializer will have access to the channe
 
 ### Type Safety
 
+In this branch, we added types to several calls to help ensure type safety when end users use the custom transporter.  You can examine the code for how we use the following newly imported interfaces:
 
+```typescript
+import { FayeClient } from '../../external/faye-client.interface';
+import { FayeOptions } from '../../interfaces/faye-options.interface';
+```
+
+Let's take a quick moment to examine the `FayeOptions` interface:
+
+```typescript
+// nestjs-faye-transporter/src/interfaces/faye-options.interface.ts
+import { Serializer, Deserializer } from '@nestjs/microservices';
+
+export interface FayeOptions {
+  /**
+   * faye server mount point (e.g., http://localhost:8000/faye)
+   */
+  url?: string;
+  /**
+   * time in seconds to wait before assuming server is dead and attempting reconnect
+   */
+  timeout?: number;
+  /**
+   * time in seconds before attempting a resend a message when network error detected
+   */
+  retry?: number;
+  /**
+   * connections to server routed via proxy
+   */
+  proxy?: string;
+  /**
+   * per-transport endpoint objects; e.g., endpoints: { sebsocket: 'http://ws.example.com./'}
+   */
+  endpoints?: any;
+  /**
+   * backoff scheduler: see https://faye.jcoglan.com/browser/dispatch.html
+   */
+  // tslint:disable-next-line: ban-types
+  scheduler?: Function;
+  /**
+   * instance of a class implementing the serialize method
+   */
+  serializer?: Serializer;
+  /**
+   * instance of a class implementing the deserialize method
+   */
+  deserializer?: Deserializer;
+}
+```
+
+These options (modulo `serializer` and `deserializer`, which are consumed by the `ClientFaye` class directly), are passed through directly to the Faye client library in `createFayeClient()`:
+
+```typescript
+  public createFayeClient(): FayeClient {
+    // pull out url, and strip serializer and deserializer properties
+    // from options so we conform to the `faye.Client()` interface
+    const { url, serializer, deserializer, ...options } = this.options;
+    return new faye.Client(url, options);
+  }
+```
+
+The other benefit of this interface is that it provides intellisense for users constructing the `options` object in the call to `NestFactory.createMicroservice(...)` in the `main.ts` file.
+
+![Editor Intellisense](./assets/faye-options-intellisense.png 'Editor Intellisense')
+<figcaption><a name="intellisense"></a>Figure 1: Editor Intellisense</figcaption>
 
 ### Error Handling
 
