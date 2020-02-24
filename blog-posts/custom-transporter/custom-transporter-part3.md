@@ -289,6 +289,8 @@ It should be clear how we're using an instance of `FayeContext` here.  We instan
 ```
 Remember, where and how you gather the context for any particular broker may vary, but the concept remains the same.
 
+### Type Safety
+
 ### What's Next
 
 In [Part 4](xxx), we cover:
