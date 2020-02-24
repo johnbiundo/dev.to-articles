@@ -91,7 +91,7 @@ public getMessageHandler(pattern: string, handler: Function): Function {
 }
 ```
 
-Let's discuss the differences.  For now, ignore the `fayeCtx` object --xx-- we'll cover that [below](#subscription-context).  At the highest level, we're converting our handler response (`handler(inboundPacket.data, {})` &#8212; which is the result we get back from the user's handler function) to an observable and **publishing** that observable (recall that *publishing* is how we send the response back to the requestor through the Faye broker). Let's walk through the code at the next level of detail:
+Let's discuss the differences.  For now, ignore the `fayeCtx` object &#8212; we'll cover that [below](#subscription-context).  At the highest level, we're converting our handler response (`handler(inboundPacket.data, {})` &#8212; which is the result we get back from the user's handler function) to an observable and **publishing** that observable (recall that *publishing* is how we send the response back to the requestor through the Faye broker). Let's walk through the code at the next level of detail:
 1. We run a built-in (inherited from `Server`) utility to convert the response to an observable.
     ```typescript
     const response$ = this.transformToObservable(
@@ -172,7 +172,10 @@ An implementation for another broker will probably look something like the Faye 
 
 ### Handle Events
 
-Thus far we've skipped handling events &#8212; those user-written handlers that are decorated with `@EventPattern(...)`.  Let's take care of those now.  They turn out to be a lot easier than *request/response* type messages precisely because they don't require any response.  Take a look at the `bindHandlers()` method of `server-faye.ts`. The comments should pretty much explain the simple change we've made here.  One additional change is the use of the `FayeContext` object. We'll cover that in the next section.
+Thus far we've skipped handling events &#8212; those user-written handlers that are decorated with `@EventPattern(...)`.  Let's take care of those now.  They turn out to be a lot easier than *request/response* type messages precisely because they don't require any response.  Take a look at the `bindHandlers()` method of `server-faye.ts`. The comments should pretty much explain the simple change we've made here.  Two additional changes are:
+
+1. The use of the `FayeContext` object. We'll cover that in the next section.
+2. Passing { channel: pattern } to the `deserialize()` call.  We'll cover that [later in the article](#deserialization-options).
 
 ```typescript
 public bindHandlers() {
@@ -196,7 +199,9 @@ public bindHandlers() {
       this.fayeClient.subscribe(pattern, async (rawPacket: ReadPacket) => {
         const fayeCtx = new FayeContext([pattern]);
         const packet = this.parsePacket(rawPacket);
-        const message = this.deserializer.deserialize(packet);
+        const message = this.deserializer.deserialize(packet, {
+          channel: pattern,
+        });
         await handler(message.data, fayeCtx);
       });
     } else {
@@ -213,7 +218,7 @@ public bindHandlers() {
 
 Consider what happens when we subscribe to a topic via the broker API.  With Faye, it's straightforward.  We register a callback handler on a topic, and when a message matching that topic arrives, our handler is called with the message payload containing **only what the publisher sent**.
 
-For some transporters, the subscription handler can receive additional context about the message, sometimes in the callback parameters, and sometimes in the message payload.  For example, with NATS, the message payload packs the content sent by the publisher in the `data` property, as well as two context metadata fields: one describing the topic the caller was subscribed to, and one containing the optional `reply` topic. We refer to this as `Context`, and Nest allows you to pass this information through to the user-land handler (method decorated by `@MessagePattern()` or `@EventPattern()`).
+For some transporters, the subscription handler can receive additional context about the message, sometimes in the callback parameters, and sometimes in the message payload.  For example, with NATS, the message payload packs the actual content sent by the publisher in the `data` property, as well as two context metadata fields: one describing the topic the caller was subscribed to, and one containing the optional `reply` topic. We refer to this metadata as `Context`, and Nest allows you to pass this information through to the user-land handler (method decorated by `@MessagePattern()` or `@EventPattern()`).
 
 Since Faye doesn't have such metadata, we'll demonstrate this behavior by simply passing the *channel* in this context object.  This is not necessary, as it doesn't add any new information, but it does demonstrate the concept of the `Context` object.
 
@@ -240,7 +245,7 @@ export class FayeContext extends BaseRpcContext<FayeContextArgs> {
 }
 ```
 
-Essentially, it keeps an array of context values --xx-- in our case just strings, though you can specify the type if you need something more complex.  For example, [MQTT](xxx) uses:
+Essentially, it keeps an array of context values &#8212; in our case just strings, though you can specify a more complext type if you need to.  For example, [MQTT](xxx) uses:
 
 ```typescript
 type MqttContextArgs = [string, Record<string, any>];
@@ -251,7 +256,7 @@ export class MqttContext extends BaseRpcContext<MqttContextArgs> {
   }
 ```
 
-For each context value type (e.g., "Channel" in our case, for carrying the channel/pattern name), you supply a getter function.
+For each context value type (e.g., "channel" in our case, for carrying the channel/pattern name), you supply a getter function.  Remember, this is a simple data structure as there are generally very few contexc values, so your getter is just pulling out a particular row of the array.
 
 #### Passing Context to User-land Handlers
 
@@ -259,7 +264,7 @@ With this in place, we then need to simply find the right places to:
 1. Instantiate a `FayeContext` object with the correct values
 2. Pass it to the user-land handlers
 
-We already encountered this in the previous sections. Let's look again at the `getMessageHandler()` method, focusing on the relevant snippet from that method:
+We already encountered this behavior in the previous sections. Let's look again at the `getMessageHandler()` method, focusing on the relevant snippet from that method:
 
 ```typescript
   return async (message: ReadPacket) => {
@@ -289,7 +294,54 @@ It should be clear how we're using an instance of `FayeContext` here.  We instan
 ```
 Remember, where and how you gather the context for any particular broker may vary, but the concept remains the same.
 
+#### Testing Context
+
+In this branch (`part3`), we provided a new project, `nestHttpApp`, to exercise the context feature.  We'll focus a lot more on the client side, and use `nestHttpApp` extensively, in future chapters.  For now, you can see the context by following these steps:
+
+1. Start up the `nestHttpApp`
+    If you ran the `build.sh` script as described at the beginning of this chapter, all of this project's dependencies have been installed.  If not, simply open a terminal in the top level `nestHttpApp` directory and run `npm install`.  Then, start the application with `npm run start:dev`.
+2. Issue a request like:
+
+    > GET /customers
+
+    **Note:** You can do this in any number of ways -- via a browser, browsing to `localhost:3000/customers`, via something like [HttPie - my favorite](https://httpie.org/), or something like [Postman](https://www.postman.com/).
+
+Keep an eye on the `nestMicroservice` app's console log.  You should a line like:
+> [AppController] Faye Context: {"args":["/get-customers"]}"
+
+### Deserialization Options
+
+The transporter main (`Server`) class has hooks for serialization and deserialization of broker messages. I cover this topic extensively [in this article](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-3-4m20).  The main use case is for translating between non-Nest (i.e., external) message formats and the internal Nest microservice transporter message protocol. One thing we need to do to fully enable custom deserialization (i.e., let users hook their own custom deserializer class) with our custom transporter is fully implement the call to the `Deserializer#deserialize`.  Here's the interface:
+
+```typescript
+export interface Deserializer<TInput = any, TOutput = any> {
+  deserialize(value: TInput, options?: Record<string, any>): TOutput;
+}
+```
+
+This means we can pass in some context that the user can utilize in their custom deserialization code.  Usually this is the *channel* (pattern), but can also include other contextual information.  For example, the [NATS transporter](https://github.com/nestjs/nest/blob/master/packages/microservices/server/server-nats.ts#L94) passes the following information:
+
+```typescript
+const message = this.deserializer.deserialize(rawMessage, { channel, replyTo });
+```
+
+In our case, with Faye, we'll stick to the usual pattern and pass the channel.  This is done in `bindHandlers()`, where we added the deserialization context as shown below:
+
+```typescript
+    const message = this.deserializer.deserialize(packet, {
+      channel: pattern,
+    });
+```
+
+With this in place, any user written deserializer will have access to the channel name to make decisions about transforming inbound messages. I encourage you to read this [article series](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-3-4m20) for a deeper understanding of deserialization to help inform what you should pass as deserialization options.
+
 ### Type Safety
+
+
+
+### Error Handling
+
+### Checkpoint
 
 ### What's Next
 
