@@ -74,9 +74,10 @@ Now, here's the *Observable-aware* version. This is what you'll see now (on the 
 public getMessageHandler(pattern: string, handler: Function): Function {
   return async (message: ReadPacket) => {
     const inboundPacket = this.deserializer.deserialize(message);
+    const fayeCtx = new FayeContext([pattern]);
 
     const response$ = this.transformToObservable(
-      await handler(inboundPacket.data, {}),
+      await handler(inboundPacket.data, fayeCtx),
     ) as Observable<any>;
 
     const publish = (response: any) => {
@@ -90,7 +91,7 @@ public getMessageHandler(pattern: string, handler: Function): Function {
 }
 ```
 
-Let's discuss the differences.  At the highest level, we're converting our handler response (`handler(inboundPacket.data, {})` &#8212; which is the result we get back from the user's handler function) to an observable and **publishing** that observable (recall that *publishing* is how we send the response back to the requestor through the Faye broker). Let's walk through the code at the next level of detail:
+Let's discuss the differences.  For now, ignore the `fayeCtx` object --xx-- we'll cover that [below](#subscription-context).  At the highest level, we're converting our handler response (`handler(inboundPacket.data, {})` &#8212; which is the result we get back from the user's handler function) to an observable and **publishing** that observable (recall that *publishing* is how we send the response back to the requestor through the Faye broker). Let's walk through the code at the next level of detail:
 1. We run a built-in (inherited from `Server`) utility to convert the response to an observable.
     ```typescript
     const response$ = this.transformToObservable(
@@ -115,7 +116,7 @@ To publish the observable, we break the publish step down into two sub-steps:
     This code is very similar to the way we published in the *Take 1* version (from branch `part2`).  Study it for a moment and make sure you understand it &#8212; it should be pretty straightforward. The `Object.assign(...)` code's job is to copy the `id` field from the inbound request to the outbound response.  (And no, we still haven't discussed **why** we need that `id`.  For now, just trust the process :smiley:.  Don't worry, we'll cover this in [Part 4]()).
 2. Finally, we have the somewhat mysterious looking `response$ && this.send(response$, publish);`. What's up with that?  This is the step that actually **performs** the publishing of the message.  The `send()` method is provided by the framework, and it **takes care of the details of dealing with Observables**.
 
-> nce again, the importance of the previous sentence can not be overstated.  To fully appreciate both **why** this is so useful and how the framework makes this as easy as delegating a `publish()` function, you really should [read this deep dive]().
+> Once again, the importance of the previous sentence can not be overstated.  To fully appreciate both **why** this is so useful and how the framework makes this as easy as delegating a `publish()` function, you really should [read this deep dive]().
 
 Anyway, let's discuss what's happening with this step.  The `send()` method is inherited from `Server`.  See [here]() for the full source code of the `Server`.  Let's reproduce it below to get a feel for it.
 
@@ -171,7 +172,122 @@ An implementation for another broker will probably look something like the Faye 
 
 ### Handle Events
 
-Thus far we've skipped handling events &#8212; those user-written handlers that are decorated with `@EventPattern(...)`.  Let's take care of those now.  They turn out to be a lot easier than *request/response* type messages precisely because they don't require any response.
+Thus far we've skipped handling events &#8212; those user-written handlers that are decorated with `@EventPattern(...)`.  Let's take care of those now.  They turn out to be a lot easier than *request/response* type messages precisely because they don't require any response.  Take a look at the `bindHandlers()` method of `server-faye.ts`. The comments should pretty much explain the simple change we've made here.  One additional change is the use of the `FayeContext` object. We'll cover that in the next section.
+
+```typescript
+public bindHandlers() {
+  /**
+   * messageHandlers is populated by the Framework (on the `Server` superclass)
+   *
+   * It's a map of `pattern` -> `handler` key/value pairs
+   * `handler` is the handler function in the user's controller class, decorated
+   * by `@MessageHandler()` or `@EventHandler`, along with an additional boolean
+   * property indicating its Nest pattern type: event or message (i.e.,
+   * request/response)
+   */
+  this.messageHandlers.forEach((handler, pattern) => {
+    // In this version (`part3`) we add the handler for events
+    if (handler.isEventHandler) {
+      // The only thing we need to do in the Faye subscription callback for
+      // an event, since it doesn't return any data to the caller, is read
+      // and decode the request, pass the inbound payload to the user-land
+      // handler, and await its completion.  There's no response handling,
+      // hence we don't need all the complexity of `getMessageHandler()`
+      this.fayeClient.subscribe(pattern, async (rawPacket: ReadPacket) => {
+        const fayeCtx = new FayeContext([pattern]);
+        const packet = this.parsePacket(rawPacket);
+        const message = this.deserializer.deserialize(packet);
+        await handler(message.data, fayeCtx);
+      });
+    } else {
+      this.fayeClient.subscribe(
+        `${pattern}_ack`,
+        this.getMessageHandler(pattern, handler),
+      );
+    }
+  });
+}
+```
+
+### Subscription Context
+
+Consider what happens when we subscribe to a topic via the broker API.  With Faye, it's straightforward.  We register a callback handler on a topic, and when a message matching that topic arrives, our handler is called with the message payload containing **only what the publisher sent**.
+
+For some transporters, the subscription handler can receive additional context about the message, sometimes in the callback parameters, and sometimes in the message payload.  For example, with NATS, the message payload packs the content sent by the publisher in the `data` property, as well as two context metadata fields: one describing the topic the caller was subscribed to, and one containing the optional `reply` topic. We refer to this as `Context`, and Nest allows you to pass this information through to the user-land handler (method decorated by `@MessagePattern()` or `@EventPattern()`).
+
+Since Faye doesn't have such metadata, we'll demonstrate this behavior by simply passing the *channel* in this context object.  This is not necessary, as it doesn't add any new information, but it does demonstrate the concept of the `Context` object.
+
+#### Creating the context object
+
+For any given broker, the technique may vary, based on the discussion above. In the end, you'll need to extract any context information (from the message payload, if context is encoded there, or from the callback parameters) and pass it to the user-land handlers. We use a custom object to pass context.  Open the file `nestjs-faye-transporter/src/responder/ctx-host`.  It's a pretty simple object that extends `BaseRpcContext`.
+
+```typescript
+import { BaseRpcContext } from '@nestjs/microservices/ctx-host/base-rpc.context';
+
+type FayeContextArgs = [string];
+
+export class FayeContext extends BaseRpcContext<FayeContextArgs> {
+  constructor(args: FayeContextArgs) {
+    super(args);
+  }
+
+  /**
+   * Returns the name of the Faye channel.
+   */
+  getChannel() {
+    return this.args[0];
+  }
+}
+```
+
+Essentially, it keeps an array of context values --xx-- in our case just strings, though you can specify the type if you need something more complex.  For example, [MQTT](xxx) uses:
+
+```typescript
+type MqttContextArgs = [string, Record<string, any>];
+
+export class MqttContext extends BaseRpcContext<MqttContextArgs> {
+  constructor(args: MqttContextArgs) {
+    super(args);
+  }
+```
+
+For each context value type (e.g., "Channel" in our case, for carrying the channel/pattern name), you supply a getter function.
+
+#### Passing Context to User-land Handlers
+
+With this in place, we then need to simply find the right places to:
+1. Instantiate a `FayeContext` object with the correct values
+2. Pass it to the user-land handlers
+
+We already encountered this in the previous sections. Let's look again at the `getMessageHandler()` method, focusing on the relevant snippet from that method:
+
+```typescript
+  return async (message: ReadPacket) => {
+    const inboundPacket = this.deserializer.deserialize(message);
+    const fayeCtx = new FayeContext([pattern]);
+
+    const response$ = this.transformToObservable(
+      await handler(inboundPacket.data, fayeCtx),
+    ) as Observable<any>;
+```
+
+It should be clear how we're using an instance of `FayeContext` here.  We instantiate it with the relevant context, and then pass the instance to our user-land handler method.  This takes care of **request/response** type handlers. We also need to handle this appropriately for events. We saw that in the last section, in the `bindHandlers()` method.  Here's the relevant snippet:
+
+```typescript
+    if (handler.isEventHandler) {
+      // The only thing we need to do in the Faye subscription callback for
+      // an event, since it doesn't return any data to the caller, is read
+      // and decode the request, pass the inbound payload to the user-land
+      // handler, and await its completion.  There's no response handling,
+      // hence we don't need all the complexity of `getMessageHandler()`
+      this.fayeClient.subscribe(pattern, async (rawPacket: ReadPacket) => {
+        const fayeCtx = new FayeContext([pattern]);
+        const packet = this.parsePacket(rawPacket);
+        const message = this.deserializer.deserialize(packet);
+        await handler(message.data, fayeCtx);
+      });
+```
+Remember, where and how you gather the context for any particular broker may vary, but the concept remains the same.
 
 ### What's Next
 
