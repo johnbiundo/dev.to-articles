@@ -270,7 +270,7 @@ bayeux.on('unsubscribe', (clientId, channel) => {
 
 We've now completed our requestor and responder, and can test them out.  While I only reviewed the `'get-customers'` message above, the code also implements the `'add-customer'` message.  Run the code now by following [these instructions](xxx).  Here's what it looks like:
 
-![Native App Demo](./assets/faye-basic-demo1.gif 'Native App Demo')
+![Native App Demo](./assets/faye-basic-demo2.gif 'Native App Demo')
 <figcaption><a name="faye-basic-demo"></a>Screen Capture: Native App Demo</figcaption>
 
 ### What's Next
