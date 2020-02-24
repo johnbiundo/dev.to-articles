@@ -120,7 +120,7 @@ To publish the observable, we break the publish step down into two sub-steps:
 
 Anyway, let's discuss what's happening with this step.  The `send()` method is inherited from `Server`.  See [here](https://github.com/nestjs/nest/blob/master/packages/microservices/server/server.ts) for the full source code of the `Server`.  Let's reproduce it below to get a feel for it.
 
-> Note: we don't **need** to fully understand how this method works, and I won't belabor it here.  It's fair to treat it as a black box, as long as we understand **how** to use it.  We'll make sure we do!
+> Note: we **don't need to fully understand** how this method works, and I won't belabor it here.  It's fair to treat it as a black box, as long as we understand **how to use it**.  We'll make sure we do!
 
 ```typescript
   public send(
@@ -154,30 +154,31 @@ Anyway, let's discuss what's happening with this step.  The `send()` method is i
       );
   }
   ```
-This little bit of magic, at 30 lines of code, enables us to **stream** a remote observable to our calling `ClientProxy#send()` call.  Again, read more about [what that means and why you probably do care here](). When (I didn't say "if" :smiley:) you do read that section, I promise you some lightbulbs will go off.  Among other things, if you've been wondering about that `isDisposed` property of a response message, that will become clear.  This is a wonderful example of something that once you explore it, you'll feel a lot more comfortable with the *"casual magic"* you sometimes encounter with Nest, and begin to appreciate that as we fill in the gaps in the documentation, that magic is really just the manifestation of a truly elegant architecture.
+This little bit of magic, at 30 lines of code, enables us to **stream** a remote observable to our requestor's `ClientProxy#send()` call.  Again, read more about [what that means and why you probably do care here](xxx). When (I didn't say "if" :smiley:) you do read that section, I promise you some lightbulbs will go off.  Among other things, if you've been wondering about that `isDisposed` property of a response message, that will become clear.  This is a wonderful example of something that once you explore it, you'll feel a lot more comfortable with the *"casual magic"* you sometimes encounter with Nest, and begin to appreciate that as we fill in the gaps in the documentation, that magic is really just the manifestation of a truly elegant architecture.
 
 #### What's the Recipe?
 
 Let's go from the specific case above to the recipe you should use when building any arbitrary transporter.
 
-1. Implement the code that handles responding to requests (that is, code that **typically** runs a broker client API `subscribe()`-like command responsible for registering the response handler with the broker).  In our example, this is done with the `bindHandlers()` method.  In this method, you **must dynamically construct** the call you are registering with `subscribe()`.  That's the job of the next step.
+1. Implement the code that handles responding to requests (that is, code that makes a broker client API call --xxx-- typically it's something like `subscribe()` --xxx-- responsible for registering the response handler with the broker).  In our example, this is done in the `bindHandlers()` method.  In this method, you **must dynamically construct** the call you are registering with `subscribe()`.  That's the job of the next step.
 2. Call a method to dynamically construct the call to the response handler being registered.  In our example, this is done with the `getMessageHandler()` method.  That method is responsible for the following steps:
 
     1. Deserialize the inbound request
     2. Build an observable response using the built-in inherited `this.transformToObservable()` utility, passing in an *awaited* call to the *target handler* (the *target handler* is the user-supplied method bound to a pattern with `@MessagePattern()`).
-    3. Build a `publish()` function.  That function should always take a single input argument, and return a function call that runs the native `publish()` call (or the broker client API equivalent).
-    4. Invoke the built-in inherited `this.send()` helper method, passing in the observable constructed in step  and the publish function built in step 3.
+    3. Build a `publish()` function.  That function should always take a single input argument --xxx-- the message, and return a the results of a call to the native `publish()` call (or the particular broker's client API equivalent of `publish()`).
+    4. Invoke the built-in inherited `this.send()` helper method, passing in the observable constructed in step 2 and the publish function built in step 3.
 
 An implementation for another broker will probably look something like the Faye strategy above, but the details can vary because the protocols and APIs for different brokers vary.  In [Part 6]() of this series, we'll take a look at a few different broker implementations to see how they vary.
 
 ### Handle Events
 
-Thus far we've skipped handling events &#8212; those user-written handlers that are decorated with `@EventPattern(...)`.  Let's take care of those now.  They turn out to be a lot easier than *request/response* type messages precisely because they don't require any response.  Take a look at the `bindHandlers()` method of `server-faye.ts`. The comments should pretty much explain the simple change we've made here.  Two additional changes are:
+Thus far we've skipped handling events &#8212; those user-written handlers that are decorated with `@EventPattern(...)`.  Let's take care of those now.  They turn out to be a lot easier than *request/response* type messages precisely because they don't require any response.  Take a look at the `bindHandlers()` method of `server-faye.ts`. The comments should pretty much explain the simple change we've made here to handle events.  Two additional (unrelated) changes that show up on this branch are:
 
 1. The use of the `FayeContext` object. We'll cover that in the next section.
 2. Passing { channel: pattern } to the `deserialize()` call.  We'll cover that [later in the article](#deserialization-options).
 
 ```typescript
+// nestjs-faye-transporter/src/responder/transporters/server-faye.ts
 public bindHandlers() {
   /**
    * messageHandlers is populated by the Framework (on the `Server` superclass)
@@ -218,15 +219,16 @@ public bindHandlers() {
 
 Consider what happens when we subscribe to a topic via the broker API.  With Faye, it's straightforward.  We register a callback handler on a topic, and when a message matching that topic arrives, our handler is called with the message payload containing **only what the publisher sent**.
 
-For some transporters, the subscription handler can receive additional context about the message, sometimes in the callback parameters, and sometimes in the message payload.  For example, with NATS, the message payload packs the actual content sent by the publisher in the `data` property, as well as two context metadata fields: one describing the topic the caller was subscribed to, and one containing the optional `reply` topic. We refer to this metadata as `Context`, and Nest allows you to pass this information through to the user-land handler (method decorated by `@MessagePattern()` or `@EventPattern()`).
+For some transporters, the subscription handler can receive additional context about the message --xxx-- sometimes in the callback parameters, and sometimes in the message payload.  For example, with NATS, the message payload packs the actual content sent by the publisher in the `data` property, and adds two additional top-level properties with context metadata: one describing the topic the caller was subscribed to, and one containing the optional `reply` topic. We refer to this metadata as `Context`, and Nest allows you to pass this information through to the user-land handler (method decorated by `@MessagePattern()` or `@EventPattern()`).
 
-Since Faye doesn't have such metadata, we'll demonstrate this behavior by simply passing the *channel* in this context object.  This is not necessary, as it doesn't add any new information, but it does demonstrate the concept of the `Context` object.
+Since Faye simply doesn't provide any such metadata, we'll demonstrate this behavior by passing the *channel* in this context object.  This is not particularly useful, as in this case we're not actually providing any **new** information, but with Faye it's the best we can do to demonstrate the concept of the `Context` object.
 
 #### Creating the context object
 
-For any given broker, the technique may vary, based on the discussion above. In the end, you'll need to extract any context information (from the message payload, if context is encoded there, or from the callback parameters) and pass it to the user-land handlers. We use a custom object to pass context.  Open the file `nestjs-faye-transporter/src/responder/ctx-host`.  It's a pretty simple object that extends `BaseRpcContext`.
+For any given broker, the technique may vary, based on the discussion above. In the end, you'll need to extract any context information (from the message payload, if context is encoded there, or from the `subscribe()` callback parameters) and pass it to the user-land handlers. We use a custom object to pass context.  Open the file `nestjs-faye-transporter/src/responder/ctx-host`.  It's a pretty simple object that extends `BaseRpcContext`.
 
 ```typescript
+// nestjs-faye-transporter/src/responder/ctx-host
 import { BaseRpcContext } from '@nestjs/microservices/ctx-host/base-rpc.context';
 
 type FayeContextArgs = [string];
@@ -245,7 +247,7 @@ export class FayeContext extends BaseRpcContext<FayeContextArgs> {
 }
 ```
 
-Essentially, it keeps an array of context values &#8212; in our case just strings, though you can specify a more complext type if you need to.  For example, [MQTT](xxx) uses:
+Essentially, it keeps an array of context values &#8212; in our case just strings, though you can specify a more complex type if you need to.  For example, [MQTT](xxx) uses:
 
 ```typescript
 type MqttContextArgs = [string, Record<string, any>];
@@ -256,7 +258,7 @@ export class MqttContext extends BaseRpcContext<MqttContextArgs> {
   }
 ```
 
-For each context value type (e.g., "channel" in our case, for carrying the channel/pattern name), you supply a getter function.  Remember, this is a simple data structure as there are generally very few contexc values, so your getter is just pulling out a particular row of the array.
+For each context value type (e.g., "channel", in our case, used for carrying the channel/pattern name), you supply a getter function.  Remember, this is a simple data structure as there are generally very few context values, so your getter is just pulling out a particular row of the array.
 
 #### Passing Context to User-land Handlers
 
@@ -276,7 +278,7 @@ We already encountered this behavior in the previous sections. Let's look again 
     ) as Observable<any>;
 ```
 
-It should be clear how we're using an instance of `FayeContext` here.  We instantiate it with the relevant context, and then pass the instance to our user-land handler method.  This takes care of **request/response** type handlers. We also need to handle this appropriately for events. We saw that in the last section, in the `bindHandlers()` method.  Here's the relevant snippet:
+It should be clear how we're using an instance of `FayeContext` here.  We instantiate it with the relevant context, and then pass the instance to our user-land handler method.  The code above takes care of **request/response** type handlers. We also need to handle this appropriately for events. We saw where that happened in the last section, in the `bindHandlers()` method.  Here's the relevant snippet:
 
 ```typescript
     if (handler.isEventHandler) {
@@ -304,14 +306,14 @@ In this branch (`part3`), we provided a new project, `nestHttpApp`, to exercise 
 
     > GET /customers
 
-    **Note:** You can do this in any number of ways -- via a browser, browsing to `localhost:3000/customers`, via something like [HttPie - my favorite](https://httpie.org/), or something like [Postman](https://www.postman.com/).
+    **Note:** You can do this in any number of ways --xxx-- via a browser, browsing to `localhost:3000/customers`, via something like [HttPie - my favorite](https://httpie.org/), or with a desktop program like [Postman](https://www.postman.com/).
 
-Keep an eye on the `nestMicroservice` app's console log.  You should a line like:
+Keep an eye on the `nestMicroservice` app's console log.  You should a line like the following, demonstrating that we've successfully passed the FayeContext data to the handler:
 > [AppController] Faye Context: {"args":["/get-customers"]}"
 
 ### Deserialization Options
 
-The transporter main (`Server`) class has hooks for serialization and deserialization of broker messages. I cover this topic extensively [in this article](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-3-4m20).  The main use case is for translating between non-Nest (i.e., external) message formats and the internal Nest microservice transporter message protocol. One thing we need to do to fully enable custom deserialization (i.e., let users hook their own custom deserializer class) with our custom transporter is fully implement the call to the `Deserializer#deserialize`.  Here's the interface:
+The transporter main class (`Server`) has hooks for serialization and deserialization of broker messages. I cover this topic extensively [in this article](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-3-4m20).  The main use case is for translating between non-Nest (i.e., external) message formats and the internal [Nest microservice transporter message protocol](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-2-3hgd). One thing we need to do to fully enable custom deserialization (i.e., let users hook their own custom deserializer class) with our custom transporter is fully implement the call to the `Deserializer#deserialize()` method.  Here's its interface:
 
 ```typescript
 export interface Deserializer<TInput = any, TOutput = any> {
@@ -319,7 +321,7 @@ export interface Deserializer<TInput = any, TOutput = any> {
 }
 ```
 
-This means we can pass in some context that the user can utilize in their custom deserialization code.  Usually this is the *channel* (pattern), but can also include other contextual information.  For example, the [NATS transporter](https://github.com/nestjs/nest/blob/master/packages/microservices/server/server-nats.ts#L94) passes the following information:
+This means we can pass in some context via a second argument that the user can access as the options parameter to utilize in their custom deserialization code.  Usually this context is just the *channel* (pattern), but it can also include other contextual information.  For example, the [NATS transporter](https://github.com/nestjs/nest/blob/master/packages/microservices/server/server-nats.ts#L94) passes the following information (note the `replyTo` property):
 
 ```typescript
 const message = this.deserializer.deserialize(rawMessage, { channel, replyTo });
@@ -333,7 +335,7 @@ In our case, with Faye, we'll stick to the usual pattern and pass the channel.  
     });
 ```
 
-With this in place, any user written deserializer will have access to the channel name to make decisions about transforming inbound messages. I encourage you to read this [article series](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-3-4m20) for a deeper understanding of deserialization to help inform what you should pass as deserialization options.
+With this in place, any user-written deserializer will have access to the channel name to make decisions about transforming inbound messages. I encourage you to read this [article series](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-3-4m20) for a deeper understanding of deserialization to help inform what you should pass as deserialization options.
 
 ### Type Safety
 
@@ -387,7 +389,7 @@ export interface FayeOptions {
 }
 ```
 
-These options (modulo `serializer` and `deserializer`, which are consumed by the `ClientFaye` class directly), are passed through directly to the Faye client library in `createFayeClient()`:
+These options (modulo `serializer` and `deserializer`, which are consumed by the `ClientFaye` class directly), are passed through directly to the Faye client library in `createFayeClient()` to customize the [Faye connection](https://faye.jcoglan.com/browser.html):
 
 ```typescript
   public createFayeClient(): FayeClient {
@@ -401,11 +403,11 @@ These options (modulo `serializer` and `deserializer`, which are consumed by the
 The other benefit of this interface is that it provides intellisense for users constructing the `options` object in the call to `NestFactory.createMicroservice(...)` in the `main.ts` file.
 
 ![Editor Intellisense](./assets/faye-options-intellisense.png 'Editor Intellisense')
-<figcaption><a name="intellisense"></a>Figure 1: Editor Intellisense</figcaption>
+<figcaption><a name="intellisense"></a>Figure xxx: Editor Intellisense</figcaption>
 
 ### Error Handling
 
-What should we do if the server loses its connection to the broker (e.g., the Faye broker goes offline)?  This is a good question that probably deserves deeper discussion.  The Faye client library appears to be fairly [robust at re-establishing a connection](https://faye.jcoglan.com/browser.html), including [buffering failed attempts](https://faye.jcoglan.com/browser/dispatch.html), so we are going to simply defer to it, and log an error message to the console whenever a connection goes down.  To handle this, we simply add a listener for a [disconnect event](https://faye.jcoglan.com/browser/transport.html) and log the message:
+What should we do if the server loses its connection to the broker (e.g., the Faye broker goes offline)?  This is a good question that probably deserves deeper discussion than what we'll cover here.  The Faye client library appears to be fairly [robust at re-establishing a connection](https://faye.jcoglan.com/browser.html), including [buffering failed attempts](https://faye.jcoglan.com/browser/dispatch.html), so we are going to simply defer to it, and log an error message to the console whenever a connection goes down.  To handle this, we simply add a listener for a [disconnect event](https://faye.jcoglan.com/browser/transport.html) and log the message:
 
 ```typescript
   public handleError(stream: any) {
@@ -417,19 +419,19 @@ What should we do if the server loses its connection to the broker (e.g., the Fa
 
 ### Checkpoint
 
-We covered a lot of ground in this chapter.  When you checked out this branch and ran the `build.sh` script, we set up a new project called `httpClientApp`.  This is a simple Nest HTTP app that includes a few routes for testing our `nestMicroservice` over the Faye transporter. It's worth mentioning that this branch also includes a **full final version** of the `ClientFaye` subclass of `ClientProxy` --xxx-- this is necessary for our `httpClientApp` to instantiate a client to be able to run `ClientProxy#send()` and `ClientProxy#emit()` calls.  We'll actually build that `ClientFaye` component from scratch in the next two articles.
+We covered a lot of ground in this chapter.  When you checked out the `part3` branch and ran the `build.sh` script, we set up a new Nest project called `httpClientApp`.  This is a simple Nest HTTP app that includes a few routes for testing our `nestMicroservice` over the Faye transporter. It's worth mentioning that this branch also includes a **full final version** of the `ClientFaye` subclass of `ClientProxy` --xxx-- this is necessary for our `httpClientApp` to instantiate a client to be able to run `ClientProxy#send()` and `ClientProxy#emit()` calls.  We'll actually build that `ClientFaye` component from scratch in the next two articles, but it's sitting there in this branch to help you test.
 
 For now, you can feel free to experiment at large with the `nestHttpApp` and `nestMicroservice`.  Try issuing HTTP requests to the `nestHttpApp` like:
 
-> GET customers
+> GET /customers
 
 and
 
-> POST customers // with a payload
+> POST /customer  // <-- with a payload
 
-See the [README]() for more information on running these and similar commands.
+See the [README](xxx) for more information on running these and similar tests.
 
-As mentioned earlier in this article, there's also a series of routes related to exploring how microservices handle promises and observables when they are returned from a **request**.  You can [read more here]().
+As mentioned earlier in this article, there's also a series of routes related to exploring how microservices handle promises and observables when they are returned from a **request**.  You can [read more here](xxx).
 
 ### What's Next
 
