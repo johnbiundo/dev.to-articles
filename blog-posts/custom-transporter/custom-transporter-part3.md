@@ -405,13 +405,34 @@ The other benefit of this interface is that it provides intellisense for users c
 
 ### Error Handling
 
+What should we do if the server loses its connection to the broker (e.g., the Faye broker goes offline)?  This is a good question that probably deserves deeper discussion.  The Faye client library appears to be fairly [robust at re-establishing a connection](https://faye.jcoglan.com/browser.html), including [buffering failed attempts](https://faye.jcoglan.com/browser/dispatch.html), so we are going to simply defer to it, and log an error message to the console whenever a connection goes down.  To handle this, we simply add a listener for a [disconnect event](https://faye.jcoglan.com/browser/transport.html) and log the message:
+
+```typescript
+  public handleError(stream: any) {
+    stream.on(ERROR_EVENT, (err: any) => {
+      this.logger.error('Faye Server offline!');
+    });
+  }
+```
+
 ### Checkpoint
+
+We covered a lot of ground in this chapter.  When you checked out this branch and ran the `build.sh` script, we set up a new project called `httpClientApp`.  This is a simple Nest HTTP app that includes a few routes for testing our `nestMicroservice` over the Faye transporter. It's worth mentioning that this branch also includes a **full final version** of the `ClientFaye` subclass of `ClientProxy` --xxx-- this is necessary for our `httpClientApp` to instantiate a client to be able to run `ClientProxy#send()` and `ClientProxy#emit()` calls.  We'll actually build that `ClientFaye` component from scratch in the next two articles.
+
+For now, you can feel free to experiment at large with the `nestHttpApp` and `nestMicroservice`.  Try issuing HTTP requests to the `nestHttpApp` like:
+
+> GET customers
+
+and
+
+> POST customers // with a payload
+
+See the [README]() for more information on running these and similar commands.
+
+As mentioned earlier in this article, there's also a series of routes related to exploring how microservices handle promises and observables when they are returned from a **request**.  You can [read more here]().
 
 ### What's Next
 
-In [Part 4](xxx), we cover:
-* A
-* B
-* C
+In [Part 4](xxx), we turn our attention to the "client" side of the transporter.  We'll build the Faye-flavored `ClientProxy` from scratch.  Like the server construction we've done, we'll break this into two parts so we can work through the main concepts first, then add flavor and details in the subsequent part.
 
 Feel free to ask questions, make comments or suggestions, or just say hello in the comments below. And join us at [Discord](https://discord.gg/nestjs) for more happy discussions about NestJS. I post there as _Y Prospect_.
