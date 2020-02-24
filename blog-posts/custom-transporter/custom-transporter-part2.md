@@ -3,7 +3,7 @@ published: False
 title: "Part 2: Basic Server Component"
 description: "tags: nestjs, nest, faye, microservices, node.js"
 series: "Advanced NestJS Microservices"
-cover_image: "https://dev-to-uploads.s3.amazonaws.com/i/0pg4mzdjilg9qfpn819w.gif"
+cover_image: "https://dev-to-uploads.s3.amazonaws.com/i/lgt7m4a8dton9rvuimje.gif"
 canonical_url:
 ---
 
@@ -16,7 +16,7 @@ xxx longdash:
 
 **Reminder**: Many of the concepts and terminology here are introduced and explained in [this article series](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-1-p3). That series serves as a good foundation for understanding the more advanced concepts covered in this series.
 
-All of the code in these articles is available [here]().  As always, these tutorials work best if you follow along with the code.  The [README]() covers all the steps you need to get the repository, build the apps, and follow along.  It's easy!  I strongly encourage you to do so.
+All of the code in these articles is available [here](xxx).  As always, these tutorials work best if you follow along with the code.  The [README](xxx) covers all the steps you need to get the repository, build the apps, and follow along.  It's easy!  I strongly encourage you to do so.
 
 #### Building the Apps for this Article
 
@@ -26,7 +26,7 @@ All of the code in these articles is available [here]().  As always, these tutor
 Even though the scope of this tutorial is relatively small &#8212; at the end of the day we'll just be creating a few classes &#8212; we're going to be accumulating a number of assets along the way to test and exercise our code. It's time to think a little bit about code organization.  First, let's take a look at what we'll end up with:
 
 * Our Faye transporter is going to consist of some interfaces and constants, some serializers/deserializers (discussed extensively in the [previous article series](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-1-p3)), and the main components: a **client** component (class) providing the `ClientProxy` subclass we can use in any *Nest requestor* apps and a **server** component (class) we can use in any *Nest responder* apps.
-* The native apps we wrote in the [previous article]() that let us explore the Faye API and give us some test drivers.
+* The native apps we wrote in the [previous article](xxx) that let us explore the Faye API and give us some test drivers.
 * A pair of regular Nest apps that will exercise our transporter code: a *Nest requestor* that is a simple Nest HTTP app called `nestHttpApp` and a *Nest responder* that is a classic Nest **microservice**, called `nestMicroservice`.  (**Note**: see [the previous article series](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-1-p3) for more on this terminology, but think of a *Nest Requestor* as an app that makes remote requests over some (non-HTTP) transport, like Faye, and a Nest responder as a Nest application that listens for inbound requests over that transport, like Faye).
 
 Where to keep all of these assets?
@@ -127,7 +127,7 @@ This iteration ("Take 1") is going to be the absolute bare-bones class needed to
 
 To state it in more direct terms, our requirement for this cut is to simply be able to respond to a well-formed inbound **request** (in the sense of a request from a **request-response** style message).  We'll test this requirement by replacing our native `customerService` responder app from the last article with our `nestMicroservices` app running our new custom transporter, and sending it some requests from our native `customerApp`.
 
-> **Note:** In [part 3](), we'll complete the implementation and have a fully functioning Faye Custom Transporter (server component).  At that point, you'll also have all of the concepts in place to write your own custom transporter server component, as well as the ability to look inside the built-in transporters (like [the MQTT transporter server](https://github.com/nestjs/nest/blob/master/packages/microservices/server/server-mqtt.ts)) and understand what's going on.  That will prepare you for even more adventures, like customizing the Nest built-in transporters to add features&#8212; the subject of my next NestJS microservice tutorial (already underway, and coming very soon :boom:)!
+> **Note:** In [part 3](xxx), we'll complete the implementation and have a fully functioning Faye Custom Transporter (server component).  At that point, you'll also have all of the concepts in place to write your own custom transporter server component, as well as the ability to look inside the built-in transporters (like [the MQTT transporter server](https://github.com/nestjs/nest/blob/master/packages/microservices/server/server-mqtt.ts)) and understand what's going on.  That will prepare you for even more adventures, like customizing the Nest built-in transporters to add features&#8212; the subject of my next NestJS microservice tutorial (already underway, and coming very soon :boom:)!
 
 #### Take 1 Code Review
 
@@ -196,7 +196,7 @@ We should be ready to test out our code.  We need to do a tiny bit of setup firs
 
 Now's a good time to mention a couple of things about the development setup:
 1. I run this kind of stuff on an Ubuntu machine.  There's **nothing** platform-specific anywhere in the code, **but**, I find running builds, starting and stopping processes, running multiple terminal sessions, etc., to be much smoother on Linux.  You can run this wherever you want, but if you're not on Linux, you may have to make slight adjustments to your `package.json`, or other actual build steps.
-2. Since you kind of **need** to run multiple terminal sessions to see the full impact, I strongly recommend [Tmux](xxx).  You can start multiple terminal programs, or use tabs if you prefer, but if you want what I think is the **best** DX for this kind of work, checkout Tmux.  I covered some of my recommendations [in the last article series](https://github.com/johnbiundo/nest-nats-sample#pro-tip-use-tmux-optional).
+2. Since you kind of **need** to run multiple terminal sessions to see the full impact, I strongly recommend [Tmux](https://github.com/tmux/tmux).  You can start multiple terminal programs, or use tabs if you prefer, but if you want what I think is the **best** DX for this kind of work, checkout Tmux.  I covered some of my recommendations [in the last article series](https://github.com/johnbiundo/nest-nats-sample#pro-tip-use-tmux-optional).
 
 In the following steps, I'll reference these (logical) terminals as:
 * terminal 1: run the Faye broker here

@@ -20,7 +20,7 @@ Many of the concepts and terminology here are introduced and explained in [this 
 
 #### Get the Code
 
-All of the code in these articles is available [here]().  As always, these tutorials work best if you follow along with the code.  The [README](xxx) covers all the steps you need to get the repository, build the apps, and follow along.  It's easy!  I strongly encourage you to do so.
+All of the code in these articles is available [here](xxx).  As always, these tutorials work best if you follow along with the code.  The [README](xxx) covers all the steps you need to get the repository, build the apps, and follow along.  It's easy!  I strongly encourage you to do so.
 
 #### Git checkout the current version
 
@@ -168,7 +168,7 @@ Let's go from the specific case above to the recipe you should use when building
     3. Build a `publish()` function.  That function should always take a single input argument --xxx-- the message, and return a the results of a call to the native `publish()` call (or the particular broker's client API equivalent of `publish()`).
     4. Invoke the built-in inherited `this.send()` helper method, passing in the observable constructed in step 2 and the publish function built in step 3.
 
-An implementation for another broker will probably look something like the Faye strategy above, but the details can vary because the protocols and APIs for different brokers vary.  In [Part 6]() of this series, we'll take a look at a few different broker implementations to see how they vary.
+An implementation for another broker will probably look something like the Faye strategy above, but the details can vary because the protocols and APIs for different brokers vary.  In [Part 6](xxx) of this series, we'll take a look at a few different broker implementations to see how they vary.
 
 ### Handle Events
 

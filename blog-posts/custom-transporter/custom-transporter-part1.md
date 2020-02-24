@@ -3,7 +3,7 @@ published: False
 title: "Part 1: Introduction and Setup"
 description: "tags: nestjs, nest, faye, microservices, node.js"
 series: "Advanced NestJS Microservices"
-cover_image: "https://dev-to-uploads.s3.amazonaws.com/i/0pg4mzdjilg9qfpn819w.gif"
+cover_image: "https://dev-to-uploads.s3.amazonaws.com/i/lgt7m4a8dton9rvuimje.gif"
 canonical_url:
 ---
 
@@ -14,7 +14,7 @@ xxx longdash:
 
 ### Introduction
 
-This article series covers the topic of building a custom **transporter** for the [NestJS microservices subsystem]([xxx](https://docs.nestjs.com/microservices/basics)). If you haven't already read it, please check out my [NestJS Microservices in Action](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-1-p3) series, where I cover many of the basics of the NestJS microservices subsystem architecture, and establish the terminology used in all my Nest Microservices articles.  I'll assume a good understanding of those basics in this article series.
+This article series covers the topic of building a custom **transporter** for the [NestJS microservices subsystem](https://docs.nestjs.com/microservices/basics)). If you haven't already read it, please check out my [NestJS Microservices in Action](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-1-p3) series, where I cover many of the basics of the NestJS microservices subsystem architecture, and establish the terminology used in all my Nest Microservices articles.  I'll assume a good understanding of those basics in this article series.
 
 Let's start with the *Why?* question.  The Nest microservices package provides a communications layer abstraction that makes it easy for applications (both Nest and non-Nest) to communicate over a wide variety of what are called **transporters**.  This provides several key benefits, covered fully in the previous article series. Nest comes with a variety of built-in transporters, including NATS, RabbitMQ, Kafka, and others. But what if you want to build your own transporter &#8212; say for ZeroMQ, Google Cloud Pub/Sub, Amazon Kinesis or Apache ActiveMQ? If that's your desire, you've landed on the right article!  Or, if you just want to understand more about how the "magic" works, read on!
 
@@ -34,7 +34,7 @@ Working examples and all source code is available [here](https://github.com/john
 
 ### What We're Building
 
-We're going to build a custom transporter for the [Faye](https://faye.jcoglan.com/) message broker.  Here's what the final result looks like.  To run this yourself, clone [the repository](xxx) and follow [these instructions]().
+We're going to build a custom transporter for the [Faye](https://faye.jcoglan.com/) message broker.  Here's what the final result looks like.  To run this yourself, clone [the repository](xxx) and follow [these instructions](xxx).
 
 
 ![Faye Transporter Demo](./assets/faye-demo.gif 'Faye Transporter Demo')
@@ -53,7 +53,7 @@ Faye has a very simple &#8212; virtually canonical &#8212; publish/subscribe pro
 ![Faye Message Protocol](./assets/faye-protocol.png 'Faye Message Protocol')
 <figcaption><a name="figure1"></a>Figure 1: Faye Message Protocol</figcaption>
 
-As we've done in the [NestJS Microservices in Action](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-1-p3) series, we'll start by building simple native requestor and responder apps that exercise the Faye API directly.  This will help us make sure we understand the Faye API, and give us a convenient testbed.  To run the code in this section, [read these instructions]() for the github repository.
+As we've done in the [NestJS Microservices in Action](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-1-p3) series, we'll start by building simple native requestor and responder apps that exercise the Faye API directly.  This will help us make sure we understand the Faye API, and give us a convenient testbed.  To run the code in this section, [read these instructions](xxx) for the github repository.
 
 As covered in the previous article, one of the challenges the Nest microservices package deals with is to layer a request/response message style **on top of** publish/subscribe semantics.  In other words, Nest requestors need to be able to run code like:
 
@@ -92,7 +92,7 @@ Let's build those native apps we mentioned.  First the responder.
 
 #### Native Responder App (customerService)
 
-Assuming you're [following along](xxx) on the `main` branch, open the file `customerService/src/service.ts`.
+Assuming you're [following along](xxx) on the `part1` branch, open the file `customerService/src/service.ts`.
 
 Here's the implementation of the `getCustomers` callback handler.  This is the code that is registered to run when our app receives an inbound message on the `'/get-customers_ack'` channel:
 
@@ -120,7 +120,7 @@ function getCustomers(packet): void {
 
 The logic should be easy to understand. Refer to the full listing and make sure you see how we are using the `'get-customers_res'` and `'get-customers_req'` channels here.  We'll be seeing a lot of that pattern, so make sure it makes sense to you.
 
-One detail to point out is the call to `getPayload()`.  Let's discuss that.  We're going to build these native apps so that they use the internal Nest message format (this topic is covered extensively in the [NestJS Microservices in Action]([xxx](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-1-p3)) series).  In this way, they provide a test bench for the Nest transporter and `ClientProxy` we're about to build.  This means we are going to wrap responses in an object we can depict like this:
+One detail to point out is the call to `getPayload()`.  Let's discuss that.  We're going to build these native apps so that they use the internal Nest message format (this topic is covered extensively in the [NestJS Microservices in Action](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-1-p3)) series).  In this way, they provide a test bench for the Nest transporter and `ClientProxy` we're about to build.  This means we are going to wrap responses in an object we can depict like this:
 
    ```typescript
    {
@@ -207,7 +207,7 @@ async function getCustomers(customerId, requestId = 0, requestDelay = 0) {
 }
 ```
 
-For completeness, let's take a very quick look at how we run the Faye server. Open up `faye-server/server.js`.  The code is shown below.  You can read more about running the Faye server as a node server [here]([xxx](https://faye.jcoglan.com/node.html)), but we're basically just starting it up, and listening for a series of events that we can log to the console to make it easy to trace the handshaking and message exchange. You shouldn't have to mess with this at all, but if you do, it's pretty basic stuff.
+For completeness, let's take a very quick look at how we run the Faye server. Open up `faye-server/server.js`.  The code is shown below.  You can read more about running the Faye server as a node server [here](https://faye.jcoglan.com/node.html), but we're basically just starting it up, and listening for a series of events that we can log to the console to make it easy to trace the handshaking and message exchange. You shouldn't have to mess with this at all, but if you do, it's pretty basic stuff.
 
 ```ts
 const http = require('http');
@@ -258,7 +258,7 @@ bayeux.on('unsubscribe', (clientId, channel) => {
 });
 ```
 
-We've now completed our requestor and responder, and can test them out.  While I only reviewed the `'get-customers'` message above, the code also implements the `'add-customer'` message.  Run the code now by following [these instructions]().  Here's what it looks like:
+We've now completed our requestor and responder, and can test them out.  While I only reviewed the `'get-customers'` message above, the code also implements the `'add-customer'` message.  Run the code now by following [these instructions](xxx).  Here's what it looks like:
 
 ![Native App Demo](./assets/native-app-demo.gif 'Native App Demo')
 <figcaption><a name="screen-capture-2"></a>Screen Capture 2: Native App Demo</figcaption>
