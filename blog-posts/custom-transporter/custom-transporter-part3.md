@@ -30,9 +30,10 @@ For this article, you should `git checkout` the branch `part3`.  You can get mor
 For each article in the series, we introduce some new components (and sometimes entirely new **projects**).  For convenience, at the start of each article, you should run the command\*
 
 ```bash
+$ # from root directory of project (e.g., transporter-tutorial, or whatever you chose as the root)
 $ sh build.sh
 ```
-\**This is a bash script that runs on Linux-like systems.  You may have to make an adjustment for non-Linux systems.  Note that the script is simply a convenience that runs `npm install` inside each top-level directory, so you can always fall back to that technique if you have trouble with the script.*
+\**This is a shell script that runs on Linux-like systems.  You may have to make an adjustment for non-Linux systems.  Note that the script is simply a convenience that runs `npm install` inside each top-level directory, so you can always fall back to that technique if you have trouble with the script.*
 
 ### Overview
 
@@ -45,7 +46,7 @@ You **could actually ignore** this issue entirely.  The server component we buil
 - The feature provides some amazing benefits, virtually for free
 - Your transporter really **should** be plug-and-play compatible with other transporters to be a good Nest citizen (Nestizen? :smiley:)
 
-I could go on and on! And in fact, I do sort of go on, but I've decided to encapsulate all the [concrete examples and detailed justification here](xxx) to try to keep this tutorial on track.  Suffice to say, I strongly encourage you to read that section to both understand why this is an important step, and to possibly get inspired to use Nest microservices in some new and interesting ways.
+I could go on and on! And in fact, I do sort of go on, but I've decided to encapsulate all the [concrete examples and detailed justification here](xxx) to try to keep this tutorial on track.  Suffice to say, I strongly encourage you to follow that link and take that little side trip to both understand why this is an important step, and to possibly get inspired to use Nest microservices in some new and interesting ways.
 
 With all that said, let's jump in!
 
