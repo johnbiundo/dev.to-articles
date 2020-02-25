@@ -9,17 +9,32 @@ canonical_url:
 
 *John is a member of the NestJS core team*
 
-xxx longdash:
-&#8212;
-
 ### Introduction
+
+This is part 2 of a five-part series.  If you landed here from Google, you may want to start with [part 1](xxx).
+
+In this article, we build the first iteration of the server component of our Faye Custom Transporter.
 
 **Reminder**: Many of the concepts and terminology here are introduced and explained in [this article series](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-1-p3). That series serves as a good foundation for understanding the more advanced concepts covered in this series.
 
 All of the code in these articles is available [here](xxx).  As always, these tutorials work best if you follow along with the code.  The [README](xxx) covers all the steps you need to get the repository, build the apps, and follow along.  It's easy!  I strongly encourage you to do so.
 
-#### Building the Apps for this Article
+#### Get the Code
 
+All of the code in these articles is available [here](xxx).  As always, these tutorials work best if you follow along with the code.  The [README](xxx) covers all the steps you need to get the repository, build the apps, and follow along.  It's easy!  I strongly encourage you to do so.  Note that each article has a corresponding branch in the repository.  For example, this article (part 1), has a corresponding branch called `part1`. Read on, or [get more details here](xxx) on using the repository.
+
+#### Git checkout the current version
+
+For this article, you should `git checkout` the branch `part2`.  You can get more information [about the git repository branches here](xxx).
+
+#### Build the Apps for This Part
+
+For each article in the series, we introduce some new components (and sometimes entirely new **projects**).  For convenience, at the start of each article, you should run the command\*
+
+```bash
+$ sh build.sh
+```
+\**This is a bash script that runs on Linux-like systems.  You may have to make an adjustment for non-Linux systems.  Note that the script is simply a convenience that runs `npm install` inside each top-level directory, so you can always fall back to that technique if you have trouble with the script.*
 
 ### Organizing the Code
 
