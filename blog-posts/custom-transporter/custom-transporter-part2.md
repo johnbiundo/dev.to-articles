@@ -11,13 +11,11 @@ canonical_url:
 
 ### Introduction
 
-This is part 2 of a five-part series.  If you landed here from Google, you may want to start with [part 1](xxx).
+This is part 2 of a six-part series.  If you landed here from Google, you may want to start with [part 1](xxx).
 
 In this article, we build the first iteration of the server component of our Faye Custom Transporter.
 
 **Reminder**: Many of the concepts and terminology here are introduced and explained in [this article series](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-1-p3). That series serves as a good foundation for understanding the more advanced concepts covered in this series.
-
-All of the code in these articles is available [here](xxx).  As always, these tutorials work best if you follow along with the code.  The [README](xxx) covers all the steps you need to get the repository, build the apps, and follow along.  It's easy!  I strongly encourage you to do so.
 
 #### Get the Code
 
@@ -315,7 +313,7 @@ Faye customer app starts...
 }
 ```
 
-Terminals 1 and 2 show the corresponding message flow in the Faye broker and `customerService` app respectively.  They all should weave together nicely to let you trace the entire saga through the layers of the system.
+Terminals 1 and 2 show the corresponding message flow in the Faye broker and `nestMicroservice` app respectively.  They all should weave together nicely to let you trace the entire saga through the layers of the system.  By the way, if you're wondering where the message level logging in terminal 2 (`nestMicroservice`) comes from, take a look at the serializer/deserializer implementations in `nestjs-faye-transporter/src/responder/serializers/outbound-response-identity-serializer.ts` and `nestjs-faye-transporter/src/responder/deserializers/inbound-message-identity-deserializer.ts`.  These are our so-called "identity" serializer/deserializer from the [previous article series](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-3-4m20), which are very helpful for visualizing message flow.
 
 Hooray! We're done right?  :beer:?
 
