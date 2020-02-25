@@ -58,7 +58,7 @@ Faye has a very simple &#8212; virtually canonical &#8212; publish/subscribe pro
 
 As we've done in the [NestJS Microservices in Action](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-1-p3) series, we'll start by building simple native requestor and responder apps that exercise the Faye API directly.  This will help us make sure we understand the Faye API, and give us a convenient testbed.
 
-As covered in the previous article, one of the challenges the Nest microservices package deals with is to layer a request/response message style **on top of** publish/subscribe semantics.  In other words, Nest requestors need to be able to run code like:
+As covered in the [previous article series](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-1-p3), one of the challenges the Nest microservices package deals with is to layer a request/response message style **on top of** publish/subscribe semantics.  In other words, Nest requestors need to be able to run code like:
 
 ```ts
   @Get('customers')
@@ -69,7 +69,7 @@ As covered in the previous article, one of the challenges the Nest microservices
   }
 ```
 
-#### Request/Response
+#### Supporting Request/Response
 
 Since Faye (as well as most brokers) only supports publish/subscribe, we need to follow a simple recipe to provide request/response semantics.  Here's a recap of the *generic pattern* for how this is often done.
 
@@ -125,7 +125,7 @@ function getCustomers(packet): void {
 
 The logic should be easy to understand. Refer to the full listing and make sure you see how we are using the `'get-customers_res'` and `'get-customers_req'` channels here.  We'll be seeing a lot of that pattern, so make sure it makes sense to you.
 
-One detail to point out is the call to `getPayload()`.  Let's discuss that.  As mentioned, we're building these native apps to conform to Nest protocols.  This includes using the channel names, as well as matching the internal Nest message format (this topic is covered extensively in the [NestJS Microservices in Action](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-1-p3)) series).  Because of this, the apps provide a convenient test bench for the Nest transporter and `ClientProxy` we're about to build.  The message format requirement means we need to wrap responses in a standard object we can depict like this:
+One detail to point out is the call to `getPayload()`.  Let's discuss that.  As mentioned, we're building these native apps to conform to Nest protocols.  This includes using the channel names, as well as matching the internal Nest message format (this topic is covered extensively in the [NestJS Microservices in Action](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-1-p3)) series).  Because of this, the apps provide a convenient test bench for the Nest transporter and `ClientProxy` we're building in this article series.  The message format requirement means we need to wrap responses in a standard object we can depict like this:
 
    ```typescript
    {
@@ -151,13 +151,13 @@ One detail to point out is the call to `getPayload()`.  Let's discuss that.  As 
    }
    ```
 
-So we can recognize that `getPayload()` is a helper that wraps payloads in this standard Nest message structure. If you're paying close attention, you'll notice that `getPayload()` copies the `message.id` field from the inbound request (which we'll ensure also has the canonical Nest message structure) to the outbound message.  We haven't really discussed these `id` fields yet, but they'll become very important when we dive into the "client side" of our transporter.
+So we can recognize that `getPayload()` is a helper that wraps payloads in this standard Nest message structure. If you're paying close attention, you'll notice that `getPayload()` (not shown here --xxx-- look at the `service.ts` source code to see it) copies the `message.id` field from the inbound request (which we'll ensure also has the canonical Nest message structure) to the outbound message.  We haven't really discussed these `id` fields yet, but they'll become very important when we dive into the "client side" of our transporter starting in Part 4.
 
 #### Native Requestor App (customerApp)
 
 The requestor is in `customerApp/src/customer-app.ts`.  Below is the implementation of the `getCustomers()` function.
 
-There's a little bit of boilerplate, including wrapping the body in a Promise, which isn't required, but will come in handy later when we want to orchestrate a test with multiple outstanding requests.  But the main logic should be easy to see.  It implements the client side of that [request/response protocol](#requestresponse) we walked through a couple of minutes ago.
+There's a little bit of boilerplate, including wrapping the body in a Promise (which isn't required, but will come in handy later when we want to orchestrate a test with multiple outstanding requests).  But the main logic should be easy to see.  It implements the **requestor** side of that [request/response protocol](#requestresponse) we walked through a couple of minutes ago.
 
 ```ts
 // src/customer-app.ts
@@ -208,13 +208,15 @@ async function getCustomers(customerId, requestId = 0, requestDelay = 0) {
 }
 ```
 
-We first subscribe to `'/get-customers_res'` (our **response channel**), simply printing out the result when a message on this channel comes back.  Then we publish the request on `'/get-customers_ack'`.
+We first subscribe to `'/get-customers_res'` (our **response channel**).  The handler simply prints out the result when a message on this channel comes back. This is the "final response" to an end-user command (request) issued from the command line (see the basic command line processing logic at the bottom of the file).
 
-Because we're running this as a standalone node client program and want to exit after sending a request (letting us use it as a command line program that we can repeatedly send requests), we wait 500ms after publishing the request, then cancel the subscription and exit.  Cancelling the subscription is important hygiene &#8212; if we don't, subscriptions hang around (though Faye will eventually detect them and clean them up).
+Then we publish the request on `'/get-customers_ack'`.
 
-Finally, you'll notice that much like the responder, we have a helper utility `getPayload()` to wrap our requests in the nest message protocol. You'll also notice that we are generating our `id` field &#8212; the same `id` field we are handling on our responder app above.  For now, just think of the `id` field as something we need to have in order to speak native Nest message protocol.  Later, we'll dive into this in more detail.
+Because we're running this as a standalone node command line program, and thus want to exit after sending a request (letting us use it as a command line program that we can repeatedly send requests), we wait 500ms after publishing the request, then cancel the subscription and exit.  Cancelling the subscription is important hygiene &#8212; if we don't, subscriptions hang around (though Faye will eventually detect them and clean them up).
 
-For completeness, let's take a very quick look at how we run the Faye server. Though you can treat it as a black box, it's worth a moment to look at how it runs, and appreciate its native node.js-ness and simplicity.  Open up `faye-server/server.js`.  The code is shown below.  You can read more about running the Faye server [here](https://faye.jcoglan.com/node.html), but we're basically just starting it up, and listening for a series of events that we can log to the console to make it easy to trace the handshaking and message exchange. You shouldn't have to mess with this at all, but if you do, it's pretty basic stuff.
+Finally, you'll notice that much like the responder, we have a helper `getPayload()` utility to wrap our requests in the Nest message protocol. You'll also notice that we are generating our `id` field &#8212; the same `id` field we are handling on our responder app above.  For now, just think of the `id` field as something we need to have in order to speak native Nest message protocol.  Later, we'll dive into this in more detail.
+
+For completeness, let's take a very quick look at how we run the Faye server. Though you can treat it as a black box, it's worth a moment to look at how it runs, and appreciate its native node.js-ness and simplicity.  Open up `faye-server/server.js`.  The code is shown below.  You can read more about running the Faye server [here](https://faye.jcoglan.com/node.html), but we're basically just starting it up, and for instrumentation purposes, listening for various events that we can log to the console to make it easy to trace the handshaking and message exchange. You shouldn't have to mess with this at all, but if you do, it's pretty basic stuff.
 
 ```ts
 const http = require('http');
@@ -265,7 +267,7 @@ bayeux.on('unsubscribe', (clientId, channel) => {
 });
 ```
 
-We've now completed our requestor and responder, and can test them out.  While I only reviewed the `'get-customers'` message above, the code also implements the `'add-customer'` message.  Run the code now by following [these instructions](xxx).  Here's what it looks like:
+We've now completed our requestor and responder, and can test them out.  While I only reviewed the `'get-customers'` message flow above, the code also implements the `'add-customer'` message.  Run the code now by following [these instructions](xxx).  Here's what it looks like. In this video clip, the Faye broker is running in the top pane, the `customerService` app is running in the middle pane, and the `customerApp` app is running in the lower pane (and if you're curious, this is [tmux](https://github.com/tmux/tmux); you can get my setup [here](https://github.com/johnbiundo/nest-nats-sample#pro-tip-use-tmux-optional)).
 
 ![Native App Demo](./assets/faye-basic-demo2.gif 'Native App Demo')
 <figcaption><a name="faye-basic-demo"></a>Screen Capture: Native App Demo</figcaption>
