@@ -9,12 +9,9 @@ canonical_url:
 
 *John is a member of the NestJS core team*
 
-xxx longdash:
-&#8212;
-
 ### Introduction
 
-This article series covers the topic of building a custom **transporter** for the [NestJS microservices subsystem](https://docs.nestjs.com/microservices/basics). If you haven't already read it, please check out my [NestJS Microservices in Action](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-1-p3) series, where I cover many of the basics of the NestJS microservices subsystem architecture, and establish the terminology used in all my Nest Microservices articles.  I'll assume a good understanding of those basics in this article series.
+This article series covers the topic of building a **custom transporter** for the [NestJS microservices subsystem](https://docs.nestjs.com/microservices/basics). If you haven't already read it, please check out my [NestJS Microservices in Action](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-1-p3) series, where I cover many of the basics of the NestJS microservices subsystem architecture, and establish the terminology used in all my Nest Microservices articles, including answering the question *"what the heck is a transporter?"*.  I'll assume a good understanding of those basics in this article series.
 
 Let's start with the *Why?* question.  The Nest microservices package provides a communications layer abstraction that makes it easy for applications (both Nest and non-Nest) to communicate over a wide variety of what are called **transporters**.  This provides several key benefits, covered fully in the [previous article series](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-1-p3). Nest comes with a variety of built-in transporters, including NATS, RabbitMQ, Kafka, and others. But what if you want to build your own transporter &#8212; say for ZeroMQ, Google Cloud Pub/Sub, Amazon Kinesis or Apache ActiveMQ? If that's your desire, you've landed on the right article!  Or, if you just want to understand more about how the "magic" works, read on!
 
@@ -22,18 +19,18 @@ A related question is *How can I extend the capabilities of existing Nest transp
 
 ### Article Series Overview
 
-Part 1 (this article): Sets the background for the entire series.  We'll begin by examining the simple [Faye message broker](xxx) to set the stage for building a custom Nest transporter that sits on top of it.
-[Part 2](xxx): Walks you through building an initial version of the **server side** of a transporter. The result is a working version that should familiarize you with the main concepts needed to understand how to build the server component of **any** custom transporter. It leaves aside a few important details to keep us on the main path.
-[Part 3](xxx): Cleans up some loose ends, and deep dives on a few of the more advanced and impressive features of the framework,and shows you how to enable these features in your custom transporter.
-[Part 4](xxx): Switches to the client side. As with the server side, this article walks through a **complete** implementation, though it defers a few of the more complex features to the next article.
-[Part 5](xxx): Completes the client-side journey, resulting in a completely functional custom transporter for Faye.
-Part 6: (Coming soon!) Surveys a few of the built-in NestJS transporters and compares their implementation to the Faye implementation to shed light on some broker-specific nuanced implementation details.
+* Part 1 (this article): Sets the background for the entire series.  We'll begin by examining the simple [Faye message broker](https://faye.jcoglan.com/) to set the stage for building a custom Nest transporter that sits on top of it.
+* [Part 2](xxx): Walks you through building an initial version of the **server side** of a transporter. The result is a working version that should familiarize you with the main concepts needed to understand how to build the server component of **any** custom transporter. It defers implementation of a few important details to the next article so as to keep us focused on the main path.
+* [Part 3](xxx): Cleans up some loose ends, and deep dives on a few of the more advanced and impressive features of the framework, and shows you how to enable these features in your custom transporter.
+* [Part 4](xxx): Switches to the client side. As with the server side, this article walks through a **complete** implementation, though it defers a few of the more complex features to the next article.
+* [Part 5](xxx): Completes the client-side journey, resulting in a completely functional custom transporter for Faye.
+* Part 6: (Coming soon!) Surveys a few of the built-in NestJS transporters and compares their implementation to the Faye implementation to shed light on some broker-specific nuanced implementation details.
 
 Let's get started!
 
 #### Get the Code
 
-All of the code in these articles is available [here](xxx).  As always, these tutorials work best if you follow along with the code.  The [README](xxx) covers all the steps you need to get the repository, build the apps, and follow along.  It's easy!  I strongly encourage you to do so.  Note that each article has a corresponding branch in the repository.  For example, this article (part 1), has a corresponding branch called `part1`. Read on, or [get more information here](xxx) to see how to use the branches.
+All of the code in these articles is available [here](xxx).  As always, these tutorials work best if you follow along with the code.  The [README](xxx) covers all the steps you need to get the repository, build the apps, and follow along.  It's easy!  I strongly encourage you to do so.  Note that each article has a corresponding branch in the repository.  For example, this article (part 1), has a corresponding branch called `part1`. Read on, or [get more details here](xxx) on using the repository.
 
 #### Git checkout the current version
 
@@ -46,7 +43,7 @@ For each article in the series, we introduce some new components (and sometimes 
 ```bash
 $ sh build.sh
 ```
-\**This is a bash script that runs on Linux-like systems.  You may have to make an adjustment for non-Linux systems.  Note that the script is simply a convenience that runs `npm install` on each top-level directory, so you can always fall back to that technique if you have trouble with the script.*
+\**This is a bash script that runs on Linux-like systems.  You may have to make an adjustment for non-Linux systems.  Note that the script is simply a convenience that runs `npm install` inside each top-level directory, so you can always fall back to that technique if you have trouble with the script.*
 
 ### Overview for Part 1
 
@@ -54,7 +51,7 @@ For this case study, we'll build a custom transporter to work with the [Faye](ht
 
 Faye has a very simple &#8212; virtually canonical &#8212; publish/subscribe protocol, as depicted in Figure 1 below.
 
-![Faye Message Protocol](./assets/faye-protocol.png 'Faye Message Protocol')
+![Faye Message Protocol](./assets/faye-protocol2.png 'Faye Message Protocol')
 <figcaption><a name="figure1"></a>Figure 1: Faye Message Protocol</figcaption>
 
 ### Building Basic Faye Client Apps
