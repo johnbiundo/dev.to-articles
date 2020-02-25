@@ -19,7 +19,7 @@ In this article, we build the final iteration of the server component of our Fay
 
 #### Get the Code
 
-All of the code in these articles is available [here](https://github.com/johnbiundo/nestjs-faye-transporter-sample).  As always, these tutorials work best if you follow along with the code.  The [README](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/master/README.md) covers all the steps you need to get the repository, build the apps, and follow along.  It's easy!  I strongly encourage you to do so.  Note that each article has a corresponding branch in the repository.  For example, this article (part 3), has a corresponding branch called `part3`. Read on, or [get more details here](xxx) on using the repository.
+All of the code in these articles is available [here](https://github.com/johnbiundo/nestjs-faye-transporter-sample).  As always, these tutorials work best if you follow along with the code.  The [README](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/master/README.md) covers all the steps you need to get the repository, build the apps, and follow along.  It's easy!  I strongly encourage you to do so.  Note that each article has a corresponding branch in the repository.  For example, this article (part 3), has a corresponding branch called `part3`. Read on, or [get more details here](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/master/README.md#part-3-completing-the-server-component) on using the repository.
 
 #### Git checkout the current version
 
@@ -254,7 +254,7 @@ export class FayeContext extends BaseRpcContext<FayeContextArgs> {
 }
 ```
 
-Essentially, it keeps an array of context values &#8212; in our case just strings, though you can specify a more complex type if you need to.  For example, [MQTT](xxx) uses:
+Essentially, it keeps an array of context values &#8212; in our case just strings, though you can specify a more complex type if you need to.  For example, [MQTT](https://github.com/nestjs/nest/blob/master/packages/microservices/ctx-host/mqtt.context.ts#L3) uses:
 
 ```typescript
 type MqttContextArgs = [string, Record<string, any>];
@@ -435,7 +435,7 @@ and
 
 > POST /customer  // <-- with a payload
 
-See the [README](xxx) for more information on running these and similar tests.
+See the [README](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/master/README.md) for more information on running these and similar tests.
 
 As mentioned earlier in this article, there's also a series of routes related to exploring how microservices handle promises and observables when they are returned from a **request**.  You can [read more here](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/master/observable-deepdive.md).
 

@@ -11,7 +11,7 @@ canonical_url:
 
 ### Introduction
 
-This is part 4 of a six-part series.  If you landed here from Google, you may want to start with [part 1](xxx).
+This is part 4 of a six-part series.  If you landed here from Google, you may want to start with [part 1](https://dev.to/nestjs/build-a-custom-transporter-for-nestjs-microservices-dc6-temp-slug-6007254?preview=d3e07087758ff2aac037f47fb67ad5b465f45272f9c5c9385037816b139cf1ed089616c711ed6452184f7fb913aed70028a73e14fef8e3e41ee7c3fc#requestresponse).
 
 In this article, we build the final iteration of the server component of our Faye Custom Transporter.
 
