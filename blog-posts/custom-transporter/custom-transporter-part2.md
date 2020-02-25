@@ -21,7 +21,7 @@ All of the code in these articles is available [here](xxx).  As always, these tu
 
 #### Get the Code
 
-All of the code in these articles is available [here](xxx).  As always, these tutorials work best if you follow along with the code.  The [README](xxx) covers all the steps you need to get the repository, build the apps, and follow along.  It's easy!  I strongly encourage you to do so.  Note that each article has a corresponding branch in the repository.  For example, this article (part 1), has a corresponding branch called `part1`. Read on, or [get more details here](xxx) on using the repository.
+All of the code in these articles is available [here](xxx).  As always, these tutorials work best if you follow along with the code.  The [README](xxx) covers all the steps you need to get the repository, build the apps, and follow along.  It's easy!  I strongly encourage you to do so.  Note that each article has a corresponding branch in the repository.  For example, this article (part 2), has a corresponding branch called `part2`. Read on, or [get more details here](xxx) on using the repository.
 
 #### Git checkout the current version
 
@@ -50,7 +50,7 @@ The main thing to think about now is where to keep the Faye custom transporter c
 
 #### The Custom Transporter Package
 
-At this point, you should `git checkout` the `part2` branch of the repo that you cloned ([Read more here](xxx) for details).  Once you've checked out that branch, you'll notice a new folder called `nestjs-faye-transporter`.  This is organized as an NPM package (you can learn more about creating NestJS-friendly NPM packages in my article [Publishing NestJS Packages with npm](https://dev.to/nestjs/publishing-nestjs-packages-with-npm-21fm), including how the `tsconfig.json` file, `package.json` scripts and properties, and file organization all interact to create a reusable NPM package).
+At this point, you should be on the `part2` branch of the repo that you cloned ([Read more here](xxx) for details).  Once you've checked out that branch, you'll notice a new folder called `nestjs-faye-transporter`.  This is organized as an NPM package (you can learn more about creating NestJS-friendly NPM packages in my article [Publishing NestJS Packages with npm](https://dev.to/nestjs/publishing-nestjs-packages-with-npm-21fm), including how the `tsconfig.json` file, `package.json` scripts and properties, and file organization all interact to create a reusable NPM package).
 
 Here's a run-down on the contents of the `nestjs-faye-transporte` package, and how we'll use each:
 
@@ -65,17 +65,16 @@ Here's a run-down on the contents of the `nestjs-faye-transporte` package, and h
 
 Let's get started building the "server" side of the equation &#8212; the part of the custom transporter that you'll use to build *Nest responders*.
 
-Again, for this step of the tutorial, we should be on the `part2` branch of the repository.
-
 #### Using a Custom Transporter Strategy
 
 Before we start writing transporter code, let's first take a look at how we're going to use it.  For that purpose, let's look at the `nestMicroservice` app.  This app has been added in this branch. The code for it is in the top-level `nestMicroservice` folder.
 
 ##### Instantiating the Custom Transporter
 
-Open the `main.ts` file.  Notice the structure of the `createMicroservice` call:
+Open the `src/main.ts` file.  Notice the structure of the `createMicroservice` call:
 
 ```ts
+// nestMicroservices/src/main.ts
 const app = await NestFactory.createMicroservice(AppModule, {
   strategy: new ServerFaye({
     url: 'http://localhost:8000/faye',
@@ -106,7 +105,7 @@ It should be clear what we're doing: instead of passing the normal [transporter 
 
 ##### Using the Custom Transporter
 
-Let's briefly review how our `nestMicroservice` app works.  It's only real job is to take in a `'/get-customers'` message and return a list of customers.  The action is in the `nestMicroservices/src/app.controller.ts` file:
+Let's briefly review how our `nestMicroservice` app works.  Its only real job is to take in a `'/get-customers'` message and return a list of customers.  The action is in the `nestMicroservices/src/app.controller.ts` file:
 
 ```typescript
 @Controller()
@@ -127,20 +126,20 @@ export class AppController {
 }
 ```
 
-All it really does is check for the existence of a customerId, and if it exists, uses it to filter the customer list it returns.
+All it really does is check for the existence of a `customerId`, and if it exists, uses it to filter the customer list it returns.
 
 #### Take 1 Requirements
 
 Alright, we're finally ready to look at our `ServerFaye` class &#8212; the one we'll instantiate and pass as the value of that `strategy` property above.  We'll take this in a couple of steps.
 
-This iteration ("Take 1") is going to be the absolute bare-bones class needed to implement the Faye transporter.  We're going to make a number of simplifications, so that we can focus on the core flow.  Our first cut will:
+This iteration ("Take 1") is going to be the absolute bare-bones class needed to implement the server component of the Faye transporter.  We're going to keep our first version basic so that we can focus on the core flow.  Our first cut will:
 
 - minimize error handling
 - not rely on some nice features of the framework that make our code really robust
 - not handle events (e.g., inbound messages coming from `client.emit(...)`)
 - not really be type safe (we omit a bunch of typing to declutter the code)
 
-To state it in more direct terms, our requirement for this cut is to simply be able to respond to a well-formed inbound **request** (in the sense of a request from a **request-response** style message).  We'll test this requirement by replacing our native `customerService` responder app from the last article with our `nestMicroservices` app running our new custom transporter, and sending it some requests from our native `customerApp`.
+To state it in terms of requirements: the goal is to respond to a well-formed inbound **request** (in the sense of a request from a **request-response** style message).  We'll test this requirement by replacing our native `customerService` responder app from the last article with our `nestMicroservices` app running our new custom transporter, and sending it the same `'get-customers'` request from our native `customerApp`.
 
 > **Note:** In [part 3](xxx), we'll complete the implementation and have a fully functioning Faye Custom Transporter (server component).  At that point, you'll also have all of the concepts in place to write your own custom transporter server component, as well as the ability to look inside the built-in transporters (like [the MQTT transporter server](https://github.com/nestjs/nest/blob/master/packages/microservices/server/server-mqtt.ts)) and understand what's going on.  That will prepare you for even more adventures, like customizing the Nest built-in transporters to add features&#8212; the subject of my next NestJS microservice tutorial (already underway, and coming very soon :boom:)!
 
@@ -165,7 +164,7 @@ The interesting thing in `start()` is the call to `this.bindHandlers()`.  Take a
      * It's a map of `pattern` -> `handler` key/value pairs
      * `handler` is the handler function in the user's controller class, decorated
      * by `@MessageHandler()` or `@EventHandler`, along with an additional boolean
-     * property indicating it's Nest pattern type: event or message (i.e.,
+     * property indicating its Nest pattern type: event or message (i.e.,
      * request/response)
      */
     this.messageHandlers.forEach((handler, pattern) => {
@@ -196,14 +195,16 @@ The interesting thing in `start()` is the call to `this.bindHandlers()`.  Take a
 ```
 
 The comments should help with understanding what's happening, but at a high level, the strategy should be pretty clear:
-1. Iterate over all of our "message handlers" (these are the user-land Controller methods decorated with `@MessagePattern()`; a list of them is made available to us  (`this.messageHandlers`) by the framework which performs introspection using the `Reflect` API  during the bootstrap process).\*
+1. Iterate over all of our "message handlers". These are the user-land Controller methods decorated with `@MessagePattern()`; a list of them is made available to us  (in `this.messageHandlers`) by the framework, which discovers them using introspection with the `Reflect` API during the bootstrap process.\*
 2. For each one, subscribe to the inbound channel (the `_ack` form of the topic).  Remember, a Faye client's `subscribe()` call registers a callback handler to be invoked whenever the Faye client library receives an inbound message matching this topic.  So this is the step where we map *patterns* to *handlers*. In short, this is our "router".
 3. The subscription handler in step 2, when invoked, runs the *actual* user supplied handler (the user-land handler method decorated with something like `@MessagePattern('get-customer')`), and *returns* the result it gets from that method.  When we say "returns", we mean **publishes a reply** on the outbound channel (the `_res` form of the topic).
 4. Along the way, we run our deserializer on the inbound message, our serializer on the outbound response, and we package up the data produced by the user's pattern handler in an appropriately shaped standard Nest transporter message object.
 
-\*We are omitting *event handlers* (methods decorated with `@EventPattern(...)`) for now.  We'll handle these in Take 2 of our server component, in the next article.
+\*For *Take 1*, we are omitting *event handlers* (methods decorated with `@EventPattern(...)`).  We'll handle these in *Take 2* of our server component, in the next article.
 
-If all this looks somewhat familiar, it's because we're basically following the same approach we used in the native `customerService` app.
+The only slightly tricky part is the call to `getMessageHandler()`.  This is just a higher-order function that is returning us the actual handler function.
+
+If all this looks somewhat familiar, it's because we're basically following the same pattern we used in the native `customerService` app in the previous article (Part 1).
 
 ### Acceptance Testing
 
@@ -211,13 +212,13 @@ We should be ready to test out our code.  We need to do a tiny bit of setup firs
 
 Now's a good time to mention a couple of things about the development setup:
 1. I run this kind of stuff on an Ubuntu machine.  There's **nothing** platform-specific anywhere in the code, **but**, I find running builds, starting and stopping processes, running multiple terminal sessions, etc., to be much smoother on Linux.  You can run this wherever you want, but if you're not on Linux, you may have to make slight adjustments to your `package.json`, or other actual build steps.
-2. Since you kind of **need** to run multiple terminal sessions to see the full impact, I strongly recommend [Tmux](https://github.com/tmux/tmux).  You can start multiple terminal programs, or use tabs if you prefer, but if you want what I think is the **best** DX for this kind of work, checkout Tmux.  I covered some of my recommendations [in the last article series](https://github.com/johnbiundo/nest-nats-sample#pro-tip-use-tmux-optional).
+2. Since you kind of **need** to run multiple terminal sessions to see the full impact, I strongly recommend [Tmux](https://github.com/tmux/tmux).  I mentioned this briefly at the end of the last article, so you now know I feel strongly about it :smiley:. You can instead start multiple terminal programs, or use tabs if you prefer, but if you want what I think is the **best** DX for this kind of work, checkout Tmux.  I covered some detailed Tmux recommendations [in the last article series](https://github.com/johnbiundo/nest-nats-sample#pro-tip-use-tmux-optional).
 
 In the following steps, I'll reference these (logical) terminals as:
-* terminal 1: run the Faye broker here
-* terminal 2: run live builds (`npm build:watch`) of the transporter server code we're working on here
-* terminal 3: run the "requestor code".  This is usually the customerApp; in the future, we'll also interact with `nestHttpApp` (making **it** the requestor) using HttPie commands from the OS prompt (you can also use Postman, or Curl to issue HTTP requests, of course). We can use one terminal for this since we don't typically run both the `customerApp` and the `nestHttpApp` at the same time
-* terminal 4: run the `nestMicroservice` Nest responder application (this is the plain old Nest microservice app that will be **using** our new `ServerFaye` custom transporter)
+* **Terminal 1**: run the Faye broker here
+* **Terminal 2**: run live builds (`npm build:watch`) of the transporter server code we're working on here
+* **Terminal 3**: run the "requestor code".  This is usually the customerApp; in the future, we'll also interact with `nestHttpApp` (making **it** the requestor) using HttPie commands from the OS prompt (you can also use Postman, or Curl to issue HTTP requests, of course). We can use one terminal for this since we don't typically run both the `customerApp` and the `nestHttpApp` at the same time
+* **Terminal 4**: run the `nestMicroservice` Nest responder application (this is the plain old Nest microservice app that will be **using** our new `ServerFaye` custom transporter)
 
 #### Primary Acceptance Test
 
@@ -230,11 +231,12 @@ Going back to our requirements, our main acceptance test is simple: send a well-
 
 Before we can run the test, we need to cover one more preliminary.  Ask yourself this: how does our `nestMicroservice` app know how to find the code in our `nestjs-faye-transporter` package?  The answer is pretty simple (though it belies the awesomeness of NPM!).
 
-We're going to use the `npm link` command ([read details here](https://medium.com/dailyjs/how-to-use-npm-link-7375b6219557), but the following all you need to know for this tutorial).  There are two simple steps:
+We're going to use the `npm link` command ([read details here](https://medium.com/dailyjs/how-to-use-npm-link-7375b6219557), but the following is all you need to know for this tutorial).  There are two simple steps:
 
-1. In terminal 2, make sure you're in the folder `nestjs-faye-transporter` (our NPM package folder).  Then run `npm link` at the OS level.  You should see output like this:
+1. In terminal 2, make sure you're in the folder `nestjs-faye-transporter` (our NPM package folder).  Then run `npm link` at the OS level.  You should see output like this (I use `nvm`; if you don't your output will look *slightly* different):
 
     ```bash
+    $ # from directory nestjs-faye-transporter
     $ npm link
 
     @faye-tut/nestjs-faye-transporter@1.0.1 prepare /home/john/code/nest-micro/nestjs-faye/nestjs-faye-transporter
@@ -252,6 +254,7 @@ We're going to use the `npm link` command ([read details here](https://medium.co
 2. In terminal 4, make sure you're in the folder `nestMicroservice`.  Then run `npm link @faye-tut/nestjs-faye-transporter` at the OS level.  This command references the NPM package name (found in `nestjs-faye-transporter/package.json`) for our custom transporter.  You should see output like this:
 
     ```bash
+    $ # from directory nestMicroservice
     $ npm link @faye-tut/nestjs-faye-transporter
     /home/john/code/nest-micro/nestjs-faye/nestMicroservice/node_modules/@faye-tut/nestjs-faye-transporter ->
     /home/john/code/nest-micro/nestjs-faye/nestjs-faye-transporter
@@ -267,6 +270,7 @@ We're ready to rock and roll :musical_note:!
 In terminal 1, make sure the Faye broker is running. First make sure you're in the `faye-server` directory, then run `npm run start`.  You should see something like this:
 
 ```bash
+$ # from directory faye-server
 $ npm run start
 simple-faye-server@1.0.0 start /home/john/code/nest-micro/nestjs-faye/faye-server
 node server.js
@@ -283,6 +287,7 @@ In terminal 3, we'll run the native `customerApp` to make the request.  Earlier,
 
 ```bash
 # in terminal 3 window...
+# in folder customerApp
 npm run get-customers
 ```
 
@@ -310,15 +315,17 @@ Faye customer app starts...
 }
 ```
 
+Terminals 1 and 2 show the corresponding message flow in the Faye broker and `customerService` app respectively.  They all should weave together nicely to let you trace the entire saga through the layers of the system.
+
 Hooray! We're done right?  :beer:?
 
-Not so fast... did you forget this is a five-part series :smiley:? Read on to see where we've still got work to do.
+Not so fast... did you forget this is a six-part series :smiley:? Read on to see where we've still got work to do.
 
 ### Understanding the Limitations of Take 1
 
 We already know we have to clean up a few things, like adding **event handling** (e.g., handlers decorated with `@EventPattern(...)`), adding TypeScript types, and plugging in more cleanly to the framework.  But the biggest limitation of our Take 1 implementation is its (lack of) handling of [RxJS observables](http://reactivex.io/).  To fully appreciate this, we'll have to take a bit deeper dive into the overall flow and handling of requests through the Nest system.
 
-We'll explore this in greater detail in the next article, but let's start with a picture.  The following animation shows the path a hypothetical inbound HTTP request would take through our application. Inner boxes with a red background are part of the Nest infrastructure. User supplied code lives in the "user land" space with a white background.  Controllers are in light blue, and "Services" are in yellow.
+We'll explore this in greater detail in the next article, but let's start with a picture.  The following animation shows the path a hypothetical inbound HTTP request would take through our application. Inner boxes with a red background are part of the Nest infrastructure. User supplied code lives in the user-land space with a white background.  Controllers are in light blue, and "Services" are in yellow.
 
 ![Nest Request Handling](./assets/transporter-request.gif 'Nest Request Handling')
 <figcaption><a name="Nest Request Handling"></a>Figure 1: Nest Request Handling</figcaption>
@@ -335,7 +342,7 @@ An inbound HTTP request kicks off the following sequence of events.  Bolded word
     getCustomers(id: integer): Observable<Customer>
     ```
 
-Once the `getCustomers` method returns, we start the *return trip*, where things get more interesting. This is mainly because Nest is very **observable-aware**.
+Once the `getCustomers` method returns, we start the *return trip*, where things get more interesting. This "more interesting" part is mainly because Nest is very **observable-aware**.
 
 ![Nest Response Handling](./assets/transporter-response2.gif 'Nest Response Handling')
 <figcaption><a name="Nest Response Handling"></a>Figure 2: Nest Response Handling</figcaption>
@@ -384,13 +391,11 @@ import { of } from 'rxjs';
 
 This construct causes our handler to return an **observable** &#8212; a stream (containing only a single value in our case, but still, a stream) of values.
 
-If you make this change, then re-issue the `get-customers` message (run `npm run get-customers` in terminal 3), you'll get a rather ugly failure in the `nestMicroservice` window.  We aren't handling this case, which, again, is expected of any Nest microservice transporter.
+If you make this change, then re-issue the `get-customers` message (run `npm run get-customers` in terminal 3), you'll get a rather ugly failure in the `nestMicroservice` window.  This is our fault! We aren't handling this case, which, again, is expected of any Nest microservice transporter.
 
 ### What's Next
 
-With these issues in mind, we're ready to step up our game and make the `ServerFaye` custom transporter much more robust.  We'll tackle that in the next article.
-
-In [Part 3](xxx), we cover:
+With these issues in mind, we're ready to step up our game and make the `ServerFaye` custom transporter server component much more robust.  We'll tackle that in the next article.  In [Part 3](xxx), we cover:
 * A little side expedition on how and why you should care about the "Observables issue" we just uncovered
 * Handling events (e.g., `@EventPattern(...)` decorated methods in our responder app)
 * Adding types

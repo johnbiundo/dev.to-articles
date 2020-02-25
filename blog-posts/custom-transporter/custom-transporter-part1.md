@@ -86,7 +86,7 @@ As we'll see in developing our Faye transporter, Nest makes this a bit easier by
 @MessagePattern('get-customers')
 ```
 
-(**Note**: Nest uses the term **channel** as a generic internal name for topics (also called subjects and channels by some brokers), and to help disambiguate them from the "user land" concept of a **pattern**, from which they are derived.)
+(**Note**: Nest uses the term **channel** as a generic internal name for topics (also called subjects and channels by some brokers), and to help disambiguate them from the "user-land" concept of a **pattern**, from which they are derived.)
 
 Internally, Nest builds two channels from the above pattern:
 
