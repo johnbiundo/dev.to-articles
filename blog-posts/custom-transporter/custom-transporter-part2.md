@@ -11,7 +11,7 @@ canonical_url:
 
 ### Introduction
 
-This is part 2 of a six-part series.  If you landed here from Google, you may want to start with [part 1](xxx).
+This is part 2 of a six-part series.  If you landed here from Google, you may want to start with [part 1](https://dev.to/nestjs/build-a-custom-transporter-for-nestjs-microservices-dc6-temp-slug-6007254?preview=d3e07087758ff2aac037f47fb67ad5b465f45272f9c5c9385037816b139cf1ed089616c711ed6452184f7fb913aed70028a73e14fef8e3e41ee7c3fc#requestresponse).
 
 In this article, we build the first iteration of the server component of our Faye Custom Transporter.
 
@@ -19,11 +19,11 @@ In this article, we build the first iteration of the server component of our Fay
 
 #### Get the Code
 
-All of the code in these articles is available [here](xxx).  As always, these tutorials work best if you follow along with the code.  The [README](xxx) covers all the steps you need to get the repository, build the apps, and follow along.  It's easy!  I strongly encourage you to do so.  Note that each article has a corresponding branch in the repository.  For example, this article (part 2), has a corresponding branch called `part2`. Read on, or [get more details here](xxx) on using the repository.
+All of the code in these articles is available [here](https://github.com/johnbiundo/nestjs-faye-transporter-sample).  As always, these tutorials work best if you follow along with the code.  The [README](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/master/README.md) covers all the steps you need to get the repository, build the apps, and follow along.  It's easy!  I strongly encourage you to do so.  Note that each article has a corresponding branch in the repository.  For example, this article (part 2), has a corresponding branch called `part2`. Read on, or [get more details here](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/master/README.md#part-2-basic-server-component) on using the repository.
 
 #### Git checkout the current version
 
-For this article, you should `git checkout` the branch `part2`.  You can get more information [about the git repository branches here](xxx).
+For this article, you should `git checkout` the branch `part2`.  You can get more information [about the git repository branches here](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/master/README.md#repository-structure).
 
 #### Build the Apps for This Part
 
@@ -32,14 +32,14 @@ For each article in the series, we introduce some new components (and sometimes 
 ```bash
 $ sh build.sh
 ```
-\**This is a bash script that runs on Linux-like systems.  You may have to make an adjustment for non-Linux systems.  Note that the script is simply a convenience that runs `npm install` inside each top-level directory, so you can always fall back to that technique if you have trouble with the script.*
+\**This is a shell script that runs on Linux-like systems.  You may have to make an adjustment for non-Linux systems.  Note that the script is simply a convenience that runs `npm install` inside each top-level directory, so you can always fall back to that technique if you have trouble with the script.*
 
 ### Organizing the Code
 
 Even though the scope of this tutorial is relatively small &#8212; at the end of the day we'll just be creating a few classes &#8212; we're going to be accumulating a number of assets along the way to test and exercise our code. It's time to think a little bit about code organization.  First, let's take a look at what we'll end up with:
 
 * Our Faye transporter is going to consist of some interfaces and constants, some serializers/deserializers (discussed extensively in the [previous article series](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-1-p3)), and the main components: a **client** component (class) providing the `ClientProxy` subclass we can use in any *Nest requestor* apps and a **server** component (class) we can use in any *Nest responder* apps.
-* The native apps we wrote in the [previous article](xxx) that let us explore the Faye API and give us some test drivers.
+* The native apps we wrote in the [previous article](https://dev.to/nestjs/build-a-custom-transporter-for-nestjs-microservices-dc6-temp-slug-6007254?preview=d3e07087758ff2aac037f47fb67ad5b465f45272f9c5c9385037816b139cf1ed089616c711ed6452184f7fb913aed70028a73e14fef8e3e41ee7c3fc#requestresponse) that let us explore the Faye API and give us some test drivers.
 * A pair of regular Nest apps that will exercise our transporter code: a *Nest requestor* that is a simple Nest HTTP app called `nestHttpApp` and a *Nest responder* that is a classic Nest **microservice**, called `nestMicroservice`.  (**Note**: see [the previous article series](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-1-p3) for more on this terminology, but think of a *Nest Requestor* as an app that makes remote requests over some (non-HTTP) transport, like Faye, and a Nest responder as a Nest application that listens for inbound requests over that transport, like Faye).
 
 Where to keep all of these assets?
@@ -48,7 +48,7 @@ The main thing to think about now is where to keep the Faye custom transporter c
 
 #### The Custom Transporter Package
 
-At this point, you should be on the `part2` branch of the repo that you cloned ([Read more here](xxx) for details).  Once you've checked out that branch, you'll notice a new folder called `nestjs-faye-transporter`.  This is organized as an NPM package (you can learn more about creating NestJS-friendly NPM packages in my article [Publishing NestJS Packages with npm](https://dev.to/nestjs/publishing-nestjs-packages-with-npm-21fm), including how the `tsconfig.json` file, `package.json` scripts and properties, and file organization all interact to create a reusable NPM package).
+At this point, you should be on the `part2` branch of the repo that you cloned ([Read more here](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/master/README.md#part-2-basic-server-component) for details).  Once you've checked out that branch, you'll notice a new folder called `nestjs-faye-transporter`.  This is organized as an NPM package (you can learn more about creating NestJS-friendly NPM packages in my article [Publishing NestJS Packages with npm](https://dev.to/nestjs/publishing-nestjs-packages-with-npm-21fm), including how the `tsconfig.json` file, `package.json` scripts and properties, and file organization all interact to create a reusable NPM package).
 
 Here's a run-down on the contents of the `nestjs-faye-transporte` package, and how we'll use each:
 
@@ -139,7 +139,7 @@ This iteration ("Take 1") is going to be the absolute bare-bones class needed to
 
 To state it in terms of requirements: the goal is to respond to a well-formed inbound **request** (in the sense of a request from a **request-response** style message).  We'll test this requirement by replacing our native `customerService` responder app from the last article with our `nestMicroservices` app running our new custom transporter, and sending it the same `'get-customers'` request from our native `customerApp`.
 
-> **Note:** In [part 3](xxx), we'll complete the implementation and have a fully functioning Faye Custom Transporter (server component).  At that point, you'll also have all of the concepts in place to write your own custom transporter server component, as well as the ability to look inside the built-in transporters (like [the MQTT transporter server](https://github.com/nestjs/nest/blob/master/packages/microservices/server/server-mqtt.ts)) and understand what's going on.  That will prepare you for even more adventures, like customizing the Nest built-in transporters to add features&#8212; the subject of my next NestJS microservice tutorial (already underway, and coming very soon :boom:)!
+> **Note:** In [part 3](https://dev.to/nestjs/part-3-completing-the-server-component-2fai-temp-slug-8783531?preview=be5cb28367d68473fba3e9a91c71084b83414317c27529045d1732b885da4cedb2020d8a7a32482e950f79db2908dee597c475f0f0b1a77bb73f0cab), we'll complete the implementation and have a fully functioning Faye Custom Transporter (server component).  At that point, you'll also have all of the concepts in place to write your own custom transporter server component, as well as the ability to look inside the built-in transporters (like [the MQTT transporter server](https://github.com/nestjs/nest/blob/master/packages/microservices/server/server-mqtt.ts)) and understand what's going on.  That will prepare you for even more adventures, like customizing the Nest built-in transporters to add features&#8212; the subject of my next NestJS microservice tutorial (already underway, and coming very soon :boom:)!
 
 #### Take 1 Code Review
 
@@ -326,7 +326,7 @@ We already know we have to clean up a few things, like adding **event handling**
 We'll explore this in greater detail in the next article, but let's start with a picture.  The following animation shows the path a hypothetical inbound HTTP request would take through our application. Inner boxes with a red background are part of the Nest infrastructure. User supplied code lives in the user-land space with a white background.  Controllers are in light blue, and "Services" are in yellow.
 
 ![Nest Request Handling](./assets/transporter-request.gif 'Nest Request Handling')
-<figcaption><a name="Nest Request Handling"></a>Figure 1: Nest Request Handling</figcaption>
+<figcaption><a name="Nest Request Handling"></a>Figure 2: Nest Request Handling</figcaption>
 
 An inbound HTTP request kicks off the following sequence of events.  Bolded words represent Nest system responsibilities.  Underlined words represent user code. There's probably nothing terribly surprising going on here, but let's just briefly walk through it.
 1. The request is **routed** to a <u>route handling method</u> (like `getCustomers` in our controller).
@@ -343,7 +343,7 @@ An inbound HTTP request kicks off the following sequence of events.  Bolded word
 Once the `getCustomers` method returns, we start the *return trip*, where things get more interesting. This "more interesting" part is mainly because Nest is very **observable-aware**.
 
 ![Nest Response Handling](./assets/transporter-response2.gif 'Nest Response Handling')
-<figcaption><a name="Nest Response Handling"></a>Figure 2: Nest Response Handling</figcaption>
+<figcaption><a name="Nest Response Handling"></a>Figure 3: Nest Response Handling</figcaption>
 
 In this sequence, I'll introduce the role of what I'm informally calling the "Mapper" (there's no such official term or single component inside Nest called a Mapper).  Conceptually, it's the part(s) of the system that handle(s) dealing with Observables.
 
@@ -393,7 +393,7 @@ If you make this change, then re-issue the `get-customers` message (run `npm run
 
 ### What's Next
 
-With these issues in mind, we're ready to step up our game and make the `ServerFaye` custom transporter server component much more robust.  We'll tackle that in the next article.  In [Part 3](xxx), we cover:
+With these issues in mind, we're ready to step up our game and make the `ServerFaye` custom transporter server component much more robust.  We'll tackle that in the next article.  In [Part 3](https://dev.to/nestjs/part-3-completing-the-server-component-2fai-temp-slug-8783531?preview=be5cb28367d68473fba3e9a91c71084b83414317c27529045d1732b885da4cedb2020d8a7a32482e950f79db2908dee597c475f0f0b1a77bb73f0cab), we cover:
 * A little side expedition on how and why you should care about the "Observables issue" we just uncovered
 * Handling events (e.g., `@EventPattern(...)` decorated methods in our responder app)
 * Adding types

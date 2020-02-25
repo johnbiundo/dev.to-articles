@@ -11,7 +11,7 @@ canonical_url:
 
 ### Introduction
 
-This is part 3 of a six-part series.  If you landed here from Google, you may want to start with [part 1](xxx).
+This is part 3 of a six-part series.  If you landed here from Google, you may want to start with [part 1](https://dev.to/nestjs/build-a-custom-transporter-for-nestjs-microservices-dc6-temp-slug-6007254?preview=d3e07087758ff2aac037f47fb67ad5b465f45272f9c5c9385037816b139cf1ed089616c711ed6452184f7fb913aed70028a73e14fef8e3e41ee7c3fc#requestresponse).
 
 In this article, we build the final iteration of the server component of our Faye Custom Transporter.
 
@@ -19,11 +19,11 @@ In this article, we build the final iteration of the server component of our Fay
 
 #### Get the Code
 
-All of the code in these articles is available [here](xxx).  As always, these tutorials work best if you follow along with the code.  The [README](xxx) covers all the steps you need to get the repository, build the apps, and follow along.  It's easy!  I strongly encourage you to do so.  Note that each article has a corresponding branch in the repository.  For example, this article (part 3), has a corresponding branch called `part3`. Read on, or [get more details here](xxx) on using the repository.
+All of the code in these articles is available [here](https://github.com/johnbiundo/nestjs-faye-transporter-sample).  As always, these tutorials work best if you follow along with the code.  The [README](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/master/README.md) covers all the steps you need to get the repository, build the apps, and follow along.  It's easy!  I strongly encourage you to do so.  Note that each article has a corresponding branch in the repository.  For example, this article (part 3), has a corresponding branch called `part3`. Read on, or [get more details here](xxx) on using the repository.
 
 #### Git checkout the current version
 
-For this article, you should `git checkout` the branch `part3`.  You can get more information [about the git repository branches here](xxx).
+For this article, you should `git checkout` the branch `part3`.  You can get more information [about the git repository branches here](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/master/README.md#part-3-completing-the-server-component).
 
 #### Build the Apps for This Part
 
@@ -46,13 +46,13 @@ You **could actually ignore** this issue entirely.  The server component we buil
 - The feature provides some amazing benefits, virtually for free
 - Your transporter really **should** be plug-and-play compatible with other transporters to be a good Nest citizen (Nestizen? :smiley:)
 
-I could go on and on! And in fact, I do sort of go on, but I've decided to encapsulate all the [concrete examples and detailed justification here](xxx) to try to keep this tutorial on track.  Suffice to say, I strongly encourage you to follow that link and take that little side trip to both understand why this is an important step, and to possibly get inspired to use Nest microservices in some new and interesting ways.
+I could go on and on! And in fact, I do sort of go on, but I've decided to encapsulate all the [concrete examples and detailed justification here](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/master/observable-deepdive.md) to try to keep this tutorial on track.  Suffice to say, I strongly encourage you to follow that link and take that little side trip to both understand why this is an important step, and to possibly get inspired to use Nest microservices in some new and interesting ways.
 
 With all that said, let's jump in!
 
 ### Addressing Observables
 
-After that build-up, you might think we're about to embark on some form of brain surgery (maybe I should say ":rocket: science" in keeping with the trekkie theme? :wink:).  Fortunately, that's not really the case. The magic is all enabled by the framework, and it's localized to one place &#8212; our `getMessageHandler()` method. Let's quickly take a look at the one we built in the last article. If it's been a while, it's worth [re-reading that section of the last article](xxx) to refresh yourself.  Here's the code as we last saw it (on branch `part2`):
+After that build-up, you might think we're about to embark on some form of brain surgery (maybe I should say ":rocket: science" in keeping with the trekkie theme? :wink:).  Fortunately, that's not really the case. The magic is all enabled by the framework, and it's localized to one place &#8212; our `getMessageHandler()` method. Let's quickly take a look at the one we built in the last article. If it's been a while, it's worth [re-reading that section of the last article](https://dev.to/nestjs/part-2-basic-server-component-5313-temp-slug-6221883?preview=2f3ceab6d03c32bc1d00e56a907f4c2e87b388b516d6009c5c72a6f5a31ef8da2a310c035b7b0a84cd9760ab2ac5d241dd2ceaceaf807ba1e745bbb9#take-1-code-review) to refresh yourself.  Here's the code as we last saw it (on branch `part2`):
 
 ```typescript
 // nestjs-faye-transporter/src/responder/transporters/server-faye.ts
@@ -120,10 +120,10 @@ To publish the observable, we break the publish step down into two sub-steps:
     };
     ```
 
-    This code is very similar to the way we published in the *Take 1* version (from branch `part2`).  Study it for a moment and make sure you understand it &#8212; it should be pretty straightforward. The `Object.assign(...)` code's job is to copy the `id` field from the inbound request to the outbound response.  (And no, we still haven't discussed **why** we need that `id`.  For now, just trust the process :smiley:.  Don't worry, we'll cover this in [Part 4](xxx)).
+    This code is very similar to the way we published in the *Take 1* version (from branch `part2`).  Study it for a moment and make sure you understand it &#8212; it should be pretty straightforward. The `Object.assign(...)` code's job is to copy the `id` field from the inbound request to the outbound response.  (And no, we still haven't discussed **why** we need that `id`.  For now, just trust the process :smiley:.  Don't worry, we'll cover this in [Part 4](https://dev.to/nestjs/part-4-basic-client-component-298b-temp-slug-9977921?preview=21ec3d333fc6d9d92c11dcbd8430a5132e93390de84cb4804914aa143492e925e4299ca3eb7f376918c1ed77df56e29db2572e5d6f7ab235b3e5f2b9)).
 2. Finally, we have the somewhat mysterious looking `response$ && this.send(response$, publish);`. What's up with that?  This is the step that actually **performs** the publishing of the message.  The `send()` method is provided by the framework, and it **takes care of the details of dealing with Observables**.
 
-> Once again, the importance of the previous sentence can not be overstated.  To fully appreciate both **why** this is so useful and how the framework makes this as easy as delegating a `publish()` function, you really should [read this deep dive](xxx).
+> Once again, the importance of the previous sentence can not be overstated.  To fully appreciate both **why** this is so useful and how the framework makes this as easy as delegating a `publish()` function, you really should [read this deep dive](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/master/observable-deepdive.md).
 
 Anyway, let's discuss what's happening with this step.  The `send()` method is inherited from `Server`.  See [here](https://github.com/nestjs/nest/blob/master/packages/microservices/server/server.ts) for the full source code of the `Server`.  Let's reproduce it below to get a feel for it.
 
@@ -161,7 +161,7 @@ Anyway, let's discuss what's happening with this step.  The `send()` method is i
       );
   }
   ```
-This little bit of magic, at 30 lines of code, enables us to **stream** a remote observable to our requestor's `ClientProxy#send()` call.  Again, read more about [what that means and why you probably do care here](xxx). When (I didn't say "if" :smiley:) you do read that section, I promise you some lightbulbs will go off.  Among other things, if you've been wondering about that `isDisposed` property of a response message, that will become clear.  This is a wonderful example of something that once you explore it, you'll feel a lot more comfortable with the *"casual magic"* you sometimes encounter with Nest, and begin to appreciate that as we fill in the gaps in the documentation, that magic is really just the manifestation of a truly elegant architecture.
+This little bit of magic, at 30 lines of code, enables us to **stream** a remote observable to our requestor's `ClientProxy#send()` call.  Again, read more about [what that means and why you probably do care here](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/master/observable-deepdive.md). When (I didn't say "if" :smiley:) you do read that section, I promise you some lightbulbs will go off.  Among other things, if you've been wondering about that `isDisposed` property of a response message, that will become clear.  This is a wonderful example of something that once you explore it, you'll feel a lot more comfortable with the *"casual magic"* you sometimes encounter with Nest, and begin to appreciate that as we fill in the gaps in the documentation, that magic is really just the manifestation of a truly elegant architecture.
 
 #### What's the Recipe?
 
@@ -175,7 +175,7 @@ Let's go from the specific case above to the recipe you should use when building
     3. Build a `publish()` function.  That function should always take a single input argument &#8212; the message &#8212; and return the results of a call to the broker client API's native `publish()` call (or the particular broker's equivalent of `publish()`).
     4. Invoke the built-in inherited `this.send()` helper method, passing in the observable constructed in step 2 and the publish function built in step 3.
 
-An implementation for another broker will probably look something like the Faye strategy above, but the details can vary because the protocols and APIs for different brokers vary.  In [Part 6](xxx) of this series, we'll take a look at a few different broker implementations to see how they vary.
+An implementation for another broker will probably look something like the Faye strategy above, but the details can vary because the protocols and APIs for different brokers vary.  In [Part 6](https://dev.to/nestjs/part-6-survey-of-built-in-transporters-5h9b-temp-slug-1372845?preview=cad5c72192f49095e3591170291b924d69a74008fcebb22165eb1bd861a195aed416c01feefb11b88b9ec1cfcd36204e1461d44f64adaf9698502b29) of this series, we'll take a look at a few different broker implementations to see how they vary.
 
 ### Handle Events
 
@@ -437,10 +437,10 @@ and
 
 See the [README](xxx) for more information on running these and similar tests.
 
-As mentioned earlier in this article, there's also a series of routes related to exploring how microservices handle promises and observables when they are returned from a **request**.  You can [read more here](xxx).
+As mentioned earlier in this article, there's also a series of routes related to exploring how microservices handle promises and observables when they are returned from a **request**.  You can [read more here](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/master/observable-deepdive.md).
 
 ### What's Next
 
-In [Part 4](xxx), we turn our attention to the "client" side of the transporter.  We'll build the Faye-flavored `ClientProxy` from scratch.  Like the server construction we've done, we'll break this into two parts so we can work through the main concepts first, then add flavor and details in the subsequent part.
+In [Part 4](https://dev.to/nestjs/part-4-basic-client-component-298b-temp-slug-9977921?preview=21ec3d333fc6d9d92c11dcbd8430a5132e93390de84cb4804914aa143492e925e4299ca3eb7f376918c1ed77df56e29db2572e5d6f7ab235b3e5f2b9), we turn our attention to the "client" side of the transporter.  We'll build the Faye-flavored `ClientProxy` from scratch.  Like the server construction we've done, we'll break this into two parts so we can work through the main concepts first, then add flavor and details in the subsequent part.
 
 Feel free to ask questions, make comments or suggestions, or just say hello in the comments below. And join us at [Discord](https://discord.gg/nestjs) for more happy discussions about NestJS. I post there as _Y Prospect_.
