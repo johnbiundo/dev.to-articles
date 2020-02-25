@@ -215,7 +215,7 @@ Now's a good time to mention a couple of things about the development setup:
 In the following steps, I'll reference these (logical) terminals as:
 * **Terminal 1**: run the Faye broker here
 * **Terminal 2**: run live builds (`npm build:watch`) of the transporter server code we're working on here
-* **Terminal 3**: run the "requestor code".  This is usually the customerApp; in the future, we'll also interact with `nestHttpApp` (making **it** the requestor) using HttPie commands from the OS prompt (you can also use Postman, or Curl to issue HTTP requests, of course). We can use one terminal for this since we don't typically run both the `customerApp` and the `nestHttpApp` at the same time
+* **Terminal 3**: run the "requestor code".  This is usually the customerApp; in the future, we'll also interact with `nestHttpApp` (making **it** the requestor) using HTTPie commands from the OS prompt (you can also use Postman, or Curl to issue HTTP requests, of course). We can use one terminal for this since we don't typically run both the `customerApp` and the `nestHttpApp` at the same time
 * **Terminal 4**: run the `nestMicroservice` Nest responder application (this is the plain old Nest microservice app that will be **using** our new `ServerFaye` custom transporter)
 
 #### Primary Acceptance Test
