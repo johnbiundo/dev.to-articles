@@ -70,7 +70,7 @@ As covered in the [previous article series](https://dev.to/nestjs/integrate-nest
   getCustomers(): Observable<any> {
     this.logger.log('client#send -> topic: "get-customers"');
     // the following request returns a response as an observable
-    return this.client.send('get-customers', {});
+    return this.client.send('/get-customers', {});
   }
 ```
 

@@ -13,7 +13,7 @@ canonical_url:
 
 This is part 2 of a six-part series.  If you landed here from Google, you may want to start with [part 1](https://dev.to/nestjs/build-a-custom-transporter-for-nestjs-microservices-dc6-temp-slug-6007254?preview=d3e07087758ff2aac037f47fb67ad5b465f45272f9c5c9385037816b139cf1ed089616c711ed6452184f7fb913aed70028a73e14fef8e3e41ee7c3fc#requestresponse).
 
-In this article, we build the first iteration of the server component of our Faye Custom Transporter.
+In this article, we build the first iteration of the server component of our Faye Custom Transporter.  We'll then test it with a simple Nest responder (microservice) app.
 
 **Reminder**: Many of the concepts and terminology here are introduced and explained in [this article series](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-1-p3). That series serves as a good foundation for understanding the more advanced concepts covered in this series.
 
@@ -61,7 +61,7 @@ Here's a run-down on the contents of the `nestjs-faye-transporte` package, and h
 
 ### First Iteration (Take 1) of the Server Component
 
-Let's get started building the "server" side of the equation &#8212; the part of the custom transporter that you'll use to build *Nest responders*.
+Let's get started building the "server" side of the equation &#8212; the part of the custom transporter that you'll use to build *Nest responders* (AKA *microservices*).
 
 #### Using a Custom Transporter Strategy
 
@@ -111,7 +111,7 @@ export class AppController {
   logger = new Logger('AppController');
 
   /**
-   * Register a message handler for 'get-customers' requests
+   * Register a message handler for '/get-customers' requests
    */
   @MessagePattern('/get-customers')
   async getCustomers(data: any): Promise<any> {
@@ -137,7 +137,7 @@ This iteration ("Take 1") is going to be the absolute bare-bones class needed to
 - not handle events (e.g., inbound messages coming from `client.emit(...)`)
 - not really be type safe (we omit a bunch of typing to declutter the code)
 
-To state it in terms of requirements: the goal is to respond to a well-formed inbound **request** (in the sense of a request from a **request-response** style message).  We'll test this requirement by replacing our native `customerService` responder app from the last article with our `nestMicroservices` app running our new custom transporter, and sending it the same `'get-customers'` request from our native `customerApp`.
+To state it in terms of requirements: the goal is to respond to a well-formed inbound **request** (in the sense of a request from a **request-response** style message).  We'll test this requirement by replacing our native `customerService` responder app from the last article with our `nestMicroservices` app running our new custom transporter, and sending it the same `'/get-customers'` request from our native `customerApp`.
 
 > **Note:** In [part 3](https://dev.to/nestjs/part-3-completing-the-server-component-2fai-temp-slug-8783531?preview=be5cb28367d68473fba3e9a91c71084b83414317c27529045d1732b885da4cedb2020d8a7a32482e950f79db2908dee597c475f0f0b1a77bb73f0cab), we'll complete the implementation and have a fully functioning Faye Custom Transporter (server component).  At that point, you'll also have all of the concepts in place to write your own custom transporter server component, as well as the ability to look inside the built-in transporters (like [the MQTT transporter server](https://github.com/nestjs/nest/blob/master/packages/microservices/server/server-mqtt.ts)) and understand what's going on.  That will prepare you for even more adventures, like customizing the Nest built-in transporters to add features&#8212; the subject of my next NestJS microservice tutorial (already underway, and coming very soon :boom:)!
 
@@ -193,9 +193,9 @@ The interesting thing in `start()` is the call to `this.bindHandlers()`.  Take a
 ```
 
 The comments should help with understanding what's happening, but at a high level, the strategy should be pretty clear:
-1. Iterate over all of our "message handlers". These are the user-land Controller methods decorated with `@MessagePattern()`; a list of them is made available to us  (in `this.messageHandlers`) by the framework, which discovers them using introspection with the `Reflect` API during the bootstrap process.\*
+1. Iterate over all of our "message handlers"\*. These are the user-land Controller methods decorated with `@MessagePattern()`; a list of them is made available to us  (in `this.messageHandlers`) by the framework, which discovers them using introspection with the `Reflect` API during the bootstrap process.
 2. For each one, subscribe to the inbound channel (the `_ack` form of the topic).  Remember, a Faye client's `subscribe()` call registers a callback handler to be invoked whenever the Faye client library receives an inbound message matching this topic.  So this is the step where we map *patterns* to *handlers*. In short, this is our "router".
-3. The subscription handler in step 2, when invoked, runs the *actual* user supplied handler (the user-land handler method decorated with something like `@MessagePattern('get-customer')`), and *returns* the result it gets from that method.  When we say "returns", we mean **publishes a reply** on the outbound channel (the `_res` form of the topic).
+3. The subscription handler in step 2, when invoked, runs the *actual* user supplied handler (the user-land handler method decorated with something like `@MessagePattern('/get-customer')`), and *returns* the result it gets from that method.  When we say "returns", we mean **publishes a reply** on the outbound channel (the `_res` form of the topic).
 4. Along the way, we run our deserializer on the inbound message, our serializer on the outbound response, and we package up the data produced by the user's pattern handler in an appropriately shaped standard Nest transporter message object.
 
 \*For *Take 1*, we are omitting *event handlers* (methods decorated with `@EventPattern(...)`).  We'll handle these in *Take 2* of our server component, in the next article.
@@ -389,7 +389,7 @@ import { of } from 'rxjs';
 
 This construct causes our handler to return an **observable** &#8212; a stream (containing only a single value in our case, but still, a stream) of values.
 
-If you make this change, then re-issue the `get-customers` message (run `npm run get-customers` in terminal 3), you'll get a rather ugly failure in the `nestMicroservice` window.  This is our fault! We aren't handling this case, which, again, is expected of any Nest microservice transporter.
+If you make this change, then re-issue the `/get-customers` message (run `npm run get-customers` in terminal 3), you'll get a rather ugly failure in the `nestMicroservice` window.  This is our fault! We aren't handling this case, which, again, is expected of any Nest microservice transporter.
 
 ### What's Next
 
