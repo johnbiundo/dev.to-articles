@@ -128,7 +128,7 @@ function getCustomers(packet): void {
 }
 ```
 
-The logic should be easy to understand. Refer to the full listing and make sure you see how we are using the `'/get-customers_res'` and `'/get-customers_req'` channels here.  We'll be seeing a lot of that pattern, so make sure it makes sense to you.
+The logic should be easy to understand. Refer to the full listing and make sure you see how we are using the `'/get-customers_ack'` and `'/get-customers_res'` channels here.  We'll be seeing a lot of that pattern, so make sure it makes sense to you.
 
 One detail to point out is the call to `getPayload()`.  Let's discuss that.  As mentioned, we're building these native apps to conform to Nest protocols.  This includes using the channel names, as well as matching the internal Nest message format (this topic is covered extensively in the [NestJS Microservices in Action](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-1-p3)) series).  Because of this, the apps provide a convenient test bench for the Nest transporter `Server` and `ClientProxy` we're building in this article series.  The message format requirement means we need to wrap responses in a standard object we can depict like this:
 

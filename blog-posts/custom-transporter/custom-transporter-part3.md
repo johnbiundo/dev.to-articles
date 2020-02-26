@@ -74,7 +74,7 @@ public getMessageHandler(pattern: string, handler: Function): Function {
   };
 }
 ```
-We could try to handle this streaming ourselves, but it's a tad tricky bit of code, and as such, a great candidate for the framework to handle for us. Which it does! As always with frameworks, if we want to delegate a responsibility, we have to invert our thinking a bit. Instead of publishing directly, we instead need to **build** a publish function and hand it to the framework
+We could try to handle this streaming ourselves, but it's a tad tricky bit of code, and as such, a great candidate for the framework to handle for us. Which it does! As always with frameworks, if we want to delegate a responsibility, we have to invert our thinking a bit. Rather than publishing directly, we instead need to **build** a publish function and hand it to the framework
 
 
 Now, here's the *Observable-aware* version. This is what you'll see now (on the current branch, `part3`) when you open the `nestjs-faye-transporter/src/responder/transporters/server-faye.ts` file:
@@ -138,7 +138,7 @@ Finally, we delegate the publishing step to the framework with the final line:
 response$ && this.send(response$, publish);
 ```
 
-The `send()` method is provided by is inherited from `Server`; it **takes care of the details of dealing with streams**.
+The `send()` method is inherited from `Server`; it **takes care of the details of dealing with streams**.
 
 > The significance of the previous sentence should not be overlooked.  To fully appreciate both **why** this is so useful and how the framework makes this as easy as delegating a `publish()` function, you really should [read this deep dive](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/master/observable-deepdive.md).
 
@@ -179,7 +179,7 @@ Anyway, let's discuss what the framework is doing for us.  As mentioned, `send()
   }
   ```
 
-While at first a little obscure, this really isn't **that** hard to understand if you work through it, though it does require some understanding of observables.  Essentially, we are subscribing to the response coming back from our user-land handler. If the subscription produces multiple values (a stream), we buffer them (`dataBuffer`), then publish each value using the `publish` function we built a moment ago. When the stream completes, we signify that by setting `isDisposed` to true.
+While at first a little obscure, this really isn't **that** hard to understand if you work through it, though it does require some understanding of observables.  Essentially, we are subscribing to the response coming back from our user-land handler. If the subscription produces multiple values (a stream), we buffer them (`dataBuffer`), then publish each value using the `publish` function we built a moment ago (inside this method it's accessed as the `respond` parameter). When the stream completes, we signify that by setting `isDisposed` to true on the final emitted response.
 
 ### Handle Events
 
