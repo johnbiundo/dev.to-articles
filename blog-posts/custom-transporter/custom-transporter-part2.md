@@ -44,7 +44,7 @@ Even though the scope of this tutorial is relatively small &#8212; at the end of
 
 Where to keep all of these assets?
 
-The main thing to think about now is where to keep the Faye custom transporter components.  Since we'll want to easily re-use them across different Nest apps, the logical place is an NPM package.  To that end, when we work on any of those components, they'll go into that package.
+The main thing to think about now is where to keep the Faye Custom Transporter components.  Since we'll want to easily re-use them across different Nest apps, the logical place is an NPM package.  To that end, when we work on any of those components, they'll go into that package.
 
 #### The Custom Transporter Package
 
@@ -130,14 +130,14 @@ All it really does is check for the existence of a `customerId`, and if it exist
 
 Alright, we're finally ready to look at our `ServerFaye` class &#8212; the one we'll instantiate and pass as the value of that `strategy` property above.  We'll take this in a couple of steps.
 
-This iteration ("Take 1") is going to be the absolute bare-bones class needed to implement the server component of the Faye transporter.  We're going to keep our first version basic so that we can focus on the core flow.  Our first cut will:
+This iteration (*Take 1*) is going to be the absolute bare-bones class needed to implement the server component of the Faye transporter.  We're going to keep our first version basic so that we can focus on the core flow.  Our first cut will:
 
 - minimize error handling
 - not rely on some nice features of the framework that make our code really robust
 - not handle events (e.g., inbound messages coming from `client.emit(...)`)
 - not really be type safe (we omit a bunch of typing to declutter the code)
 
-To state it in terms of requirements: the goal is to respond to a well-formed inbound **request** (in the sense of a request from a **request-response** style message).  We'll test this requirement by replacing our native `customerService` responder app from the last article with our `nestMicroservices` app running our new custom transporter, and sending it the same `'/get-customers'` request from our native `customerApp`.
+To state it in terms of requirements: the goal is to respond to a well-formed inbound **request** (in the sense of a request from a **request-response** style message).  We'll test this requirement by replacing our native `customerService` responder app from the last article with our `nestMicroservices` app running our new Faye Custom Transporter, and sending it the same `'/get-customers'` request from our native `customerApp`.
 
 > **Note:** In [part 3](https://dev.to/nestjs/part-3-completing-the-server-component-2fai-temp-slug-8783531?preview=be5cb28367d68473fba3e9a91c71084b83414317c27529045d1732b885da4cedb2020d8a7a32482e950f79db2908dee597c475f0f0b1a77bb73f0cab), we'll complete the implementation and have a fully functioning Faye Custom Transporter (server component).  At that point, you'll also have all of the concepts in place to write your own custom transporter server component, as well as the ability to look inside the built-in transporters (like [the MQTT transporter server](https://github.com/nestjs/nest/blob/master/packages/microservices/server/server-mqtt.ts)) and understand what's going on.  That will prepare you for even more adventures, like customizing the Nest built-in transporters to add features&#8212; the subject of my next NestJS microservice tutorial (already underway, and coming very soon :boom:)!
 
@@ -216,7 +216,7 @@ In the following steps, I'll reference these (logical) terminals as:
 * **Terminal 1**: run the Faye broker here
 * **Terminal 2**: run live builds (`npm build:watch`) of the transporter server code we're working on here
 * **Terminal 3**: run the "requestor code".  This is usually the customerApp; in the future, we'll also interact with `nestHttpApp` (making **it** the requestor) using HTTPie commands from the OS prompt (you can also use something like Postman or curl to issue HTTP requests, of course). We can use one terminal for this since we don't typically run both the `customerApp` and the `nestHttpApp` at the same time
-* **Terminal 4**: run the `nestMicroservice` Nest responder application (this is the plain old Nest microservice app that will be **using** our new `ServerFaye` custom transporter)
+* **Terminal 4**: run the `nestMicroservice` Nest responder application (this is the plain old Nest microservice app that will be **using** our new Faye Custom Transporter)
 
 #### Primary Acceptance Test
 
@@ -393,7 +393,7 @@ If you make this change, then re-issue the `/get-customers` message (run `npm ru
 
 ### What's Next
 
-With these issues in mind, we're ready to step up our game and make the `ServerFaye` custom transporter server component much more robust.  We'll tackle that in the next article.  In [Part 3](https://dev.to/nestjs/part-3-completing-the-server-component-2fai-temp-slug-8783531?preview=be5cb28367d68473fba3e9a91c71084b83414317c27529045d1732b885da4cedb2020d8a7a32482e950f79db2908dee597c475f0f0b1a77bb73f0cab), we cover:
+With these issues in mind, we're ready to step up our game and make the Faye Custom Transporter server component much more robust.  We'll tackle that in the next article.  In [Part 3](https://dev.to/nestjs/part-3-completing-the-server-component-2fai-temp-slug-8783531?preview=be5cb28367d68473fba3e9a91c71084b83414317c27529045d1732b885da4cedb2020d8a7a32482e950f79db2908dee597c475f0f0b1a77bb73f0cab), we cover:
 * A little side expedition on how and why you should care about the "Observables issue" we just uncovered
 * Handling events (e.g., `@EventPattern(...)` decorated methods in our responder app)
 * Adding types

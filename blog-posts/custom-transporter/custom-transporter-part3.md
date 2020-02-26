@@ -37,22 +37,24 @@ $ sh build.sh
 
 ### Overview
 
-I ended the last article with a discussion of the shortcomings of our "Take 1" (first iteration) implementation of the Faye Custom Transporter server component.  In this article, we'll address those shortcomings. Most of this work is fairly straightforward, but I want to take a moment to discuss the "Observable issue" a bit further.
+I ended the last article with a discussion of the shortcomings of our *Take 1* (first iteration) implementation of the Faye Custom Transporter server component.  In this article, we'll address those shortcomings. Most of this work is fairly straightforward, but I want to take a moment to discuss the "Observable issue" a bit further.
 
-You **could actually ignore** this issue entirely.  The server component we built in the last chapter is functional, and we'll clean up a few loose ends here to make it typesafe, etc.  However, by ignoring proper handling of Observables, you'd be leaving out a feature that you may not miss until you **really** need it.  Plus, let me hit you with the full commercial:
-- It's super fun to understand how it works, and if you're not an `RxJS` whiz, that won't stop you (**and** you might even pick up a few nifty tricks about `RxJS` along the way)
+You **could actually ignore** this issue entirely.  The server component we built in the last chapter is functional, and we'll clean up a few loose ends here to make it typesafe, etc. However, by ignoring proper handling of Observables, you'd be leaving out a feature that you may not miss until you **really** need it.  Plus, let me hit you with the full commercial:
+- It's super fun to understand how it works, and if you're not an `RxJS` whiz, don't worry, that won't stop you (**and** you might even pick up a few nifty tricks about `RxJS` along the way)
 - It builds a deeper appreciation and understanding of the elegance of the Nest framework
 - It's really, really easy to implement, once you get on the right path
 - The feature provides some amazing benefits, virtually for free
 - Your transporter really **should** be plug-and-play compatible with other transporters to be a good Nest citizen (Nestizen? :smiley:)
 
-I could go on and on! And in fact, I do sort of go on, but I've decided to encapsulate all the [concrete examples and detailed justification here](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/master/observable-deepdive.md) to try to keep this tutorial on track.  Suffice to say, I strongly encourage you to follow that link and take that little side trip to both understand why this is an important step, and to possibly get inspired to use Nest microservices in some new and interesting ways.
+I could go on and on, but instead, I've encapsulated all the [concrete examples and detailed analysis here](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/master/observable-deepdive.md) to try to keep this tutorial on track.  Suffice to say, I strongly encourage you to follow that link and take that little side trip to both understand why this is an important step, and &#8212; you might even get inspired to use Nest microservices in some new and interesting ways.
 
 With all that said, let's jump in!
 
 ### Addressing Observables
 
-After that build-up, you might think we're about to embark on some form of brain surgery (maybe I should say ":rocket: science" in keeping with the trekkie theme? :wink:).  Fortunately, that's not really the case. The magic is all enabled by the framework, and it's localized to one place &#8212; our `getMessageHandler()` method. Let's quickly take a look at the one we built in the last article. If it's been a while, it's worth [re-reading that section of the last article](https://dev.to/nestjs/part-2-basic-server-component-5313-temp-slug-6221883?preview=2f3ceab6d03c32bc1d00e56a907f4c2e87b388b516d6009c5c72a6f5a31ef8da2a310c035b7b0a84cd9760ab2ac5d241dd2ceaceaf807ba1e745bbb9#take-1-code-review) to refresh yourself.  Here's the code as we last saw it (on branch `part2`):
+After that build-up, you might think we're about to embark on some form of brain surgery (maybe I should say ":rocket: science" in keeping with the trekkie theme? :wink:).  Fortunately, that's not really the case.  Let's start by considering the requirements.
+
+At the highest level, we need to consider the possibility that the user-land handler returns a stream (observable that emits multiple values). Our earlier version won't handle that (as we saw at the end of the last article).  The problem lies with our `publish()` logic being unaware of a response **stream**.  It simply awaits a single response and publishes.  Let's take a quick look at the part of the code that publishes to refresh ourselves:
 
 ```typescript
 // nestjs-faye-transporter/src/responder/transporters/server-faye.ts
@@ -72,6 +74,8 @@ public getMessageHandler(pattern: string, handler: Function): Function {
   };
 }
 ```
+We could try to handle this streaming ourselves, but it's a tad tricky bit of code, and as such, a great candidate for the framework to handle for us. Which it does! As always with frameworks, if we want to delegate a responsibility, we have to invert our thinking a bit. Instead of publishing directly, we instead need to **build** a publish function and hand it to the framework
+
 
 Now, here's the *Observable-aware* version. This is what you'll see now (on the current branch, `part3`) when you open the `nestjs-faye-transporter/src/responder/transporters/server-faye.ts` file:
 
@@ -98,34 +102,47 @@ public getMessageHandler(pattern: string, handler: Function): Function {
 }
 ```
 
-Let's discuss the differences.  For now, ignore the `fayeCtx` object &#8212; we'll cover that [below](#subscription-context).  At the highest level, we're converting our handler response (the line `await handler(inboundPacket.data, fayeCtx)` &#8212; which returns the result from the user's handler function) to an observable and **publishing** that observable (recall that *publishing* is how we send the response back to the requestor through the Faye broker). Let's walk through the code at the next level of detail:
-1. We run a built-in (inherited from `Server`) utility to convert the response to an observable.
-    ```typescript
-    const response$ = this.transformToObservable(
-      await handler(inboundPacket.data, {}),
-    ) as Observable<any>;
-    ```
+Let's discuss the differences.  For now, ignore the `fayeCtx` object &#8212; we'll cover that [below](#subscription-context).
 
-    This step is pretty intuitive, and the utility is correspondingly pretty simple.  Feel free to take a moment to review the [`transformToObservable()` method's source code](https://github.com/nestjs/nest/blob/master/packages/microservices/server/server.ts#L108).
+The reorganized code does two main things:
+1. It converts our handler response to an observable
+2. It builds a publish function that it can delegate to the framework (which will then use it to publish a stream if that's what the user-land handler returns)
 
-2. The more magical part is in the publish step.  You may be able to guess that this publish step culminates in the last line of the code snippet above (`response$ && this.send(...)`. Let's discuss that in some detail.
+For the first item, we call a built-in (inherited from `Server`) utility to convert the response to an observable.
 
-To publish the observable, we break the publish step down into two sub-steps:
-1. Rather than invoke `fayeClient.publish()` directly, as in *Take 1*, we instead *build* a `publish()` function.  We're going to delegate publishing to the framework (using a method inherited from `Server`), so we'll do that by passing it this dynamically built function.  We build the publish function in these lines:
-    ```typescript
-    const publish = (response: any) => {
-      Object.assign(response, { id: (message as any).id });
-      const outgoingResponse = this.serializer.serialize(response);
-      return this.fayeClient.publish(`${pattern}_res`, outgoingResponse);
-    };
-    ```
+```typescript
+const response$ = this.transformToObservable(
+  await handler(inboundPacket.data, {}),
+) as Observable<any>;
+```
 
-    This code is very similar to the way we published in the *Take 1* version (from branch `part2`).  Study it for a moment and make sure you understand it &#8212; it should be pretty straightforward. The `Object.assign(...)` code's job is to copy the `id` field from the inbound request to the outbound response.  (And no, we still haven't discussed **why** we need that `id`.  For now, just trust the process :smiley:.  Don't worry, we'll cover this in [Part 4](https://dev.to/nestjs/part-4-basic-client-component-298b-temp-slug-9977921?preview=21ec3d333fc6d9d92c11dcbd8430a5132e93390de84cb4804914aa143492e925e4299ca3eb7f376918c1ed77df56e29db2572e5d6f7ab235b3e5f2b9)).
-2. Finally, we have the somewhat mysterious looking `response$ && this.send(response$, publish);`. What's up with that?  This is the step that actually **performs** the publishing of the message.  The `send()` method is provided by the framework (and inherited from `Server`), and it **takes care of the details of dealing with Observables**.
+This step is pretty intuitive, and the utility is correspondingly pretty simple.  Feel free to take a moment to review the [`transformToObservable()` method's source code](https://github.com/nestjs/nest/blob/master/packages/microservices/server/server.ts#L108).
 
-> Once again, the importance of the previous sentence can not be overstated.  To fully appreciate both **why** this is so useful and how the framework makes this as easy as delegating a `publish()` function, you really should [read this deep dive](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/master/observable-deepdive.md).
+Building the publish function is also fairly straightforward.
 
-Anyway, let's discuss what's happening with this step.  As mentioned, `send()` is inherited from `Server`.  See [here](https://github.com/nestjs/nest/blob/master/packages/microservices/server/server.ts) for the full source code of the `Server`.  Let's reproduce it below to get a feel for it.
+```typescript
+const publish = (response: any) => {
+  Object.assign(response, { id: (message as any).id });
+  const outgoingResponse = this.serializer.serialize(response);
+  return this.fayeClient.publish(`${pattern}_res`, outgoingResponse);
+};
+```
+
+This code is very similar to the way we published in the *Take 1* version (from branch `part2`), but now packaged as a function we can hand off to the framework.  Study it for a moment and make sure you understand it &#8212; it should be pretty straightforward. The `Object.assign(...)` code's job is to copy the `id` field from the inbound request to the outbound response.  We did that in the earlier version as well, but there we were defining the response object in place, so the technique was a little different.
+
+**Note**: We still haven't discussed **why** we need that `id`.  For now, just trust the process :smiley:.  Don't worry, we'll cover this in [Part 4](https://dev.to/nestjs/part-4-basic-client-component-298b-temp-slug-9977921?preview=21ec3d333fc6d9d92c11dcbd8430a5132e93390de84cb4804914aa143492e925e4299ca3eb7f376918c1ed77df56e29db2572e5d6f7ab235b3e5f2b9).
+
+Finally, we delegate the publishing step to the framework with the final line:
+
+```typescript
+response$ && this.send(response$, publish);
+```
+
+The `send()` method is provided by is inherited from `Server`; it **takes care of the details of dealing with streams**.
+
+> The significance of the previous sentence should not be overlooked.  To fully appreciate both **why** this is so useful and how the framework makes this as easy as delegating a `publish()` function, you really should [read this deep dive](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/master/observable-deepdive.md).
+
+Anyway, let's discuss what the framework is doing for us.  As mentioned, `send()` is inherited from `Server`.  See [here](https://github.com/nestjs/nest/blob/master/packages/microservices/server/server.ts) for the full source code of the `Server`.  Let's reproduce it below to get a feel for it.
 
 > Note: we **don't need to fully understand** how this method works, and I won't belabor it here.  It's fair to treat it as a black box, as long as we understand **how to use it**.  We'll make sure we do!
 
@@ -161,21 +178,8 @@ Anyway, let's discuss what's happening with this step.  As mentioned, `send()` i
       );
   }
   ```
-This little bit of magic, at 30 lines of code, enables us to **stream** a remote observable to our requestor's `ClientProxy#send()` call.  Again, read more about [what that means and why you probably do care here](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/master/observable-deepdive.md). When (I didn't say "if" :smiley:) you do read that section, I promise you some lightbulbs will go off.  Among other things, if you've been wondering about that `isDisposed` property of a response message, that will become clear.  This is a wonderful example of something that once you explore it, you'll feel a lot more comfortable with the *"casual magic"* you sometimes encounter with Nest, and begin to appreciate that as we fill in the gaps in the documentation, the magic is really just the manifestation of a truly elegant architecture.
 
-#### What's the Recipe?
-
-Let's go from the specific case above to the recipe you should use when building any arbitrary transporter.
-
-1. Implement the code that handles responding to requests (that is, code that makes a broker client API call &#8212; typically it's something like `subscribe()` &#8212; responsible for registering the response handler with the broker).  In our example, this is done in the `bindHandlers()` method.  In this method, you **must dynamically construct** the call you are registering with `subscribe()`.  That's the job of the next step.
-2. Call a method to dynamically construct the call to the response handler being registered.  In our example, this is done with the `getMessageHandler()` method.  That method is responsible for the following steps:
-
-    1. Deserialize the inbound request
-    2. Build an observable response using the built-in inherited `this.transformToObservable()` utility, passing in an *awaited* call to the *target handler* (the *target handler* is the user-supplied method bound to a pattern with `@MessagePattern()`).
-    3. Build a `publish()` function.  That function should always take a single input argument &#8212; the message &#8212; and return the results of a call to the broker client API's native `publish()` call (or the particular broker's equivalent of `publish()`).
-    4. Invoke the built-in inherited `this.send()` helper method, passing in the observable constructed in step 2 and the publish function built in step 3.
-
-An implementation for another broker will probably look something like the Faye strategy above, but the details can vary because the protocols and APIs for different brokers vary.  In [Part 6](https://dev.to/nestjs/part-6-survey-of-built-in-transporters-5h9b-temp-slug-1372845?preview=cad5c72192f49095e3591170291b924d69a74008fcebb22165eb1bd861a195aed416c01feefb11b88b9ec1cfcd36204e1461d44f64adaf9698502b29) of this series, we'll take a look at a few different broker implementations to see how they vary.
+While at first a little obscure, this really isn't **that** hard to understand if you work through it, though it does require some understanding of observables.  Essentially, we are subscribing to the response coming back from our user-land handler. If the subscription produces multiple values (a stream), we buffer them (`dataBuffer`), then publish each value using the `publish` function we built a moment ago. When the stream completes, we signify that by setting `isDisposed` to true.
 
 ### Handle Events
 
