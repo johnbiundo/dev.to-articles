@@ -179,10 +179,7 @@ An implementation for another broker will probably look something like the Faye 
 
 ### Handle Events
 
-Thus far we've skipped handling events &#8212; those user-written handlers that are decorated with `@EventPattern(...)`.  Let's take care of those now.  They turn out to be a lot easier than *request/response* type messages precisely because they don't require any response.  Take a look at the `bindHandlers()` method of `server-faye.ts`. The comments should pretty much explain the simple change we've made here to handle events.  Two additional (unrelated) changes that show up on this branch are:
-
-1. The use of the `FayeContext` object. We'll cover that in the next section.
-2. Passing `{ channel: pattern }` to the `deserialize()` call.  We'll cover that [later in the article](#deserialization-options).
+Thus far we've skipped handling events &#8212; those user-written handlers that are decorated with `@EventPattern(...)`.  Let's take care of those now.  They turn out to be a lot easier than *request/response* type messages precisely because they don't require any response.  Take a look at the `bindHandlers()` method of `server-faye.ts`. The comments should pretty much explain the simple change we've made here to handle events.
 
 ```typescript
 // nestjs-faye-transporter/src/responder/transporters/server-faye.ts
@@ -221,12 +218,16 @@ public bindHandlers() {
   });
 }
 ```
+Two additional (unrelated) changes that show up on this branch are:
+
+1. The use of the `FayeContext` object. We'll cover that in the next section.
+2. Passing `{ channel: pattern }` to the `deserialize()` call.  We'll cover that [later in the article](#deserialization-options).
 
 ### Subscription Context
 
 Consider what happens when we subscribe to a topic via the broker API.  With Faye, it's straightforward.  We register a callback handler on a topic, and when a message matching that topic arrives, our handler is called with the message payload containing **only what the publisher sent**.
 
-For some transporters, the subscription handler can receive additional context about the message &#8212; sometimes in the callback parameters, and sometimes in the message payload.  For example, with NATS, the message payload packs the actual content sent by the publisher in a top-level `data` property, and adds two additional top-level properties with context metadata: one describing the topic the caller was subscribed to, and one containing the optional `reply` topic. We refer to this metadata as `Context`, and Nest allows you to pass this information through to the user-land handler (method decorated by `@MessagePattern()` or `@EventPattern()`).
+For some brokers, the subscription handler can receive additional context about the message &#8212; sometimes in the callback parameters, and sometimes in the message payload.  For example, with NATS, the message payload packs the actual content sent by the publisher in a top-level `data` property, and adds two additional top-level properties with context metadata: one describing the topic the caller was subscribed to, and one containing the optional `reply` topic. We refer to this metadata as `Context`, and Nest allows you to pass this information through to the user-land handler (method decorated by `@MessagePattern()` or `@EventPattern()`).
 
 Since Faye simply doesn't provide any such metadata, we'll demonstrate this behavior by passing the *channel* in this context object.  This is not particularly useful, as in this case we're not actually providing any **new** information, but with Faye it's the best we can do to demonstrate the concept of the `Context` object.
 
@@ -285,7 +286,7 @@ We already encountered this behavior in the previous sections. Let's look again 
     ) as Observable<any>;
 ```
 
-It should be clear how we're using an instance of `FayeContext` here.  We instantiate it with the relevant context, and then pass the instance to our user-land handler method.  The code above takes care of **request/response** type handlers. We also need to handle this appropriately for events. We saw where that happened in the last section, in the `bindHandlers()` method.  Here's the relevant snippet:
+It should be clear how we're using an instance of `FayeContext` here.  We instantiate it with the relevant context, and then pass the instance to our user-land handler method.  The code above takes care of context for **request/response** type handlers. We also need to handle this appropriately for events. We saw where that happened in the last section, in the `bindHandlers()` method.  Here's the relevant snippet:
 
 ```typescript
     if (handler.isEventHandler) {
@@ -305,22 +306,22 @@ Remember, where and how you gather the context for any particular broker may var
 
 #### Testing Context
 
-In this branch (`part3`), we provided a new project, `nestHttpApp`.   This is a simple Nest HTTP app that includes a few routes for testing our `nestMicroservice` over the Faye transporter. It's worth mentioning that this branch also includes a **full final version** of the `ClientFaye` subclass of `ClientProxy` &#8212; this is necessary for our `httpClientApp` to instantiate a client to be able to run `ClientProxy#send()` and `ClientProxy#emit()` calls.  We'll actually build that `ClientFaye` component from scratch in the next two articles, but it's sitting there in this branch to help you test.  With this in place, you can see the context by following these steps:
+In this branch (`part3`), we provided a new project, `nestHttpApp`.   This is a simple Nest HTTP app that includes a few routes for testing our `nestMicroservice` over the Faye transporter. It's worth mentioning that this branch also includes a **full final version** of the `ClientFaye` subclass of `ClientProxy` &#8212; this is necessary for our `nestHttpApp` to instantiate a client to be able to run `ClientProxy#send()` and `ClientProxy#emit()` calls.  We'll actually build that `ClientFaye` component from scratch in the next two articles, but it's sitting there in this branch to help you test.  With this in place, you can see the context by following these steps:
 
 1. Start up the `nestHttpApp`
     If you ran the `build.sh` script as described at the beginning of this chapter, all of this project's dependencies have been installed.  If not, simply open a terminal in the top level `nestHttpApp` directory and run `npm install`.  Then, start the application with `npm run start:dev`.
-2. Issue a request like:
+2. Issue an HTTP request like:
 
     > GET /customers
 
     **Note:** You can do this in any number of ways &#8212; via a browser, browsing to `localhost:3000/customers`, via something like [HTTPie - my favorite](https://httpie.org/), or with a desktop program like [Postman](https://www.postman.com/).
 
-Keep an eye on the `nestMicroservice` app's console log.  You should a line like the following, demonstrating that we've successfully passed the FayeContext data to the handler:
+Keep an eye on the `nestMicroservice` app's console log.  You should see a line like the following, demonstrating that we've successfully passed the ` FayeContext` data to the handler:
 > [AppController] Faye Context: {"args":["/get-customers"]}"
 
 ### Deserialization Options
 
-The transporter main class (`Server`) has hooks for serialization and deserialization of broker messages. I cover this topic extensively [in this article](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-3-4m20).  The main use case is for translating between non-Nest (i.e., external) message formats and the internal [Nest microservice transporter message protocol](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-2-3hgd). One thing we need to do to fully enable custom deserialization (i.e., let users hook their own custom deserializer class) with our custom transporter is fully implement the call to the `Deserializer#deserialize()` method.  Here's its interface:
+The transporter main class we inherit from (`Server`) has hooks for calling custom serialization and deserialization methods to encode/decode broker messages. I cover this topic extensively [in this article](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-3-4m20).  The main use case is for translating between non-Nest (i.e., external) message formats and the internal [Nest microservice transporter message protocol](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-2-3hgd). One thing we need to do to fully enable custom deserialization (i.e., let users hook their own custom deserializer class) with our custom transporter is fully implement the call to the `Deserializer#deserialize()` method.  Here's its interface:
 
 ```typescript
 export interface Deserializer<TInput = any, TOutput = any> {
@@ -427,7 +428,7 @@ What should we do if the server loses its connection to the broker (e.g., the Fa
 
 ### Checkpoint
 
-We covered a lot of ground in this chapter. Because we provided the `nestHttpApp` and a fully implementation of the Faye flavored `ClientProxy`, you now have a **fully working Faye Custom Transporter**.  You can feel free to experiment at large with the `nestHttpApp` and `nestMicroservice`.  Try issuing HTTP requests to the `nestHttpApp` like:
+We covered a lot of ground in this chapter. Because we provided the `nestHttpApp` and a full implementation of the Faye flavored `ClientProxy`, you now have a **fully working Faye Custom Transporter**.  You can feel free to experiment at large with the `nestHttpApp` and `nestMicroservice`.  Try issuing HTTP requests to the `nestHttpApp` like:
 
 > GET /customers
 
@@ -441,6 +442,6 @@ As mentioned earlier in this article, there's also a series of routes related to
 
 ### What's Next
 
-In [Part 4](https://dev.to/nestjs/part-4-basic-client-component-298b-temp-slug-9977921?preview=21ec3d333fc6d9d92c11dcbd8430a5132e93390de84cb4804914aa143492e925e4299ca3eb7f376918c1ed77df56e29db2572e5d6f7ab235b3e5f2b9), we turn our attention to the "client" side of the transporter.  We'll build the Faye-flavored `ClientProxy` from scratch.  Like the server construction we've done, we'll break this into two parts so we can work through the main concepts first, then add flavor and details in the subsequent part.
+In [Part 4](https://dev.to/nestjs/part-4-basic-client-component-298b-temp-slug-9977921?preview=21ec3d333fc6d9d92c11dcbd8430a5132e93390de84cb4804914aa143492e925e4299ca3eb7f376918c1ed77df56e29db2572e5d6f7ab235b3e5f2b9), we turn our attention to the "client" side of the transporter.  We'll build the Faye-flavored `ClientProxy` from scratch.  Like the server construction we've done, we'll break this into two parts so we can work through the main concepts first, then handle some edge cases and details in the subsequent part.
 
 Feel free to ask questions, make comments or suggestions, or just say hello in the comments below. And join us at [Discord](https://discord.gg/nestjs) for more happy discussions about NestJS. I post there as _Y Prospect_.
