@@ -202,20 +202,20 @@ The comments should help with understanding what's happening, but at a high leve
 
 The only slightly tricky part is the call to `getMessageHandler()`.  This is just a higher-order function that is returning us the actual handler function.
 
-If all this looks somewhat familiar, it's because we're basically following the same pattern we used in the native `customerService` app in the previous article (Part 1).
+If all this looks somewhat familiar, it's because we're basically following the same pattern we used in the native `customerService` app in the previous article ([Part 1](https://dev.to/nestjs/build-a-custom-transporter-for-nestjs-microservices-dc6-temp-slug-6007254?preview=d3e07087758ff2aac037f47fb67ad5b465f45272f9c5c9385037816b139cf1ed089616c711ed6452184f7fb913aed70028a73e14fef8e3e41ee7c3fc)).
 
 ### Acceptance Testing
 
 We should be ready to test out our code.  We need to do a tiny bit of setup first.  This is going to run best if you have four separate terminals open so you can watch things unfold across the whole process as the various pieces communicate.
 
 Now's a good time to mention a couple of things about the development setup:
-1. I run this kind of stuff on an Ubuntu machine.  There's **nothing** platform-specific anywhere in the code, **but**, I find running builds, starting and stopping processes, running multiple terminal sessions, etc., to be much smoother on Linux.  You can run this wherever you want, but if you're not on Linux, you may have to make slight adjustments to your `package.json`, or other actual build steps.
+1. I run this kind of stuff on an Ubuntu machine.  There's **nothing** platform-specific anywhere in the Nest-related code, **but**, I find running builds, starting and stopping processes, running multiple terminal sessions, etc., to be much smoother on Linux.  You can run this wherever you want, but if you're not on Linux, you may have to make slight adjustments to your `package.json`, or other actual build steps.
 2. Since you kind of **need** to run multiple terminal sessions to see the full impact, I strongly recommend [Tmux](https://github.com/tmux/tmux).  I mentioned this briefly at the end of the last article, so you now know I feel strongly about it :smiley:. You can instead start multiple terminal programs, or use tabs if you prefer, but if you want what I think is the **best** DX for this kind of work, checkout Tmux.  I covered some detailed Tmux recommendations [in the last article series](https://github.com/johnbiundo/nest-nats-sample#pro-tip-use-tmux-optional).
 
 In the following steps, I'll reference these (logical) terminals as:
 * **Terminal 1**: run the Faye broker here
 * **Terminal 2**: run live builds (`npm build:watch`) of the transporter server code we're working on here
-* **Terminal 3**: run the "requestor code".  This is usually the customerApp; in the future, we'll also interact with `nestHttpApp` (making **it** the requestor) using HTTPie commands from the OS prompt (you can also use Postman, or Curl to issue HTTP requests, of course). We can use one terminal for this since we don't typically run both the `customerApp` and the `nestHttpApp` at the same time
+* **Terminal 3**: run the "requestor code".  This is usually the customerApp; in the future, we'll also interact with `nestHttpApp` (making **it** the requestor) using HTTPie commands from the OS prompt (you can also use something like Postman or curl to issue HTTP requests, of course). We can use one terminal for this since we don't typically run both the `customerApp` and the `nestHttpApp` at the same time
 * **Terminal 4**: run the `nestMicroservice` Nest responder application (this is the plain old Nest microservice app that will be **using** our new `ServerFaye` custom transporter)
 
 #### Primary Acceptance Test
@@ -259,7 +259,7 @@ We're going to use the `npm link` command ([read details here](https://medium.co
     ```
 
 
-At this point, our `nestMicroservice` testing app is live-linked to the custom transporter code in the `@faye-tut/nestjs-faye-transporter` NPM package we're working on.
+At this point, our `nestMicroservice` testing app is live-linked to the custom transporter code in the `@faye-tut/nestjs-faye-transporter` NPM package we're working on.  Any changes we make to that code will trigger a rebuild, and because we linked, those changes are *immediately* visible.  Very cool stuff there.
 
 ##### Running the Test
 
@@ -313,7 +313,7 @@ Faye customer app starts...
 }
 ```
 
-Terminals 1 and 2 show the corresponding message flow in the Faye broker and `nestMicroservice` app respectively.  They all should weave together nicely to let you trace the entire saga through the layers of the system.  By the way, if you're wondering where the message level logging in terminal 2 (`nestMicroservice`) comes from, take a look at the serializer/deserializer implementations in `nestjs-faye-transporter/src/responder/serializers/outbound-response-identity-serializer.ts` and `nestjs-faye-transporter/src/responder/deserializers/inbound-message-identity-deserializer.ts`.  These are our so-called "identity" serializer/deserializer from the [previous article series](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-3-4m20), which are very helpful for visualizing message flow.
+Terminals 1 and 2 show the corresponding message flow in the Faye broker and `nestMicroservice` app respectively.  They all should weave together nicely to let you trace the entire saga through the layers of the system.  By the way, if you're wondering where the message level logging in terminal 2 (`nestMicroservice`) comes from, take a look at the serializer/deserializer implementations in `nestjs-faye-transporter/src/responder/serializers/outbound-response-identity-serializer.ts` and `nestjs-faye-transporter/src/responder/deserializers/inbound-message-identity-deserializer.ts` respectively.  These are our so-called "identity" serializer/deserializer from the [previous article series](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-3-4m20), which are very helpful for visualizing message flow.
 
 Hooray! We're done right?  :beer:?
 
@@ -333,7 +333,7 @@ An inbound HTTP request kicks off the following sequence of events.  Bolded word
 2. The <u>route handling method</u> can either make a remote request directly, or <u>call a service that makes a remote request</u>.
 3. The remote request is handled by **the broker client library** and sent to the broker.
 4. The remote request is received by **the broker client library** in the `nestMicroservice` app.
-5. The request is **routed** to the correct handler (e.g., a method decorated with `@MessagePattern('get-customers')`) based on matching the pattern in the request with the pattern in the method decorator.
+5. The request is **routed** to the correct handler (e.g., a method decorated with `@MessagePattern('/get-customers')`) based on matching the pattern in the request with the pattern in the method decorator.
 6. The <u>request handling method</u> may make a call to other services (which in turn, could make their own internal calls or remote calls).  Let's say it does make such a call, to the `custService.getCustomers()` method, and that method has a signature like this:
 
     ```typescript

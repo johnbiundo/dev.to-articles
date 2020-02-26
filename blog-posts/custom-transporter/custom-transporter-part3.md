@@ -111,7 +111,7 @@ Let's discuss the differences.  For now, ignore the `fayeCtx` object &#8212; we'
 2. The more magical part is in the publish step.  You may be able to guess that this publish step culminates in the last line of the code snippet above (`response$ && this.send(...)`. Let's discuss that in some detail.
 
 To publish the observable, we break the publish step down into two sub-steps:
-1. Rather than invoke `fayeClient.publish()` directly, as in *Take 1*, we instead *build* a `publish()` function.  We're going to delegate publishing to the framework (in a method inherited from `Server`), so we'll do that by passing it this built function.  We build the publish function in these lines:
+1. Rather than invoke `fayeClient.publish()` directly, as in *Take 1*, we instead *build* a `publish()` function.  We're going to delegate publishing to the framework (using a method inherited from `Server`), so we'll do that by passing it this dynamically built function.  We build the publish function in these lines:
     ```typescript
     const publish = (response: any) => {
       Object.assign(response, { id: (message as any).id });
@@ -121,11 +121,11 @@ To publish the observable, we break the publish step down into two sub-steps:
     ```
 
     This code is very similar to the way we published in the *Take 1* version (from branch `part2`).  Study it for a moment and make sure you understand it &#8212; it should be pretty straightforward. The `Object.assign(...)` code's job is to copy the `id` field from the inbound request to the outbound response.  (And no, we still haven't discussed **why** we need that `id`.  For now, just trust the process :smiley:.  Don't worry, we'll cover this in [Part 4](https://dev.to/nestjs/part-4-basic-client-component-298b-temp-slug-9977921?preview=21ec3d333fc6d9d92c11dcbd8430a5132e93390de84cb4804914aa143492e925e4299ca3eb7f376918c1ed77df56e29db2572e5d6f7ab235b3e5f2b9)).
-2. Finally, we have the somewhat mysterious looking `response$ && this.send(response$, publish);`. What's up with that?  This is the step that actually **performs** the publishing of the message.  The `send()` method is provided by the framework, and it **takes care of the details of dealing with Observables**.
+2. Finally, we have the somewhat mysterious looking `response$ && this.send(response$, publish);`. What's up with that?  This is the step that actually **performs** the publishing of the message.  The `send()` method is provided by the framework (and inherited from `Server`), and it **takes care of the details of dealing with Observables**.
 
 > Once again, the importance of the previous sentence can not be overstated.  To fully appreciate both **why** this is so useful and how the framework makes this as easy as delegating a `publish()` function, you really should [read this deep dive](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/master/observable-deepdive.md).
 
-Anyway, let's discuss what's happening with this step.  The `send()` method is inherited from `Server`.  See [here](https://github.com/nestjs/nest/blob/master/packages/microservices/server/server.ts) for the full source code of the `Server`.  Let's reproduce it below to get a feel for it.
+Anyway, let's discuss what's happening with this step.  As mentioned, `send()` is inherited from `Server`.  See [here](https://github.com/nestjs/nest/blob/master/packages/microservices/server/server.ts) for the full source code of the `Server`.  Let's reproduce it below to get a feel for it.
 
 > Note: we **don't need to fully understand** how this method works, and I won't belabor it here.  It's fair to treat it as a black box, as long as we understand **how to use it**.  We'll make sure we do!
 
@@ -161,7 +161,7 @@ Anyway, let's discuss what's happening with this step.  The `send()` method is i
       );
   }
   ```
-This little bit of magic, at 30 lines of code, enables us to **stream** a remote observable to our requestor's `ClientProxy#send()` call.  Again, read more about [what that means and why you probably do care here](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/master/observable-deepdive.md). When (I didn't say "if" :smiley:) you do read that section, I promise you some lightbulbs will go off.  Among other things, if you've been wondering about that `isDisposed` property of a response message, that will become clear.  This is a wonderful example of something that once you explore it, you'll feel a lot more comfortable with the *"casual magic"* you sometimes encounter with Nest, and begin to appreciate that as we fill in the gaps in the documentation, that magic is really just the manifestation of a truly elegant architecture.
+This little bit of magic, at 30 lines of code, enables us to **stream** a remote observable to our requestor's `ClientProxy#send()` call.  Again, read more about [what that means and why you probably do care here](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/master/observable-deepdive.md). When (I didn't say "if" :smiley:) you do read that section, I promise you some lightbulbs will go off.  Among other things, if you've been wondering about that `isDisposed` property of a response message, that will become clear.  This is a wonderful example of something that once you explore it, you'll feel a lot more comfortable with the *"casual magic"* you sometimes encounter with Nest, and begin to appreciate that as we fill in the gaps in the documentation, the magic is really just the manifestation of a truly elegant architecture.
 
 #### What's the Recipe?
 
