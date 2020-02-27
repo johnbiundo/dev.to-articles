@@ -273,10 +273,69 @@ If all is working, you should get a coordinated set of logs in each of the termi
 
 ### Limitations of Take 1
 
-We know we've deferred a few things to `Take 2` to keep focused on the core requirements and implementation of a client. Any guesses on the major issue lurking in this simplified implementation? I've certainly given a few hints along the way :wink:.
+We knowingly deferred a few things to *Take 2* to keep focused on the core requirements and implementation of a client. But there's one big issue lurking.  Any guesses on what that might be? I've definitely foreshadowed this along the way (hint: repeatedly deferring the discussion of `id`).
 
-OK, let's get right to it. Ask yourself this: since our client is embedded in an HTTP app that is responding to multiple incoming requests, many of which may in turn be causing us to make remote requests, how does the client keep track of all of the outstanding remote requests and route them back to the correct originating (HTTP) request?
+OK, let's get right to it. Ask yourself this: since our client is embedded in an HTTP app that is responding to multiple incoming requests, many of which in turn are triggering remote requests, how does the transporter client keep track of all of the outstanding remote requests and route them back to the correct originating (HTTP) request?
 
+Let's demonstrate the problem. You'll need one extra terminal window for this so we can launch two simultaneous requests.  You'll notice that in this branch, there is an extra route in `nestHttpApp`.  That route makes a new request (`race`), which has a corresponding `@MessagePattern()` in `nestMicroservice`.  The point of these new features is to enable us to launch requests that **overlap**.  Feel free to take a look at the code (these new routes/handlers are at the bottom of their respective Controller files), but all you really need to know is this: the `race` route takes two parameters:
+* a requestId
+* a delay period (in seconds) specifying how long the server should wait before responding
 
+For example, try making the following request (HTTPie format):
+
+```bash
+$ http get localhost:3000/race/1/10
+```
+
+This will return the following response, after 10 seconds:
+```json
+{
+    "cid": "1",
+    "customers": [
+        {
+            "id": 1,
+            "name": "fake"
+        }
+    ],
+    "delay": 10000
+}
+
+```
+
+With this, we can run two overlapping requests.  We're going to run these two.  You'll need to do this in two separate windows:
+
+```bash
+$ # run this in terminal 1, and be prepared to run the second one in terminal 2 a few seconds later
+$ http get localhost:3000/race/1/10
+$ # run this one in terminal 2, within a couple of seconds of running the top 1
+$ http get localhost:3000/race/2/5
+```
+
+The results should (well, maybe not with the foreshadowing :wink:) surprise you.  **Both** requests return the following result:
+
+```json
+{
+  "cid": "2",
+  "customers": [
+      {
+          "id": 1,
+          "name": "fake"
+      }
+  ],
+  "delay": 5000
+}
+```
+
+This is obviously incorrect for the first request.  The issue is that we are [multiplexing](http://250bpm.com/blog:18) our requests through a single pair of channels.  When we issue request #1, it subscribes to a response on the `/race_ack` channel. Request #2 does the same thing, and since it finishes first, the request #1 subscription gets its result.
+
+Also... why do **both** subscribers get the result?  Hmmm... clearly something isn't working quite right here, and we'll have to work on this our next (and final!) revision!
+
+### What's Next
+
+Wit these issues in mind, we're ready to build a final version of the Faye Custom Transporter client component, completing our development project.  In [Part 5](https://dev.to/nestjs/part-5-completing-the-client-component-hlh-temp-slug-2907984?preview=82c11163db963ca01d8d62d3a7b14843b422a6b28f46762d999bbe4b7035ad634d48bbbdd740e36376121aa673354ff5259f8b3028bceb931e800d9e) we cover:
+
+* a
+* b
+* c
 
 Feel free to ask questions, make comments or suggestions, or just say hello in the comments below. And join us at [Discord](https://discord.gg/nestjs) for more happy discussions about NestJS. I post there as _Y Prospect_.
