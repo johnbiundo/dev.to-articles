@@ -32,11 +32,12 @@ For each article in the series, we introduce some new components (and sometimes 
 ```bash
 $ sh build.sh
 ```
-\**This is a bash script that runs on Linux-like systems.  You may have to make an adjustment for non-Linux systems.  Note that the script is simply a convenience that runs `npm install` inside each top-level directory, so you can always fall back to that technique if you have trouble with the script.*
+\**This is a shell script that runs on Linux-like systems.  You may have to make an adjustment for non-Linux systems.  Note that the script is simply a convenience that runs `npm install` inside each top-level directory, so you can always fall back to that technique if you have trouble with the script.*
 
 ### Overview
 
-
+![Editor Intellisense](./assets/remote-stream.gif 'Editor Intellisense')
+<figcaption><a name="intellisense"></a>Figure 1: Editor Intellisense</figcaption>
 ### What's Next
 
 Feel free to ask questions, make comments or suggestions, or just say hello in the comments below. And join us at [Discord](https://discord.gg/nestjs) for more happy discussions about NestJS. I post there as _Y Prospect_.
