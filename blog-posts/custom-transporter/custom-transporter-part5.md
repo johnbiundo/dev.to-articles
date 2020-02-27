@@ -39,7 +39,28 @@ $ sh build.sh
 
 I ended the last article with a discussion of the shortcomings of our *Take 1* (first iteration) implementation of the Faye Custom Transporter client component.  In this article, we'll address those shortcomings.
 
+### Leveraging the Framework
+
+Well, we've come to it.  A point where we're going to put all our accumulated knowledge thus far to the test. I pulled a bit of a fast one on you in [Part 4](xxx). Not literally, but in terms of what you might be expecting in this article.  The step from [Part 2 (first iteration of the server)]() to [Part 3 (second iteration)]() was comparatively small.  The step from [Part 4]() to this one is quite a bit bigger.  It turns out that managing a multiplexing client is a non-trivial challenge. The core requirements haven't really changed, so what we learned in [Part 4]() still very much applies, but we're going to have to roll up our sleeves in this chapter and dial up some serious code.  Wait! Don't panic!
+
+There's good news! The framework handles most of this for us.  What we are really going to have to do is figure out how to plug our broker-specific stuff **into** the framework so we can leverage its capabilities and keep our code fairly simple.  Let's get to it.
+
 ### Addressing the Multiplexing Challenge
+
+When it comes right down to it, the conceptual solution to the multiplexing challenge is straightforward.  We've already seen that we associate a unique identifier with each outbound message, and for responses, the server copies that identifier into the response message. This gives us end-to-end traceability of each unique request as it traverses the system. This is a common technique, sometimes known as using a [correlation id](https://www.enterpriseintegrationpatterns.com/patterns/messaging/CorrelationIdentifier.html) (for example, here's a [tutorial showing how](https://www.rabbitmq.com/tutorials/tutorial-six-python.html) a similar concept can be used for writing native RabbitMQ client apps).  The question is, how do we use these?  You probably already suspect the answer: keep a map of `id -> request handler instance`, and make sure when a response comes back, we direct it to the same handler instance that initiated the request.
+
+As I mentioned, there's good news here: the framework has a bunch of the machinery to handle this. In addition to helping us manage the multiple outstanding requests, it takes care of connection management and subscription management --xxx-- I'll talk about these in more detail in a little while.  To avail ourselves of this built-in infrastructure, we have to get into the "framework" mindset: that is, invert our thinking and figure out where we need to supply the correct code to be **called by the framework**.  Turns out, the list of things we need to do isn't too long, nor too hard to [grok](https://en.wikipedia.org/wiki/Grok):
+
+1. We're going to extend the `ClientProxy` class instead of creating a new standalone class.
+2. We're going to let the framework take over the implementation of `send()` for us.  That's the entry point for processing a user-land `send()` call, and allows us to plug in our pieces without disrupting the overall machinery.
+3. The superclass `send()` method expects a concrete implementation of `publish()`, which represents our [now-familiar](xxx) *subscribe-to-the-response-then-publish-the-request* pattern.
+4. We're going to create a method to *unsubscribe* from a Faye topic.
+5. We're going to provide a concrete implementation of `dispatchEvent()`, which is how `ClientProxy#emit()` is handled.
+6. We're going to beef up *connection management* (how we stay connected to the Faye broker) to enable the framework to efficiently share our connection across multiple calls
+7. We'll take care of a few other minor details.
+
+We have our shopping list, so let's get started!
+
 
 
 

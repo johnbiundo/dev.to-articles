@@ -299,7 +299,7 @@ If all is working, you should get a coordinated set of logs in each of the termi
 
 ### Limitations of Take 1
 
-We knowingly deferred a few things to *Take 2* to keep focused on the core requirements and implementation of a client. But there's one big issue lurking.  Any guesses on what that might be? I've definitely foreshadowed this along the way (hint: repeatedly deferring the discussion of `id`).
+We knowingly deferred a few things to *Take 2* to keep focused on the core requirements and implementation of a client. We'll address them in [Part 5]().  But there's one **big** issue lurking.  Any guesses on what that might be? I've definitely foreshadowed this along the way (hint: repeatedly deferring the discussion of `id`).
 
 OK, let's get right to it. Ask yourself this: since our client is embedded in an HTTP app that is responding to multiple incoming requests, many of which in turn are triggering remote requests, how does the transporter client keep track of all of the outstanding remote requests and route them back to the correct originating (HTTP) request?
 
