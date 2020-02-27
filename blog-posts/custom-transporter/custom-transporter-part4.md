@@ -36,7 +36,7 @@ $ sh build.sh
 
 ### Overview
 
-![Editor Intellisense](./assets/remote-stream2.gif 'Editor Intellisense')
+![Remote Observable Stream](./assets/remote-stream3.gif 'Remote Observable Stream')
 <figcaption><a name="remote-stream"></a>Figure 1: Remote Observable Stream</figcaption>
 ### What's Next
 
