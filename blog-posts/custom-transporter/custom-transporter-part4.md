@@ -130,6 +130,7 @@ Let's start with the constructor:
 
 With that covered, we can look at the API we expose.  Recall that the user-land call we need to support is:
 ```typescript
+// nestHttpApp/src/app.controller.ts
 @Get('jobs-stream1/:duration')
   stream(@Param('duration') duration) {
     return this.client.send('/jobs-stream1', duration).pipe(
@@ -141,17 +142,98 @@ With that covered, we can look at the API we expose.  Recall that the user-land 
   }
 ```
 
-We handle this, of course, in the `send()` method right at the top of the file.  As expected, it returns an `Observable`. We use the normal Observable creation pattern, passing it a callback that handles emitting the values. In the callback, we use a factory method to implement the Observable subscription handler based on the pattern (e.g., `/jobs-stream1` ) and data (e.g., `duration`) in the request, since these are unknown until the call to `send()` is made.  This might sound a bit complicated, but let's break it down.
+We expose this feature, of course, with the `send()` method right at the top of the file.  As expected, it returns an `Observable`. We use the normal Observable creation pattern, passing it a callback that handles emitting the values. In the callback, we use a factory method to implement the Observable subscription handler based on the pattern (e.g., `/jobs-stream1` ) and data (e.g., `duration`) in the request, since these are unknown until the call to `send()` is made.  This might sound a bit complicated, but let's break it down.
 
 #### The Request Handler
 
-The `handleRequest()` method is where the action is at.  If we work our way inside out, it will make sense.  A good place to start is to recall how we implemented this functionality in our native Faye `customerApp` way back in [Episode 1]().  Feel free to go have a quick look at that. The quick summary for handling a request (a message expecting a response) is this:
+The `handleRequest()` method is where the action is at.  If we work our way inside out, it will make sense.  A good place to start is to recall how we implemented this functionality in our native Faye `customerApp` way back in [Episode 1](https://dev.to/nestjs/build-a-custom-transporter-for-nestjs-microservices-dc6-temp-slug-6007254?preview=d3e07087758ff2aac037f47fb67ad5b465f45272f9c5c9385037816b139cf1ed089616c711ed6452184f7fb913aed70028a73e14fef8e3e41ee7c3fc#requestresponse).  Feel free to go have a quick look at that. The quick summary for handling a request (a message expecting a response) is this:
 
 1. Subscribe to the response channel (we know this is the pattern name followed by `_res`)
 2. Send the request
 3. When the response comes in from the subscription (step 1), we *return it*
 4. Recalling our observable requirement, *returning it* means *emitting the results as an observable stream*
 
+This is really all we're doing in the `handleRequest` method.  Let's take a look at it:
 
+```typescript
+  public handleRequest(partialPacket, observer): Function {
+    const packet = Object.assign(partialPacket, { id: uuid() });
+    const serializedPacket = this.serializer.serialize(packet);
+
+    const requestChannel = `${packet.pattern}_ack`;
+    const responseChannel = `${packet.pattern}_res`;
+
+    const subscriptionHandler = rawPacket => {
+      const message = this.deserializer.deserialize(rawPacket);
+      const { err, response, isDisposed } = message;
+      if (err) {
+        return observer.error(err);
+      } else if (response !== undefined && isDisposed) {
+        observer.next(response);
+        return observer.complete();
+      } else if (isDisposed) {
+        return observer.complete();
+      }
+      observer.next(response);
+    };
+
+    const subscription = this.fayeClient.subscribe(
+      responseChannel,
+      subscriptionHandler,
+    );
+
+    subscription.then(() => {
+      this.fayeClient.publish(requestChannel, serializedPacket);
+    });
+
+    return () => {
+      this.fayeClient.unsubscribe(responseChannel);
+    };
+  }
+```
+
+The `partialPacket` parameter has most of the elements of our outbound message.  It's invoked from `send()` with an object like:
+```json
+{
+  pattern: '/jobs-stream1/',
+  data: 1
+}
+```
+
+So we complete the formation of our outbound packet by adding that pesky `id` parameter (that we **still** haven't gotten to --xxx-- I promise to address this in [Part 5](https://dev.to/nestjs/part-5-completing-the-client-component-hlh-temp-slug-2907984?preview=82c11163db963ca01d8d62d3a7b14843b422a6b28f46762d999bbe4b7035ad634d48bbbdd740e36376121aa673354ff5259f8b3028bceb931e800d9e)!).  After running our serializer, the packet is ready to send.
+
+Let's skip the chunk beginning with the line `const subscriptionHandler = rawPacket => {` for a moment.
+
+The next three chunks of code, respectively:
+1. Perform our subscription, as discussed above.  In Faye, the `subscribe()` call returns a promise that resolves when the Faye server returns an acknowledgement.
+2. Upon that acknowledgement, we publish the serialized packet we built earlier.
+3. We return a way to unsubscribe from the observable.  This is part of the Observable creation pattern.  Recall that ultimately, handleRequest is a factory function returning the body of an observable subscription callback, so this is normal Observable creation.
+
+Let's tackle the part where we build the subscription handler.  Here it is again:
+
+```typescript
+    const subscriptionHandler = rawPacket => {
+      const message = this.deserializer.deserialize(rawPacket);
+      const { err, response, isDisposed } = message;
+      if (err) {
+        return observer.error(err);
+      } else if (response !== undefined && isDisposed) {
+        observer.next(response);
+        return observer.complete();
+      } else if (isDisposed) {
+        return observer.complete();
+      }
+      observer.next(response);
+    };
+```
+
+Let's restate the purpose of this chunk of code.  We're building the callback that will be used in our Faye `subscribe()` call to handle inbound messages.  As we handle them, we are converting them back into an observable stream.  We do that by taking the following steps for each inbound message from Faye:
+
+1. Deserialize it
+2. Determine if the observable stream has errored or is complete
+3. Handle errors appropriately
+4. Handle the next value in the stream until we see the `isDisposed` property, indicating the end of the stream coming from the server
+
+As in any normal Observable, we handle these cases with the `observer.error()`, `observer.next()` and `observer.complete()` calls.
 
 Feel free to ask questions, make comments or suggestions, or just say hello in the comments below. And join us at [Discord](https://discord.gg/nestjs) for more happy discussions about NestJS. I post there as _Y Prospect_.
