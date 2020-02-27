@@ -148,8 +148,8 @@ We expose this feature, of course, with the `send()` method right at the top of 
 
 The `handleRequest()` method is where the action is at.  If we work our way inside out, it will make sense.  A good place to start is to recall how we implemented this functionality in our native Faye `customerApp` way back in [Episode 1](https://dev.to/nestjs/build-a-custom-transporter-for-nestjs-microservices-dc6-temp-slug-6007254?preview=d3e07087758ff2aac037f47fb67ad5b465f45272f9c5c9385037816b139cf1ed089616c711ed6452184f7fb913aed70028a73e14fef8e3e41ee7c3fc#requestresponse).  Feel free to go have a quick look at that. The quick summary for handling a request (a message expecting a response) is this:
 
-1. Subscribe to the response channel (we know this is the pattern name followed by `_res`)
-2. Send the request
+1. Subscribe to the response channel (we know to use the pattern name followed by `_res`)
+2. Send the request (we know to do this using the pattern name followed by `_ack`)
 3. When the response comes in from the subscription (step 1), we *return it*
 4. Recalling our observable requirement, *returning it* means *emitting the results as an observable stream*
 
@@ -205,9 +205,9 @@ So we complete the formation of our outbound packet by adding that pesky `id` pa
 Let's skip the chunk beginning with the line `const subscriptionHandler = rawPacket => {` for a moment.
 
 The next three chunks of code, respectively:
-1. Perform our subscription, as discussed above.  In Faye, the `subscribe()` call returns a promise that resolves when the Faye server returns an acknowledgement.
+1. Perform our subscription, as discussed above. In Faye, the `subscribe()` call returns a promise that resolves when the Faye server returns an acknowledgement.
 2. Upon that acknowledgement, we publish the serialized packet we built earlier.
-3. We return a way to unsubscribe from the observable.  This is part of the Observable creation pattern.  Recall that ultimately, handleRequest is a factory function returning the body of an observable subscription callback, so this is normal Observable creation.
+3. Finally, we return a way to unsubscribe from the observable.  This is part of the Observable creation pattern.  Recall that ultimately, `handleRequest()` is a factory function returning the body of an observable subscription callback, so this is normal Observable creation.
 
 Let's tackle the part where we build the subscription handler.  Here it is again:
 
@@ -227,7 +227,7 @@ Let's tackle the part where we build the subscription handler.  Here it is again
     };
 ```
 
-Let's restate the purpose of this chunk of code.  We're building the callback that will be used in our Faye `subscribe()` call to handle inbound messages.  As we handle them, we are converting them back into an observable stream.  We do that by taking the following steps for each inbound message from Faye:
+Let's restate the purpose of this chunk of code.  We're building the callback that will be used in our Faye client API `subscribe()` call to handle inbound messages.  As we handle each message, we are converting the sequence back into an observable stream.  We do that by taking the following steps for each inbound message from Faye:
 
 1. Deserialize it
 2. Determine if the observable stream has errored or is complete
@@ -235,5 +235,48 @@ Let's restate the purpose of this chunk of code.  We're building the callback th
 4. Handle the next value in the stream until we see the `isDisposed` property, indicating the end of the stream coming from the server
 
 As in any normal Observable, we handle these cases with the `observer.error()`, `observer.next()` and `observer.complete()` calls.
+
+#### The Rest of the Code
+
+The only other thing left is the connection management to the Faye broker.  That's handled in the `connect()` method, which for now we're calling in the constructor.  This should be pretty understandable.  The only slightly funky thing is that we use deconstruction to extract out the `url` and the `options` object from the constructor options so we can easily format our call to `fayeClient.connect()`.
+
+Connection management will become more important and consequently more sophisticated in our next iteration.
+
+```typescript
+  public connect() {
+    if (this.fayeClient) {
+      return this.fayeClient;
+    }
+    const { url, serializer, deserializer, ...options } = this.options;
+    this.fayeClient = new faye.Client(url, options);
+    this.fayeClient.connect();
+    return this.fayeClient;
+  }
+```
+
+### Acceptance Testing
+
+We're ready to test our code.  In previous articles, I gave a lot of suggestions about managing your multiple terminals.  Going forward, I'll simply indicate the steps you should take, and assume you've got a working environment with the appropriate logical terminals set up.  Here are the steps to run our test:
+
+* Make sure our Faye server is up and running in one terminal.
+* Make sure the `nestMicroservice` app is running in one terminal.
+* Make sure the `nestHttpApp` app is running in one terminal.
+
+Now, issue a request (expressed below as an HTTPie request, but use your favorite HTTP testing tool):
+
+```bash
+$ #
+$ http get localhost:3000/jobs-stream1/1
+```
+
+If all is working, you should get a coordinated set of logs in each of the terminal windows indicating that we have, indeed, successfully subscribed to the results of our remote request.
+
+### Limitations of Take 1
+
+We know we've deferred a few things to `Take 2` to keep focused on the core requirements and implementation of a client. Any guesses on the major issue lurking in this simplified implementation? I've certainly given a few hints along the way :wink:.
+
+OK, let's get right to it. Ask yourself this: since our client is embedded in an HTTP app that is responding to multiple incoming requests, many of which may in turn be causing us to make remote requests, how does the client keep track of all of the outstanding remote requests and route them back to the correct originating (HTTP) request?
+
+
 
 Feel free to ask questions, make comments or suggestions, or just say hello in the comments below. And join us at [Discord](https://discord.gg/nestjs) for more happy discussions about NestJS. I post there as _Y Prospect_.
