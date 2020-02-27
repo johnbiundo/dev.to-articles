@@ -53,7 +53,7 @@ When it comes down to it, the conceptual solution to the multiplexing challenge 
 
 You probably already suspect the answer: keep a map of `id -> request handler instance`, and make sure when a response comes back, we direct it to the same handler instance that initiated the request.
 
-As I mentioned, there's good news here: the framework has a bunch of the machinery to handle this. In addition to helping us manage the multiple outstanding requests, it takes care of connection management and subscription management &#8212; I'll talk about these in more detail in a little while.  To avail ourselves of this built-in infrastructure, we have to get into the "framework" mindset: that is, invert our thinking and figure out where we need to supply the correct code to be **called by the framework**.  Turns out, the list of things we need to do isn't too long, nor too hard to [grok](https://en.wikipedia.org/wiki/Grok):
+As I mentioned, there's good news here: the framework has a bunch of the machinery to handle this. In addition to helping us manage the multiple outstanding requests, it takes care of connection management and subscription management &#8212; I'll talk about these in more detail in a little while.  To avail ourselves of this built-in infrastructure, we have to get into the "framework mindset": that is, invert our thinking and figure out where we need to supply the correct code to be **called by the framework**.  Turns out, the list of things we need to do isn't too long, nor too hard to [grok](https://en.wikipedia.org/wiki/Grok):
 
 1. We're going to extend the `ClientProxy` class instead of creating a new standalone class.  This is, of course, how we "plug in" to the framework.
 2. We're going to let the framework take over the implementation of `send()` for us.  That's the entry point for processing a user-land `send()` call, and allows us to plug in our pieces without disrupting the overall machinery.
@@ -69,7 +69,7 @@ We have our shopping list, so let's get started!  There's a fair amount of inter
 
 #### The Superclass `send()` Method
 
-Let's start with the superclass `send()` method. Since we're going to be referring to this concept a lot, I'm going to invent an acronym to describe our *subscribe-to-the-response-then-publish-the-request* technique: we'll call it *STRTPR*.  As a very fast reminder ([refresh the details here](xxx)), this is the pattern whereby, to handle a request/response message, the client:
+Let's start with the superclass `send()` method. Since we're going to be referring to this concept a lot, I'm going to invent an acronym to describe our *subscribe-to-the-response-then-publish-the-request* technique: we'll call it *STRPTR*.  As a very fast reminder ([refresh the details here](xxx)), this is the pattern whereby, to handle a request/response message, the client:
 1. subscribes to the response channel ("subscribe-to-response" = *STR* part of our acronym), then
 2. publishes a request on the request channel ("publish-the-request" = *PTR* part of our acronym)
 
@@ -99,7 +99,7 @@ Here's the code for `ClientProxy#send`:
 
 Stripping the superclass `send()` method to the bone, what it's doing is:
 1. Sharing an existing `connection` (we are responsible for implementing `connect()` &#8212; we'll get to that), or obtaining a new one.
-2. Creating the Observable that contains our *STRPTR* (which &#8212; so the framework knows where to look &#8212; we'll build inside a concrete implementation of `publish()`). If you look inside [`ClientProxy#createObserver`](https://github.com/nestjs/nest/blob/master/packages/microservices/client/client-proxy.ts#L82), you'll see it's **very similar** to the [observer creation code](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/part4/nestjs-faye-transporter/src/requestor/clients/faye-client.ts#L34) we built in the last chapter, which should make you feel comfortable with what it's doing.  In a nutshell, we're abstracting that same STRPTR pattern we used up one level (one order higher in our higher order programming stack) so that we can introduce a mechanism to associate individual handler instances with their correlation ids
+2. Creating the Observable that contains our *STRPTR* (which &#8212; because the framework expects it here &#8212; we build inside a concrete implementation of `publish()`). If you look inside [`ClientProxy#createObserver`](https://github.com/nestjs/nest/blob/master/packages/microservices/client/client-proxy.ts#L82), you'll see it's **very similar** to the [observer creation code](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/part4/nestjs-faye-transporter/src/requestor/clients/faye-client.ts#L34) we built in the last chapter, which should make you feel comfortable with what it's doing.  In a nutshell, we're abstracting that same STRPTR pattern we used up one level (one order higher in our higher order programming stack) so that we can introduce a mechanism to associate individual handler instances with their correlation ids
 
 #### The `ClientFaye#publish()` Method
 
@@ -157,7 +157,7 @@ protected publish(
 This is where everything pretty much coalesces to implement our multiplexed requests.  Again, this bears quite a bit of similarity to the `handleRequest()` method ([code here](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/part4/nestjs-faye-transporter/src/requestor/clients/faye-client.ts#L27)) we built in the previous article.  That's not surprising, as it's implementing our *STRPTR*.  If you look at it from 10,000 feet, you can see the outlines of that: we build a `clientFaye.publish()` call (packaged in `publishRequest`), we then subscribe to the response channel (with an appropriate handler), we then publish the request.  As we did in the last chapter, we return an `unsubscribe()` function as part of the Observable creation.
 
 Nestled in amongst that are two bits of what we might call "accounting":
-1. Keeping track of our *open subscriptions* on the response channel.  We do this because there is only **one** shared physical response channel.  When all outstanding requests are satisfied, we will unsubscribe.  If there are outstanding requests, we know a subscription on the shared response channel is already in place.
+1. Keeping track of our *open subscriptions* on the response channel.  We do this because there is only **one** shared physical response channel.  When all outstanding requests are satisfied, we will unsubscribe.  If there are outstanding requests (count > 0), we know a subscription on the shared response channel is already in place, so we don't subscribe again.
 2. Managing that association of `id -> response handler instance` we talked about earlier.  The association is kept in `this.routingMap`, a JavaScript [map](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Map) we inherit from the superclass.  Each new request adds an entry to the map.  Each completed response deletes the entry.
 
 Finally, let's talk about the call to `createSubscriptionHandler()`.  Back inside `publish`, we call this method as a factory to return the appropriate callback handler. So we're returning the handler that will be plugged into the `fayeClient.subscribe()` call &#8212; that is, the code that will be invoked for every inbound method.  This code wraps the call to our actual user-land handler.  It does the following:
@@ -171,6 +171,8 @@ Finally, let's talk about the call to `createSubscriptionHandler()`.  Back insid
 
 \* Blah
 \** Blah
+
+#### Connection Management
 
 ### What's Next
 
