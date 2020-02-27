@@ -59,10 +59,101 @@ As I mentioned, there's good news here: the framework has a bunch of the machine
 6. We're going to beef up *connection management* (how we stay connected to the Faye broker) to enable the framework to efficiently share our connection across multiple calls
 7. We'll take care of a few other minor details.
 
-We have our shopping list, so let's get started!
+We have our shopping list, so let's get started!  There's a fair amount of interaction back and forth between the superclass and the `ClientFaye` class we're writing to extend it, so pay close attention to that, and I'll try to give clear signposts to guide you.
 
+### *Take 2* Code Review
 
+#### The Superclass `send()` Method
 
+Let's start with the superclass `send()` method. Since we're going to be referring to this a lot, I'm going to invent an acronym to describe our *subscribe-to-the-response-then-publish-the-request* technique: we'll call it *STRTPR*.  As a very fast reminder [refresh the details here](), this is the pattern whereby, to handle a request/response message, the client:
+1. subscribes to the response channel ("subscribe-to-response" = *STR* part of our acronym)
+2. publishes a request on the request channel ("publish-the-request" = *PTR* part of our acronym)
+
+Here's the code:
+```typescript
+// the ClientProxy superclass.  See source code here:
+// https://github.com/nestjs/nest/blob/master/packages/microservices/client/client-proxy.ts#L82
+  public send<TResult = any, TInput = any>(
+    pattern: any,
+    data: TInput,
+  ): Observable<TResult> {
+    if (isNil(pattern) || isNil(data)) {
+      return _throw(new InvalidMessageException());
+    }
+    return defer(async () => this.connect()).pipe(
+      mergeMap(
+        () =>
+          new Observable((observer: Observer<TResult>) => {
+            const callback = this.createObserver(observer);
+            return this.publish({ pattern, data }, callback);
+          }),
+      ),
+    );
+  }
+```
+
+Stripping the superclass `send()` method to the bone, what it's doing is:
+1. Sharing an existing `connection` (we are responsible for implementing `connect() --xxx-- we'll get to that), or obtaining a new one.
+2. Creating the Observable that contains our *STRPTR* (which we'll build inside a concrete implementation of `publish()`). If you look inside [`ClientProxy#createObserver`](https://github.com/nestjs/nest/blob/master/packages/microservices/client/client-proxy.ts#L82), you'll see it's **very similar** to the [observer creation code](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/part4/nestjs-faye-transporter/src/requestor/clients/faye-client.ts#L34) we built in the last chapter, which should make you feel comfortable with what it's doing.  In a nutshell, we're abstracting that same STRPTR pattern we used up one level (one order higher in our higher order programming stack) so that we can introduce a mechanism to associate individual handler instances with their correlation ids
+
+#### The `ClientFaye#publish()` Method
+
+Get comfortable.  Maybe get a cup of coffee or tea. We're going to be here a while :smiley:.
+
+Take a moment to look over the whole method:
+
+```typescript
+// nestjs-faye-transporter/src/requestor/clients/faye-client.ts
+protected publish(
+    partialPacket: ReadPacket,
+    callback: (packet: WritePacket) => any,
+  ): Function {
+    try {
+      const packet = this.assignPacketId(partialPacket);
+      const pattern = this.normalizePattern(partialPacket.pattern);
+      const serializedPacket = this.serializer.serialize(packet);
+      const responseChannel = this.getResPatternName(pattern);
+
+      let subscriptionsCount =
+        this.subscriptionsCount.get(responseChannel) || 0;
+
+      const publishRequest = () => {
+        subscriptionsCount = this.subscriptionsCount.get(responseChannel) || 0;
+        this.subscriptionsCount.set(responseChannel, subscriptionsCount + 1);
+        this.routingMap.set(packet.id, callback);
+        this.fayeClient.publish(
+          this.getAckPatternName(pattern),
+          serializedPacket,
+        );
+      };
+
+      const subscriptionHandler = this.createSubscriptionHandler(packet);
+
+      if (subscriptionsCount <= 0) {
+        const subscription = this.fayeClient.subscribe(
+          responseChannel,
+          subscriptionHandler,
+        );
+        subscription.then(() => publishRequest());
+      } else {
+        publishRequest();
+      }
+
+      return () => {
+        this.unsubscribeFromChannel(responseChannel);
+        this.routingMap.delete(packet.id);
+      };
+    } catch (err) {
+      callback({ err });
+    }
+  }
+```
+
+This is where everything pretty much coalesces to implement our multiplexed requests.  Again, this bears quite a bit of similarity to the `handleRequest()` method ([code here](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/part4/nestjs-faye-transporter/src/requestor/clients/faye-client.ts#L27)) we built in the previous article.  That's not surprising, as it's implementing our *STRPTR*.  If you look at it from 10,000 feet, you can see the outlines of that: we build a `publish()` call, we then subscribe to the response channel (with an appropriate handler), we then publish the request.  As we did in the last chapter, we return an `unsubscribe()` function as part of the Observable creation.
+
+Nestled in amongst that are two bits of what we might call "accounting":
+1. Keeping track of our *open subscriptions* on the response channel.  We do this because there is only **one** physical response channel.  When all outstanding requests are satisfied, we will unsubscribe.  If there are outstanding requests, we know a subscription on the **one** (shared) response channel is already in place.
+2. Managing that `id -> response handler instance` map we talked about earlier.  This is managed in `this.routingMap`, a JavaScript [map]() we inherit from the superclass.  Each new request adds an entry to the map.  Each completed response deletes the entry.
 
 ### What's Next
 
