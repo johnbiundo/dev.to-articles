@@ -36,8 +36,8 @@ $ sh build.sh
 
 ### Overview
 
-![Editor Intellisense](./assets/remote-stream.gif 'Editor Intellisense')
-<figcaption><a name="intellisense"></a>Figure 1: Editor Intellisense</figcaption>
+![Editor Intellisense](./assets/remote-stream2.gif 'Editor Intellisense')
+<figcaption><a name="remote-stream"></a>Figure 1: Remote Observable Stream</figcaption>
 ### What's Next
 
 Feel free to ask questions, make comments or suggestions, or just say hello in the comments below. And join us at [Discord](https://discord.gg/nestjs) for more happy discussions about NestJS. I post there as _Y Prospect_.
