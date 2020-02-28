@@ -103,9 +103,7 @@ Stripping the superclass `send()` method to the bone, what it's doing is:
 
 #### The `ClientFaye#publish()` Method
 
-Get comfortable.  Maybe get a cup of coffee or tea. We're going to be here a while :smiley:.
-
-Take a moment to look over the whole method:
+Here's a good place to try out that "squint and try to look for the larger pattern" advice I gave earlier.  Take a moment to look over the whole method:
 
 ```typescript
 // nestjs-faye-transporter/src/requestor/clients/faye-client.ts
