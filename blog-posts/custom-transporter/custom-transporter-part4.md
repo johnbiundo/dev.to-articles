@@ -168,7 +168,7 @@ We expose this feature, of course, with the `send()` method right at the top of 
   }
 ```
 
-As expected, it returns an `Observable`. We use the normal Observable creation pattern, passing it a callback that handles emitting the values. In the callback, we use a factory method to implement the Observable subscription handler based on the pattern (e.g., `'/jobs-stream1'` ) and data (e.g., `duration`) in the request, since these are unknown until the call to `send()` is made.  This might sound a bit complicated, but let's break it down.
+As required, it returns an `Observable`. We use the normal Observable creation pattern, passing it a callback that handles emitting the values. In the callback, we use a factory method to implement the Observable subscription handler based on the pattern (e.g., `'/jobs-stream1'` ) and data (e.g., `duration`) in the request, since these are unknown until the call to `send()` is made.  This might sound a bit complicated, but let's break it down.
 
 #### The Request Handler
 
