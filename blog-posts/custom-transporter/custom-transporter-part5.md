@@ -54,9 +54,9 @@ We know `ClientProxy#send()` returns an Observable.  The job of that Observable 
 ![Convert Messages to Stream](./assets/client-proxy-observable.gif 'Convert Messages to Stream')
 <figcaption><a name="remote-stream"></a>Figure 1: Convert Messages to Stream</figcaption>
 
-Everything we do from here on in is going to be packaged in an Observable that we return to the client. "But John", I hear you say, "we already did that in the last chapter!"  Alas, as we discovered at the end of the chapter, we have to account for more complexity.  Basically, we have to account for the fact that since our `ClientProxy` is operating in the context of a shared server (our `nestHttpApp`) it will actually be dealing with **multiple** observables simultaneously --xxx-- each representing a unique outstanding `ClientProxy#send` request.
+Everything we do from here on in is going to be packaged in an Observable that we return to the client. "But John", I hear you say, "we already did that in the last chapter!"  Alas, as we discovered at the end of the chapter, we have to account for more complexity.  Basically, we have to account for the fact that since our `ClientProxy` is operating in the context of a shared server (e.g., our `nestHttpApp`) it will actually be dealing with **multiple** observables simultaneously --xxx-- each representing a unique outstanding `ClientProxy#send` request.
 
-One valuable lesson we learned in the last chapter is that we can use the Observable/observer pattern with a factory method to "wrap our Faye client inside an observable". This was our *observable subscription function factory* (the `handleRequest()` method --xxx-- the bit of code that actually emits the value through our Observable).  We're going to build on this lesson, and take it to the next level, to deal with the complexities of the multiplexing challenge.
+One valuable lesson we learned in the last chapter is that we can use the Observable/observer pattern with a factory method to "wrap our Faye client inside an Observable". This was our *observable subscription function factory* (the `handleRequest()` method which builds the subscription function --xxx-- the bit of code that actually emits the value through our Observable).  We're going to build on this lesson, and take it to the next level, to deal with the complexities of the multiplexing challenge.
 
 #### Handling Multiple Requests: The Union of Observables and Correlation Ids
 
@@ -82,12 +82,12 @@ Let's break down the multiple outstanding requests challenge a bit further.  If 
 ...
 ```
 
-So we need a smarter strategy.  Such a strategy needs to do dynamic binding of the *observable subscription function* logic.  It needs to delay binding the results of the *observable subscription function factory* until a request is made. We have to make a little leap here.  Instead of having our *observable subscription function factory* return a handler, as in the code above, we need to return a **function that returns a handler**.  Yes, we're building sort of a factory of factories.  It can sound a bit confusing, but conceptually, what we're going to do is **store a function** that returns a handler each time a request is made. Later, when we get a response, we'll retrieve that stored function and use it to give us an actual handler. For the rest of this section, we'll refer to this stored function as our *handler factory*.
+So we need a smarter strategy.  Such a strategy needs to do dynamic binding of the *observable subscription function* logic.  It needs to delay binding the results of the *observable subscription function factory* until a request is made. We have to make a little leap here.  Conceptually, what we're going to do is **store** an instance of that *observable subscription factory function* each time a request is made. Later, when we get a response, we'll retrieve that stored function and use it to give us a unique *observable subscription factory function* for the request.  For the rest of this article, we'll refer to this stored function as our *handler factory*.
 
-This construction let's us associate a *unique observable subscription function* with each observable.  The approach we'll take goes something like this:
+This construction let's us associate a **unique** *observable subscription function* with each observable.  The approach we'll take goes something like this:
 
 1. At the time a user-land request is issued (via `ClientProxy#send`), we'll create an instance of the *handler factory*, along with a unique identifier for the request. We'll store an association between the unique id and the *handler factory* in a map.
-2. When a response is received, we'll extract the identifier from the response, and use it to look up the *handler factory*. We'll then use this unique instance of the *handler factory* to give us the actual final handler code, thus resolving our *observable subscription function*, and use this to emit the result.  Since the only observable associated with this *observable subscription function* is the originator of the request, that's the only one that receives the emitted result.
+2. When a response is received, we'll extract the identifier from the response, and use it to look up the *handler factory*. We'll then use this unique instance of the *handler factory* to give us the actual final *observable subscription function* associated with the request, and use this to emit the result.  Since the only observable associated with this *observable subscription function* is the originator of the request, that's the only one that receives the emitted result.
 3. To tie these things together, we need to pass the identifier all the way through the request/response flow.  The requesting code generates the identifier, it's attached (as the `id` property) the outbound message, and finally returned on the corresponding inbound message. Then we use it as described in step 2 above.
 
 > The pattern we described in step 3 above is often referred to as using [correlation ids](https://www.enterpriseintegrationpatterns.com/patterns/messaging/CorrelationIdentifier.html) (for example, here's a [tutorial showing how](https://www.rabbitmq.com/tutorials/tutorial-six-python.html) a similar concept can be used for writing native RabbitMQ client apps).
@@ -154,15 +154,16 @@ Stripping the superclass `send()` method to the bone, here's what it's doing:
 1. Reusing a `connection` if it exists or obtaining a new one.  Note that since it depends on client library particulars to deal with obtaining a connection, it depends on the `connect()` method --xxx-- which we are responsible for implementing and will get to soon.
 2. Creating the Observable that is effectively the "wrapper" where we'll implement the strategy we [discussed above](#strategy-for-solving-the-multiplexing-challenge).
 
-Let's look at that Observable creation step for a moment.  The first line `const callback = this.createObserver(observer)` is where we create our higher order *observable subscription function factory*. This gives us back an *observable subscription function* --xxx-- a unique one for this request --xxx-- which is what we'll stash away in our map.
+Let's look at that Observable creation step for a moment.  The first line `const callback = this.createObserver(observer)` is where we create our *handler factory* (the unique-per-request *observable subscription function factory*). Remember - this factory gives us back a unique *observable subscription function* for this request --xxx-- which is what we'll stash away in our map.
 
-The second line calls `publish()`, which is an abstract method on the superclass that we must implement.  This is where we'll implement the details of our strategy.  Let's tackle that next.  Note that `send()` calls it with two parameters:
+The second line calls `publish()`, which is an abstract method on the superclass that we must implement.  This is where we'll implement the custom details of our strategy.  Let's tackle that next.  Note that `send()` calls it with two parameters:
 * the arguments from the user-land `client.send()` call (e.g., if the user wrote `client.send('/get-customers', {}), the first argument would contain `{pattern: '/get-customers', data: {}}`).
 * the newly minted *observable subscription function factory*
 
 #### The `ClientFaye#publish()` Method
 
-This is where
+This is where it all comes together.  Let's look at the whole method, then we'll break it down.
+
 ```typescript
 // nestjs-faye-transporter/src/requestor/clients/faye-client.ts
 protected publish(
