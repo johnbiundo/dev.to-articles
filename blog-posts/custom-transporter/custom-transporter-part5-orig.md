@@ -39,92 +39,39 @@ $ sh build.sh
 
 I ended the last article with a discussion of the shortcomings of our *Take 1* (first iteration) implementation of the Faye Custom Transporter client component.  In this article, we'll address those shortcomings.
 
-### Strategy for Solving the Multiplexing Challenge
+### Leveraging the Framework
 
-In the last chapter, we encountered what I called the *multiplexing challenge*.  Let's analyze that problem further and begin to put together a strategy to solve it.  Buckle up, as this is definitely the most complex challenge we've faced yet.
+Well, we've come to it.  A point where we're going to put all our accumulated knowledge thus far to the test. I pulled a bit of a fast one on you in [Part 4](https://dev.to/nestjs/part-4-basic-client-component-298b-temp-slug-9977921?preview=21ec3d333fc6d9d92c11dcbd8430a5132e93390de84cb4804914aa143492e925e4299ca3eb7f376918c1ed77df56e29db2572e5d6f7ab235b3e5f2b9). Not literally, but in terms of what you might be expecting in this article.  The step from [Part 2 (first iteration of the server)]() to [Part 3 (second iteration)]() was comparatively small.  The step from [Part 4](https://dev.to/nestjs/part-4-basic-client-component-298b-temp-slug-9977921?preview=21ec3d333fc6d9d92c11dcbd8430a5132e93390de84cb4804914aa143492e925e4299ca3eb7f376918c1ed77df56e29db2572e5d6f7ab235b3e5f2b9) to this one is quite a bit bigger.  It turns out that managing a multiplexing client is a non-trivial challenge. The core requirements haven't really changed, so what we learned in [Part 4]() still very much applies, but we're going to have to roll up our sleeves in this chapter and dial up some semi-serious code.  Wait! Don't panic!
 
-> **Note**: It's helpful to come at this starting from a somewhat abstract level, and successively refine our understanding and implementation.  From a practical standpoint, while we will walk through the details of handling this in our Faye client component, some of the details will vary from one transport library (e.g., broker) to the next because **each has its own message pattern and API**.  If you understand the concepts, there is a certain amount of boilerplate material that you can more-or-less adapt to a particular transport library.  Bottom line: pay more attention to the concepts than to understanding every line of code.  Inevitably, if and when you attempt to build a new transporter client, you'll have to work through a few knotholes.  Until then, focus more on the **strategy** than on every single tactic and line of code.
+There's good news! The framework handles most of this for us.  What we are really going to have to do is figure out how to plug our broker-specific stuff **into** the framework so we can leverage its capabilities and keep our code fairly simple.  Let's get to it.
 
-OK, let's start working on the strategy.  We're going to work through a number of components of the strategy starting at a somewhat abstract level.
+> **A word of advice.**  Please!  Don't feel like you need to understand all of this code fully.  I've tried to break it up into smallish snippets, most of which bear a resemblance to code we've seen before.   Yes, I'm advising you to "squint at it and try to see the bigger pattern", rather than understand every line.  I **will** try to explain most of what's going on, but unless and until you need to build a transporter from the ground up, you shouldn't worry too much about a line-by-line understanding.  If and when you **do** want to build (or perhaps customize) a transporter, you're going to have to dig in and work through some of the details anyway.  At that point, this chapter should serve as a set of guideposts to help you get to the right solution.  A lot of what happens in here (inside the sausage factory :smiley:) is fairly dependent on the details of the particular broker/transport layer you're wrapping.
 
-#### The Observable Part
+### Addressing the Multiplexing Challenge
 
-We know `ClientProxy#send()` returns an Observable.  The job of that Observable is to consume incoming Faye messages (boxes in the diagram below) and emit them as a stream (circles in the diagram below) so that our user-land subscriber can deal with them as a nice predictable RxJS observable.  .
+When it comes down to it, the conceptual solution to the multiplexing challenge is straightforward.  We've already seen that we associate a unique identifier with each outbound message, and for responses, the server copies that identifier into the response message. This gives us end-to-end traceability of each unique request as it traverses the system. This is a common technique, sometimes known as using a [correlation id](https://www.enterpriseintegrationpatterns.com/patterns/messaging/CorrelationIdentifier.html) (for example, here's a [tutorial showing how](https://www.rabbitmq.com/tutorials/tutorial-six-python.html) a similar concept can be used for writing native RabbitMQ client apps).  The question is, how do we use these?
 
-![Convert Messages to Stream](./assets/client-proxy-observable.gif 'Convert Messages to Stream')
-<figcaption><a name="remote-stream"></a>Figure 1: Convert Messages to Stream</figcaption>
+You probably already suspect the answer: keep a map of `id -> request handler instance`, and make sure when a response comes back, we direct it to the same handler instance that initiated the request.
 
-Everything we do from here on in is going to be packaged in an Observable that we return to the client. "But John", I hear you say, "we already did that in the last chapter!"  Alas, as we discovered at the end of the chapter, we have to account for more complexity.  Basically, we have to account for the fact that since our `ClientProxy` is operating in the context of a shared server (our `nestHttpApp`) it will actually be dealing wtih **multiple** observables simultaneously --xxx-- each representing a unique outstanding `ClientProxy#send` request.
-
-One valuable lesson we learned in the last chapter is that we can use the Observable/observer pattern with a factory method to "wrap our Faye client inside an observable". This was our *observable subscription function factory* (the `handleRequest()` method - the bit of code that actually emits the value through our Observable).  We're going to build on this lesson, and take it to the next level, to deal with the complexities of the multiplexing challenge.
-
-#### Handling Multiple Requests: The Union of Observables and Correlation Ids
-
-Let's break down the multiple outstanding requests challenge a bit further.  If we think about the Observable we return, it represents a future stream of responses to our requests.  We already return a unique observable for each `ClientProxy#send` invocation, but our *observable subscription function factory* is too naive.  It binds each observable to the same observable subscription function.  That single shared observable subscription function (seen below) sends a response **to each observer** whenever a message comes in on our response channel, which is why we failed our race condition test.
-
-```typescript
-// nestjs-faye-transporter/src/requestor/cleints/faye-client.ts
-// from branch `part4`
-...
-    const subscriptionHandler = rawPacket => {
-      const message = this.deserializer.deserialize(rawPacket);
-      const { err, response, isDisposed } = message;
-      if (err) {
-        return observer.error(err);
-      } else if (response !== undefined && isDisposed) {
-        observer.next(response);
-        return observer.complete();
-      } else if (isDisposed) {
-        return observer.complete();
-      }
-      observer.next(response);
-    };
-...
-```
-
-So we need a smarter strategy.  Such a strategy needs to do dynamic binding of the subscription handler logic.  It needs to delay binding the results of the *observable subscription function factory* until a request is made. We have to make a little leap here.  Instead of having our *observable subscription function factory* return a handler, as in the code above, we need to return a **function that returns a handler**.  Yes, we're building sort of a factory of factories.  It can sound a bit confusing, but conceptually, what we're going to do is store a function that returns a handler each time a request is made. Then we'll retrieve that function and use it to give us an actual handler when we get a response. For the rest of this section, we'll refer to this stored function as our *handler factory*.
-
-This construction let's us associate a *unique observable subscription function* with each observable.  The approach we'll take goes something like this:
-
-1. At the time a user-land request is issued (via `ClientProxy#send), we'll create an instance of the *handler factory*, along with a unique identifier for the request. We'll store an association between the unique id and the *handler factory* in a map.
-2. When a response is received, we'll extract the identifier from the response, and use it to look up the *handler factory*. We'll then use this unique instance of the *handler factory* to complete our *observable subscription function*, and emit the result.  Since the only observable associated with this *observable subscription function* is the originator of the request, that's the only one that receives the emitted result.
-3. To tie these things together, we need to pass the identifier all the way through the request/response flow.  The requesting code generates the identifier, it's passed through to the outbound message and returned on the corresponding inbound message, and then used as described in step 2 above.
-
-The pattern we described in step 3 above is often referred to as using [correlation ids](https://www.enterpriseintegrationpatterns.com/patterns/messaging/CorrelationIdentifier.html) (for example, here's a [tutorial showing how](https://www.rabbitmq.com/tutorials/tutorial-six-python.html) a similar concept can be used for writing native RabbitMQ client apps).
-
-#### Other Bookkeeping
-
-Another element of our strategy has to be to manage Faye channel subscription intelligently.  As we know, multiple inbound requests to `nestHttpApp` results in multiple outbound requests to, and responses from, `nestMicroservice`.  We've been dealing with the multiplexing aspect of that challenge, but let's introduce one more requirement.  An additional consequence of our design goal of **sharing a single inbound response channel** is that we we **must have only a single active subscription** to that response channel.  When all active requests have completed, we unsubscribe.  When a new request comes in, we subscribe again, and leave the subscription open until the channel quiesces again.
-
-#### Connection Management
-
-One thing we'll find, as we integrate our code with the framework, is that we need to adhere to its expectations for how we provide a client library connection.  We'll mostly rely on some boilerplate code here, but let's briefly describe the strategy. Since we're packaging up a bunch of stuff inside *observable subscription functions* (and their factories, etc.), the framework expects us to provide access to the connection in a particular way.  For the most part, we can just utilize some boilerplate to handle this.  There's only a small bit that is specific to a client library.  This is all packaged up in a `connect()` method that we should implement in our `ClientFaye` class.
-
-#### Odds and Ends
-
-We'll also see sprinkled in some functions that deal with other loose ends:
-* we return channel names using a function, rather than hard coding them with the `_ack` and `_res` modifiers to avoid scattering magic strings throughout the code
-* since user-land *patterns* can be arbitrary objects (we usually use strings, but Nest allows constructs like `client.send({cmd: 'get-customers'}, {})`), we use a built-in inherited function to "normalize" (essentially flatten) the pattern for internal usage
-
-### Implementation
-
-With this strategy in mind, here's the outline of how we'll implement it.
-
-> Note that there's a fair amount of interaction back and forth between the `ClientProxy` superclass and the `ClientFaye` class we're extending it with, so pay close attention to that, and I'll try to give clear signposts to guide you.
+As I mentioned, there's good news here: the framework has a bunch of the machinery to handle this. In addition to helping us manage the multiple outstanding requests, it takes care of connection management and subscription management &#8212; I'll talk about these in more detail in a little while.  To avail ourselves of this built-in infrastructure, we have to get into the "framework mindset": that is, invert our thinking and figure out where we need to supply the correct code to be **called by the framework**.  Turns out, the list of things we need to do isn't too long, nor too hard to [grok](https://en.wikipedia.org/wiki/Grok):
 
 1. We're going to extend the `ClientProxy` class instead of creating a new standalone class.  This is, of course, how we "plug in" to the framework.
 2. We're going to let the framework take over the implementation of `send()` for us.  That's the entry point for processing a user-land `send()` call, and allows us to plug in our pieces without disrupting the overall machinery.
-3. The superclass `send()` method expects a concrete implementation of `publish()`, which is where we'll implement our "factory of factories" and deal with unique identifiers and so forth, as described above.
-4. We're going to implement a method to *unsubscribe* from a Faye topic.
+3. The superclass `send()` method expects a concrete implementation of `publish()`, which represents our [now-familiar](xxx) *subscribe-to-the-response-then-publish-the-request* pattern (much more on this shortly).
+4. We're going to create a method to *unsubscribe* from a Faye topic.
 5. We're going to provide a concrete implementation of `dispatchEvent()`, which is how `ClientProxy#emit()` is handled.
-6. We're going to beef up *connection management*, as we mentioned above, to enable the framework to efficiently share our connection across multiple calls
+6. We're going to beef up *connection management* (how we stay connected to the Faye broker) to enable the framework to efficiently share our connection across multiple calls
 7. We'll take care of a few other minor details.
 
-We have our shopping list, so let's get started!
+We have our shopping list, so let's get started!  There's a fair amount of interaction back and forth between the `ClientProxy` superclass and the `ClientFaye` class we're extending it with, so pay close attention to that, and I'll try to give clear signposts to guide you.
 
 ### *Take 2* Code Review
 
 #### The Superclass `send()` Method
+
+Let's start with the superclass `send()` method. Since we're going to be referring to this concept a lot, I'm going to invent an acronym to describe our *subscribe-to-the-response-then-publish-the-request* technique: we'll call it *STRPTR*.  As a very fast reminder ([refresh the details here](xxx)), this is the pattern whereby, to handle a request/response message, the client:
+1. subscribes to the response channel ("subscribe-to-response" = *STR* part of our acronym), then
+2. publishes a request on the request channel ("publish-the-request" = *PTR* part of our acronym)
 
 Here's the code for `ClientProxy#send`:
 
