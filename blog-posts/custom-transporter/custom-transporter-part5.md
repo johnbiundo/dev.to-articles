@@ -150,7 +150,7 @@ Note that `send()` calls `publish()` with two parameters:
 
 #### The `ClientFaye#publish()` Method
 
-This is where it all comes together.  Let's look at the whole method, then we'll break it down.
+This is where it all comes together.  Let's look at the whole method, then we'll break it down.  For now, I suggest you read the comments and lightly scan the code below.  We'll dive into the code in a moment.
 
 ```typescript
 // nestjs-faye-transporter/src/requestor/clients/faye-client.ts
@@ -159,14 +159,21 @@ protected publish(
     callback: (packet: WritePacket) => any,
   ): Function {
     try {
+      // prepare the outbound packet, and do other setup steps
       const packet = this.assignPacketId(partialPacket);
       const pattern = this.normalizePattern(partialPacket.pattern);
       const serializedPacket = this.serializer.serialize(packet);
       const responseChannel = this.getResPatternName(pattern);
 
+      // start the Faye subscription handler "bookkeeping"
       let subscriptionsCount =
         this.subscriptionsCount.get(responseChannel) || 0;
 
+      // build the call to publish the request; in addition to making the Faye API
+      // `publish()` call, when this function is called, it:
+      // * updates the bookkeeping associated with the Faye subscription handler
+      //   count
+      // * stashes our *handler factory* in the map
       const publishRequest = () => {
         subscriptionsCount = this.subscriptionsCount.get(responseChannel) || 0;
         this.subscriptionsCount.set(responseChannel, subscriptionsCount + 1);
@@ -177,8 +184,13 @@ protected publish(
         );
       };
 
+      // build the Faye API `subscribe()` callback handler
+      // this is the function that does the late binding of the
+      // *observable subscription function* to the Faye response channel
+      // callback handler
       const subscriptionHandler = this.createSubscriptionHandler(packet);
 
+      // perform Faye `subscribe()` first (if needed), then Faye `publish()`
       if (subscriptionsCount <= 0) {
         const subscription = this.fayeClient.subscribe(
           responseChannel,
@@ -189,6 +201,8 @@ protected publish(
         publishRequest();
       }
 
+      // remember, this is an *observable subscription function*, so it returns
+      // the unsubscribe function.
       return () => {
         this.unsubscribeFromChannel(responseChannel);
         this.routingMap.delete(packet.id);
@@ -199,17 +213,34 @@ protected publish(
   }
 ```
 
-Finally, let's talk about the call to `createSubscriptionHandler()`.  Back inside `publish`, we call this method as a factory to return the appropriate callback handler. So we're returning the handler that will be plugged into the `fayeClient.subscribe()` call &#8212; that is, the code that will be invoked for every inbound method.  This code wraps the call to our actual user-land handler.  It does the following:
+
+With the time we spent on the strategy discussion, this code should make some sense, at least at a high level.  Let's get a couple of the minor details out of the way so they don't distract, then we can focus on the core functionality.
+* At the top of the method (remember, this method is called synchronously when a user-land request is made), we prepare the outbound packet, including assigning the packet `id` and serializing the packet.
+* Subscription management should be straightforward. We essentially keep a counter of *response channel* subscriptions. We do a `count++` when publishing a request, and a `count--` when unsubscribing from the response channel. This let's us decide whether or not we need to subscribe to the response channel before publishing a request.
+
+#### The `createSubscriptionHandler` Method: Using the Handler Factory
+
+Finally, let's talk about the call to `createSubscriptionHandler()` --xxx- first at a high level, and then the details. First, let's recognize that this is the *actual function* that gets bound to the Faye `subscribe()` call on the response (i.e., `<message-pattern>_res`) channel.  In it, we do the late binding of the *observable subscription handler*. This function looks up the *handler factory* by `id`, matching it with the request observable, and calls it with the deconstructed inbound message fields.
+
+With that in mind, we can explore a little further. Since this is the actual Faye subscription handler for the inbound response channel, its only argument (as dictated by the Faye API) is an actual Faye inbound message. We should recognize that this is a factory function, so it's actually **returning** the handler --xxx-- which is **how** we are able to do the late binding.  Here are the steps the *Faye subscription handler* method **returned by the factory** performs:
 
 1. Deserialize the packet.
-2. Discard any mismatching packets\*
-3. Destructure the message so we can deal with its constituents `err`, `response`, `isDisposed` and `id`
-4. Use the map to lookup the correct callback handler
-5. Discard any messages which are **not** destined for this client\**
-6. Finally, return the results of the **actual** user-land handler call; we automatically add `isDisposed: true` if there's an error, to force the closure of the observable.
+2. Destructure the message so we can deal with its constituents `err`, `response`, `isDisposed` and `id`
+3. Use the map to lookup the correct *handler factory*
+4. Discard any messages which are **not** destined for this client<sup>1</sup>
+5. Finally, return the **actual** *observable subscription handler*.  Note: we automatically add `isDisposed: true` if there's an error, to force the closure of the observable.
 
-\* Blah
-\** Blah
+> <sup>1</sup>This is the code fragment:
+> ```typescript
+>      if (!callback) {
+>        return undefined;
+>      }
+> ```
+> We take this up in its own section immediately below
+
+#### Discarding Messages for Other Clients
+
+Consider that in a distributed microservice-based architecture, we may have *multiple* clients (e.g., `nestHttpApp`), connected via the broker, to the same *responder* (e.g., `nestMicroservice`). In such a configuration, each client may issue the same requests (i.e., utilize the same message pattern).  When that happens, we'll have multiple clients communicating using the same Faye topic.  This is, of course, completely natural for Faye (and any message broker). However, since we have multiple subscribers on the same channel (Faye topic: e.g., `'/get-customers'`), **each** client (each subscriber) will be notified with any response message.  We can simply ignore these, returning `undefined` to our *Faye subscription handler*, which is essentially a *no-op*.
 
 #### Connection Management
 
