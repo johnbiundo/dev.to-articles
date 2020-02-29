@@ -230,11 +230,10 @@ With that in mind, we can explore a little further. Since this is the actual Fay
 5. Finally, return the **actual** *observable subscription handler*.  Note: we automatically add `isDisposed: true` if there's an error, to force the closure of the observable.
 
 > <sup>1</sup>This is the code fragment:
-> ```typescript
->      if (!callback) {
->        return undefined;
->      }
-> ```
+>  <code>if (!callback) {</code>
+>  <code>  return undefined;</code>
+>  <code>}</code>
+>
 > We take this up in its own section immediately below
 
 #### Discarding Messages for Other Clients

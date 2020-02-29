@@ -168,16 +168,21 @@ We expose this feature, of course, with the `send()` method right at the top of 
   }
 ```
 
-As required, it returns an `Observable`. We use the normal Observable creation pattern, passing it a callback that handles emitting the values. In the callback, we use a factory method to implement the Observable subscription handler based on the pattern (e.g., `'/jobs-stream1'` ) and data (e.g., `duration`) in the request, since these are unknown until the call to `send()` is made.  This might sound a bit complicated, but let's break it down.
+As required, it returns an `Observable`. We use the normal Observable creation pattern<sup>1</sup>, passing it a callback that handles emitting the values. Traditionally, this callback is called the *observable subscriber function*.  In the callback, rather than handle the subscriber function directly, we add a level of indirection, using a **factory function** to implement the *observable subscription function* based on the pattern (e.g., `'/jobs-stream1'` ) and data (e.g., `duration`) in the request, since these are unknown until the call to `send()` is made.  Since we'll be using these terms and concepts quite a bit, let's give this factory function pattern a standard name too: we'll call it the *observable subscription function factory* --xxx-- indicating that it takes some input arguments and returns a "configured" *observable subscriber function**.  This might sound a bit complicated, but let's break it down.
+
+> <sup>1</sup>I'm assuming familiarity with this pattern. If you're an RxJS junky, this should be easy to follow.  If you're not, I'll try not to wave my hands too much. I too struggled with this concept for a while, so I've created a small [side excursion here]() to help with this concept.  This should take you no more than 5-10 minutes to work through, and might be a helpful pre-requisite if some of the previous paragraph has you a little boggled.
 
 #### The Request Handler
 
-The `handleRequest()` method is where the action is at.  If we work our way inside out, it will make sense.  A good place to start is to recall how we implemented this functionality in our native Faye `customerApp` way back in [Episode 1](https://dev.to/nestjs/build-a-custom-transporter-for-nestjs-microservices-dc6-temp-slug-6007254?preview=d3e07087758ff2aac037f47fb67ad5b465f45272f9c5c9385037816b139cf1ed089616c711ed6452184f7fb913aed70028a73e14fef8e3e41ee7c3fc#requestresponse).  Feel free to go have a quick look at that (here's a [link to the code](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/part4/customerApp/src/customer-app.ts#L20)). The quick summary for handling a request (a message expecting a response) is this:
+The `handleRequest()` method is where the action is at.  If we work our way inside out, it will make sense.  A good place to start is to focus on the Faye subscribe/response flow (ignoring the observable part for a moment).  Recall how we implemented this functionality in our native Faye `customerApp` way back in [Episode 1](https://dev.to/nestjs/build-a-custom-transporter-for-nestjs-microservices-dc6-temp-slug-6007254?preview=d3e07087758ff2aac037f47fb67ad5b465f45272f9c5c9385037816b139cf1ed089616c711ed6452184f7fb913aed70028a73e14fef8e3e41ee7c3fc#requestresponse).  Feel free to go have a quick look at that (here's a [link to the code](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/part4/customerApp/src/customer-app.ts#L20)). The quick summary for handling a request (a message expecting a response) is this:
 
 1. Subscribe to the response channel (we know to use the pattern name followed by `'_res'`)
 2. Send the request (we know to do this using the pattern name followed by `'_ack'`)
 3. When the response comes in from the subscription (step 1), we *return it*
-4. Recalling our **observable requirement**: *returning it* means *emitting the results as an observable stream*
+
+> One more quick aside.  We've seen this *subscribe-to-the-response-then-send-the-request* pattern a few times now, and we'll see it again. It's a vital pattern, and worth permanently ensconcing in your synapses.  To that end, let's invent a simple mnemonic.  That way we can pull this pattern up quickly whenever we need.  I'll refer to it as *STRPTQ*.  The letters come from "**S**ubscribe **T**o the **R**esponse, then **P**ublish **T**he Re**Q**uest".  I use **Q** to make it easier to remember re**Q**uest vs. **R**esponse, in the proper order.
+
+Now recalling our **observable requirement**: *returning it* means *emitting the results as an observable stream*
 
 This is really all we're doing in the `handleRequest()` method.  Let's take a look at it:
 
