@@ -213,8 +213,7 @@ protected publish(
   }
 ```
 
-
-With the time we spent on the strategy discussion, this code should make some sense, at least at a high level.  Let's get a couple of the minor details out of the way so they don't distract, then we can focus on the core functionality.
+With the time we put in on the strategy discussion, this code should hopefully make sense, at least at a high level.  Let's first dispense with a couple of the minor details so they don't distract, then we can focus on the core functionality.
 * At the top of the method (remember, this method is called synchronously when a user-land request is made), we prepare the outbound packet, including assigning the packet `id` and serializing the packet.
 * Subscription management should be straightforward. We essentially keep a counter of *response channel* subscriptions. We do a `count++` when publishing a request, and a `count--` when unsubscribing from the response channel. This let's us decide whether or not we need to subscribe to the response channel before publishing a request.
 
@@ -243,6 +242,62 @@ With that in mind, we can explore a little further. Since this is the actual Fay
 Consider that in a distributed microservice-based architecture, we may have *multiple* clients (e.g., `nestHttpApp`), connected via the broker, to the same *responder* (e.g., `nestMicroservice`). In such a configuration, each client may issue the same requests (i.e., utilize the same message pattern).  When that happens, we'll have multiple clients communicating using the same Faye topic.  This is, of course, completely natural for Faye (and any message broker). However, since we have multiple subscribers on the same channel (Faye topic: e.g., `'/get-customers'`), **each** client (each subscriber) will be notified with any response message.  We can simply ignore these, returning `undefined` to our *Faye subscription handler*, which is essentially a *no-op*.
 
 #### Connection Management
+
+### Event Handling
+
+The final feature to implement is event handling --xxx-- handling user-land `client.emit(...)` calls.  As we found on the server side, this is far simpler than request/response because we are dealing with one-way messages: we simply send a message over the outbound (request) channel, and we're done.  No subscribing to responses.
+
+Because this is straightforward and follows a predictable pattern, the framework handles most of this for us in the `ClientProxy#emit` method.  Here's what that code looks like:
+
+```typescript
+  public emit<TResult = any, TInput = any>(
+    pattern: any,
+    data: TInput,
+  ): Observable<TResult> {
+    if (isNil(pattern) || isNil(data)) {
+      return _throw(new InvalidMessageException());
+    }
+    const source = defer(async () => this.connect()).pipe(
+      mergeMap(() => this.dispatchEvent({ pattern, data })),
+      publish(),
+    );
+    (source as ConnectableObservable<TResult>).connect();
+    return source;
+  }
+```
+
+Here, once again, the framework is handling connection management for us, and all we really need to do is provide a concrete implementation for `dispatchEvent()`.  The superclass defines an abstract `dispatchEvent` method as follows:
+
+```typescript
+protected abstract dispatchEvent<T = any>(packet: ReadPacket): Promise<T>;
+```
+
+So our implementation simply needs to accept a request packet and publish the appropriate message.  We need to wrap that in a promise to match the signature above.
+
+Here's how we implement the `dispatchEvent()` method in our client:
+
+```typescript
+  protected dispatchEvent(packet: ReadPacket): Promise<any> {
+    const pattern = this.normalizePattern(packet.pattern);
+    const serializedPacket = this.serializer.serialize(packet);
+
+    return new Promise((resolve, reject) =>
+      this.fayeClient.publish(pattern, serializedPacket),
+    );
+  }
+```
+
+The logic should be easy to follow.  We simply extract the pattern, normalize it, serialize the outbound packet (no need for an `id` on this one), and then return a Promise that resolves to the results of the `fayeClient.publish()` call.  The framework handles the rest (which is really very little other than efficient connection management).
+
+### Loose Ends
+
+* unsubscribe
+*
+
+### Acceptance Testing
+
+
+### Conclusion
 
 ### What's Next
 
