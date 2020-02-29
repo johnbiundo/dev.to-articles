@@ -352,7 +352,7 @@ The results should (well, maybe not with all the foreshadowing :wink:) surprise 
 }
 ```
 
-This is obviously incorrect for the first request.  The issue is that we are [multiplexing](http://250bpm.com/blog:18) our requests through a single pair of channels.  When we issue request #1, it subscribes to a response on the `'/race_res'` channel. Request #2 does the same thing, and since request #2 finishes first, the request #1 subscription gets its expected result on the response channel.
+This is obviously incorrect for the first request.  The issue demonstrates what I'll refer to as the *[multiplexing](http://250bpm.com/blog:18) challenge*.  That is, we are multiplexing our requests through a single pair of channels.  When we issue request #1, it subscribes to a response on the `'/race_res'` channel. Request #2 does the same thing, and since request #2 finishes first, the request #1 subscription gets its expected result on the response channel.
 
 Also, another nagging question... why do **both** subscribers get the result?  Hmmm... clearly something isn't working quite right here, and we'll have to work on this in our next (and final!) revision!
 
