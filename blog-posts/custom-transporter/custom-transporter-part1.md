@@ -11,12 +11,21 @@ canonical_url:
 
 ### Introduction
 
-This article series covers the topic of building a **custom transporter** for the [NestJS microservices subsystem](https://docs.nestjs.com/microservices/basics). If you haven't already read it, please check out my [NestJS Microservices in Action](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-1-p3) series, where I cover many of the basics of the NestJS microservices subsystem architecture, and establish the terminology used in all my Nest Microservices articles, including answering the question *"what the heck is a transporter?"*.
+This article series covers the topic of building a **custom transporter** for the [NestJS microservices subsystem](https://docs.nestjs.com/microservices/basics). Is this article right for you? I think it is if you fit into one of the two following audiences:
+
+* You're trying to build or modify a NestJS microservices transporter.  That one was probably pretty obvious :smile:.
+* You're a NestJS application developer (someone who writes code in what I'll often refer to as "user-land"), and want a deeper understanding of how NestJS microservices work.  Candidly, this is where I came from, and a main motivator for doing the research to write this article series.  Even if you never intend to build your own transporter, I feel you can still benefit from this deeper understanding, as I have done.  Along the way, I'll try to share insights on how you can become a better user of Nest microservices.
+
+#### Recommended Reading
+
+If you haven't already read it, please check out my [NestJS Microservices in Action](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-1-p3) series, where I cover many of the basics of the NestJS microservices subsystem architecture, and establish the terminology used in all my Nest Microservices articles, including answering the question *"what the heck is a transporter?"*.
 
 ![Star Trek Transporter](./assets/trek-transporter.gif 'Star Trek Transporter')
 <figcaption><a name="figure1"></a>Close, but no cigar!</figcaption>
 
-Anyway, these articles assume a good understanding of the material in that article series.
+Anyway, while not strictly required, these articles assume a good understanding of the material in that article series.
+
+### Why Custom Transporters?
 
 Let's start with the *Why?* question.  The Nest microservices package provides a communications layer abstraction that makes it easy for applications (both Nest and non-Nest) to communicate over a wide variety of what are called **transporters**.  This provides several key benefits, covered fully in the [previous article series](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-1-p3). Nest comes with a variety of built-in transporters, including NATS, RabbitMQ, Kafka, and others. But what if you want to build your own transporter &#8212; say for ZeroMQ, Google Cloud Pub/Sub, Amazon Kinesis or Apache ActiveMQ? If that's your desire, you've landed on the right article!  Or, if you just want to understand more about how the "magic" works, read on!
 
