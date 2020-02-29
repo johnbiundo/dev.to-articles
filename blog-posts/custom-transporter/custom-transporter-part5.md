@@ -23,7 +23,7 @@ All of the code in these articles is available [here](https://github.com/johnbiu
 
 #### Git checkout the current version
 
-For this article, you should `git checkout` the branch `part4`.  You can get more information [about the git repository branches here](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/master/README.md#part-5-final-client-component).
+For this article, you should `git checkout` the branch `part5`.  You can get more information [about the git repository branches here](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/master/README.md#part-5-final-client-component).
 
 #### Build the Apps for This Part
 
@@ -64,7 +64,7 @@ One valuable lesson we learned in the last chapter is that we can use the Observ
 
 #### Handling Multiple Requests: The Union of Observables and Correlation Ids
 
-The problem we have to solve is how to associate a unique *observable subscription handler* with each Observable (i.e., with each `send()` request that returns that Observable as a response), **in the face of** needing to have only a **single active *Faye subscription handler***.  This is going to require a little higher level programming.  Stick with me &#8212;- we can get through this together, though it may take a few more ergs than we've expended on previous topics.
+The problem we have to solve is how to associate a unique *observable subscription handler* with each Observable (i.e., with each `send()` request that returns that Observable as a response), **in the face of** needing to have only a **single active Faye subscription handler**.  This is going to require a little higher level programming.  Stick with me &#8212; we can get through this together, though it may take a few more ergs than we've expended on previous topics.
 
 Let's propose defining our problem as follows: we are binding the *observable subscription function* logic to our *Faye subscription handler* too soon/too statically.  Our solution needs to do late/dynamic binding of the *observable subscription function* logic.  It needs to delay binding the function returned by the *observable subscription function factory* until a request is made so it can associate a unique one to each request. We have to make a little leap here.  Conceptually, what we're going to do is **create and store** an instance of that *observable subscription factory function* each time a request is made. Later, when we get a response, we'll retrieve that stored function and use it to give us a unique *observable subscription function* for the request.  For the rest of this article, we'll refer to this stored function as our *handler factory*.
 
@@ -85,7 +85,8 @@ Returning to our story: the construction we just conceived let's us associate a 
 2. When a response is received, we'll extract the `id` from the response, and use it to look up the *handler factory*. We'll then use this unique instance of the *handler factory* to give us the actual final *observable subscription function* associated with the request, and use this to emit the result.  Since the only observable associated with this *observable subscription function* is the originator of the request, that's the only one that receives the emitted result.
 3. To tie these things together, we need to pass the `id` all the way through the request/response flow.  The requesting code generates the `id` property, it's attached to the outbound message, and finally returned on the corresponding inbound message. Then we use it as described in step 2 above.
 
-> \*At last, we see the genesis of the `id` field we've been carrying along with our messages all this time!<br/>
+> \*At last, we see the genesis of the `id` field we've been carrying along with our messages all this time!
+<p></p>
 
 > The pattern we described in step 3 above is often referred to as using [correlation ids](https://www.enterpriseintegrationpatterns.com/patterns/messaging/CorrelationIdentifier.html) (for example, here's a [tutorial showing how](https://www.rabbitmq.com/tutorials/tutorial-six-python.html) a similar concept can be used for writing native RabbitMQ client apps).
 
