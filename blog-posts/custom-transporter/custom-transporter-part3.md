@@ -40,13 +40,13 @@ $ sh build.sh
 I ended the last article with a discussion of the shortcomings of our *Take 1* (first iteration) implementation of the Faye Custom Transporter server component.  In this article, we'll address those shortcomings. Most of this work is fairly straightforward, but I want to take a moment to discuss the "Observable issue" a bit further.
 
 You **could actually ignore** this issue entirely.  The server component we built in the last chapter is functional, and we'll clean up a few loose ends here to make it typesafe, etc. However, by ignoring proper handling of Observables, you'd be leaving out a feature that you may not miss until you **really** need it.  Plus, let me hit you with the full commercial:
-- It's super fun to understand how it works, and if you're not an `RxJS` whiz, don't worry, that won't stop you (**and** you might even pick up a few nifty tricks about `RxJS` along the way)
-- It builds a deeper appreciation and understanding of the elegance of the Nest framework
-- It's really, really easy to implement, once you get on the right path
+- It's super fun to understand how it works, and if you're not an [RxJS](https://rxjs-dev.firebaseapp.com/) whiz, don't worry, that won't stop you (**and** you might even pick up a few nifty tricks about RxJS along the way)
+- It builds a deeper appreciation and understanding of the elegance of the NestJS framework
+- It's really, really easy to implement, once you get on the happy path
 - The feature provides some amazing benefits, virtually for free
 - Your transporter really **should** be plug-and-play compatible with other transporters to be a good Nest citizen (Nestizen? :smiley:)
 
-I could go on and on, but instead, I've encapsulated all the [concrete examples and detailed analysis here](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/master/observable-deepdive.md) to try to keep this tutorial on track.  Suffice to say, I strongly encourage you to follow that link and take that little side trip to both understand why this is an important step, and &#8212; you might even get inspired to use Nest microservices in some new and interesting ways.
+I could go on and on, but instead, I've encapsulated all the [concrete examples and detailed analysis here](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/master/observable-deepdive.md) to try to keep this tutorial on track.  Suffice to say, I strongly encourage you to follow that link and take that little side trip to both understand why this is an important step &#8212; and you might even get inspired to use Nest microservices in some new and interesting ways.
 
 With all that said, let's jump in!
 
@@ -54,7 +54,7 @@ With all that said, let's jump in!
 
 After that build-up, you might think we're about to embark on some form of brain surgery (maybe I should say ":rocket: science" in keeping with the trekkie theme? :wink:).  Fortunately, that's not really the case.  Let's start by considering the requirements.
 
-At the highest level, we need to consider the possibility that the user-land handler returns a stream (observable that emits multiple values). Our earlier version won't handle that (as we saw at the end of the last article).  The problem lies with our `publish()` logic being unaware of a response **stream**.  It simply awaits a single response and publishes.  Let's take a quick look at the part of the code that publishes to refresh ourselves:
+At the highest level, we need to consider the possibility that the user-land handler returns a stream (Observable that emits multiple values). Our earlier version won't handle that (as we saw at the end of the last article).  The problem lies with our `publish()` logic being unaware of a response **stream**.  It simply awaits a single response and publishes.  Let's take a quick look at the part of the code that publishes to refresh ourselves:
 
 ```typescript
 // nestjs-faye-transporter/src/responder/transporters/server-faye.ts
@@ -179,7 +179,7 @@ Anyway, let's discuss what the framework is doing for us.  As mentioned, `send()
   }
   ```
 
-While at first a little obscure, this really isn't **that** hard to understand if you work through it, though it does require some understanding of observables.  Essentially, we are subscribing to the response coming back from our user-land handler. If the subscription produces multiple values (a stream), we buffer them (`dataBuffer`), then publish each value using the `publish` function we built a moment ago (inside this method it's accessed as the `respond` parameter). When the stream completes, we signify that by setting `isDisposed` to true on the final emitted response.
+While at first a little obscure, this really isn't **that** hard to understand if you work through it, though it does require some understanding of observables.  Essentially, we are subscribing to the response coming back from our user-land handler. If the subscription produces multiple values (a stream), we buffer them (`dataBuffer`), then publish each value using the `publish()` function we built a moment ago (inside this method the `publish()` function is accessed as the `respond` parameter). When the stream completes, we signify that by setting `isDisposed` to true on the final emitted response.
 
 ### Handle Events
 
@@ -229,15 +229,15 @@ Two additional (unrelated) changes that show up on this branch are:
 
 ### Subscription Context
 
-Consider what happens when we subscribe to a topic via the broker API.  With Faye, it's straightforward.  We register a callback handler on a topic, and when a message matching that topic arrives, our handler is called with the message payload containing **only what the publisher sent**.
+Consider what happens when we subscribe to a topic via the broker API.  With Faye, it's straightforward.  We register a *Faye subscription handler* on a topic, and when a message matching that topic arrives, our handler is called with the message payload containing **only what the publisher sent**.
 
 For some brokers, the subscription handler can receive additional context about the message &#8212; sometimes in the callback parameters, and sometimes in the message payload.  For example, with NATS, the message payload packs the actual content sent by the publisher in a top-level `data` property, and adds two additional top-level properties with context metadata: one describing the topic the caller was subscribed to, and one containing the optional `reply` topic. We refer to this metadata as `Context`, and Nest allows you to pass this information through to the user-land handler (method decorated by `@MessagePattern()` or `@EventPattern()`).
 
-Since Faye simply doesn't provide any such metadata, we'll demonstrate this behavior by passing the *channel* in this context object.  This is not particularly useful, as in this case we're not actually providing any **new** information, but with Faye it's the best we can do to demonstrate the concept of the `Context` object.
+Since Faye simply doesn't provide any such metadata, we'll demonstrate this behavior by passing the *channel* in this context object.  This is not particularly useful in this case, as we're not actually providing any **new** information, but with Faye it's the best we can do to demonstrate the concept of the `Context` object.
 
 #### Creating the context object
 
-For any given broker, the technique may vary, based on the discussion above. In the end, you'll need to extract any context information (from the message payload, if context is encoded there, or from the `subscribe()` callback parameters) and pass it to the user-land handlers. We use a custom object to pass context.  Open the file `nestjs-faye-transporter/src/responder/ctx-host/faye-context.ts`.  It's a pretty simple object that extends `BaseRpcContext`.
+For any given broker, the technique for creating the context object may vary, based on the discussion above. In the end, you'll need to extract any context information (from the message payload, if context is encoded there, or from the `subscribe()` callback parameters) and pass it to the user-land handlers. We use a custom object to pass context.  Open the file `nestjs-faye-transporter/src/responder/ctx-host/faye-context.ts`.  It's a pretty simple object that extends `BaseRpcContext`.
 
 ```typescript
 // nestjs-faye-transporter/src/responder/ctx-host/faye-context.ts
@@ -290,7 +290,7 @@ We already encountered this behavior in the previous sections. Let's look again 
     ) as Observable<any>;
 ```
 
-It should be clear how we're using an instance of `FayeContext` here.  We instantiate it with the relevant context, and then pass the instance to our user-land handler method.  The code above takes care of context for **request/response** type handlers. We also need to handle this appropriately for events. We saw where that happened in the last section, in the `bindHandlers()` method.  Here's the relevant snippet:
+It should be clear how we're using an instance of `FayeContext` here.  We instantiate it with the relevant context, and then pass the instance to our user-land handler method.  The code above takes care of context for *request/response* type handlers. We also need to handle this appropriately for *events*. We saw where that happened in the last section, in the `bindHandlers()` method.  Here's the relevant snippet:
 
 ```typescript
     if (handler.isEventHandler) {
@@ -313,6 +313,7 @@ Remember, where and how you gather the context for any particular broker may var
 In this branch (`part3`), we provided a new project, `nestHttpApp`.   This is a simple Nest HTTP app that includes a few routes for testing our `nestMicroservice` over the Faye transporter. It's worth mentioning that this branch also includes a **full final version** of the `ClientFaye` subclass of `ClientProxy` &#8212; this is necessary for our `nestHttpApp` to instantiate a client to be able to run `ClientProxy#send()` and `ClientProxy#emit()` calls.  We'll actually build that `ClientFaye` component from scratch in the next two articles, but it's sitting there in this branch to help you test.  With this in place, you can see the context by following these steps:
 
 1. Start up the `nestHttpApp`
+
     If you ran the `build.sh` script as described at the beginning of this chapter, all of this project's dependencies have been installed.  If not, simply open a terminal in the top level `nestHttpApp` directory and run `npm install`.  Then, start the application with `npm run start:dev`.
 2. Issue an HTTP request like:
 
@@ -402,7 +403,7 @@ export interface FayeOptions {
 }
 ```
 
-These options (modulo `serializer` and `deserializer`, which are consumed by the `ServerFaye` class directly), are passed through to the Faye client library in `createFayeClient()` to customize the [Faye connection](https://faye.jcoglan.com/browser.html):
+These options (modulo `serializer` and `deserializer`, which are consumed by the `ServerFaye` class directly) are passed through to the Faye client library in `createFayeClient()` to customize the [Faye connection](https://faye.jcoglan.com/browser.html):
 
 ```typescript
   public createFayeClient(): FayeClient {

@@ -11,7 +11,7 @@ canonical_url:
 
 ### Introduction
 
-This article series covers the topic of building a **custom transporter** for the [NestJS microservices subsystem](https://docs.nestjs.com/microservices/basics). Is this article right for you? I think it is if you fit into one of the two following audiences:
+This article series covers the topic of building a **custom transporter** for the [NestJS microservices subsystem](https://docs.nestjs.com/microservices/basics). Is this article right for you? I think it is if you fit into one of the following two audiences:
 
 * You're trying to build or modify a NestJS microservices transporter.  That one was probably pretty obvious :smile:.
 * You're a NestJS application developer (someone who writes code in what I'll often refer to as "user-land"), and want a deeper understanding of how NestJS microservices work.  Candidly, this is where I came from, and a main motivator for doing the research to write this article series.  Even if you never intend to build your own transporter, I feel you can still benefit from this deeper understanding, as I have done.  Along the way, I'll try to share insights on how you can become a better user of Nest microservices.
@@ -33,11 +33,11 @@ A related question is *How can I extend the capabilities of existing Nest transp
 
 ### Article Series Overview
 
-* Part 1 (this article): Sets the background for the entire series.  We'll begin by examining the simple [Faye message broker](https://faye.jcoglan.com/) to set the stage for building a custom Nest transporter that sits on top of it.
-* [Part 2](https://dev.to/nestjs/part-2-basic-server-component-5313-temp-slug-6221883?preview=2f3ceab6d03c32bc1d00e56a907f4c2e87b388b516d6009c5c72a6f5a31ef8da2a310c035b7b0a84cd9760ab2ac5d241dd2ceaceaf807ba1e745bbb9): Walks you through building an initial version of the **server side** of a transporter. The result is a working version that should familiarize you with the main concepts needed to understand how to build the server component of **any** custom transporter. It defers implementation of a few important details to the next article so as to keep us focused on the main path.
+* Part 1 (this article): Sets the background for the entire series.  We'll begin by examining the simple [Faye message broker](https://faye.jcoglan.com/) to set the stage for building a custom Nest transporter that sits on top of it.  By the time we're done with Part 5, we'll have a fully functional Faye Transporter!
+* [Part 2](https://dev.to/nestjs/part-2-basic-server-component-5313-temp-slug-6221883?preview=2f3ceab6d03c32bc1d00e56a907f4c2e87b388b516d6009c5c72a6f5a31ef8da2a310c035b7b0a84cd9760ab2ac5d241dd2ceaceaf807ba1e745bbb9): Tackles building an initial version of the **server side** of a transporter. The result is a working version that should familiarize you with the main concepts needed to understand how to build the server component of **any** custom transporter. It defers implementation of a few important details to the next article so as to keep us focused on the main path.
 * [Part 3](https://dev.to/nestjs/part-3-completing-the-server-component-2fai-temp-slug-8783531?preview=be5cb28367d68473fba3e9a91c71084b83414317c27529045d1732b885da4cedb2020d8a7a32482e950f79db2908dee597c475f0f0b1a77bb73f0cab): Cleans up some loose ends, and deep dives on a few of the more advanced and impressive features of the framework, and shows you how to enable these features in your custom transporter.
-* [Part 4](https://dev.to/nestjs/part-4-basic-client-component-298b-temp-slug-9977921?preview=21ec3d333fc6d9d92c11dcbd8430a5132e93390de84cb4804914aa143492e925e4299ca3eb7f376918c1ed77df56e29db2572e5d6f7ab235b3e5f2b9): Switches to the client side. As with the server side, this article walks through a **complete** implementation, though it defers a few of the more complex features to the next article.
-* [Part 5](https://dev.to/nestjs/part-5-completing-the-client-component-hlh-temp-slug-2907984?preview=82c11163db963ca01d8d62d3a7b14843b422a6b28f46762d999bbe4b7035ad634d48bbbdd740e36376121aa673354ff5259f8b3028bceb931e800d9e): Completes the client-side journey, resulting in a completely functional custom transporter for Faye.
+* [Part 4](https://dev.to/nestjs/part-4-basic-client-component-298b-temp-slug-9977921?preview=21ec3d333fc6d9d92c11dcbd8430a5132e93390de84cb4804914aa143492e925e4299ca3eb7f376918c1ed77df56e29db2572e5d6f7ab235b3e5f2b9): Switches to the client side. As with the server side, this article walks through a **completely functional** implementation, though it defers a few of the more complex features to the next article.
+* [Part 5](https://dev.to/nestjs/part-5-completing-the-client-component-hlh-temp-slug-2907984?preview=82c11163db963ca01d8d62d3a7b14843b422a6b28f46762d999bbe4b7035ad634d48bbbdd740e36376121aa673354ff5259f8b3028bceb931e800d9e): Completes the client-side journey, resulting in a finished Custom Transporter for Faye.
 * Part 6: (Coming soon!) Surveys a few of the built-in NestJS transporters and compares their implementation to the Faye implementation to shed light on some broker-specific nuanced implementation details.
 
 Let's get started!
@@ -61,18 +61,18 @@ $ sh build.sh
 
 ### Overview for Part 1
 
-For this case study, we'll build a custom transporter to work with the [Faye](https://faye.jcoglan.com/) message broker.  This is a simple OSS JavaScript publish/subscribe message broker that runs nicely on Node.js.  Getting it up and running, and understanding its API, are simple, yet it provides [all the features Nest needs](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-1-p3#broker-message-protocol) to build a transporter.
+For this case study, we'll build a custom transporter to work with the [Faye](https://faye.jcoglan.com/) message broker.  Faye is a simple OSS JavaScript publish/subscribe message broker that runs nicely on Node.js.  Getting it up and running, and understanding its API, are simple making it a convenient target. At the same time, it provides [all the features Nest needs](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-1-p3#broker-message-protocol) to build a transporter.
 
-Faye has a very simple &#8212; virtually canonical &#8212; publish/subscribe protocol, as depicted in Figure 1 below.
+Faye uses a very simple &#8212; almost *canonical* &#8212; publish/subscribe protocol, as depicted in Figure 1 below.
 
 ![Faye Message Protocol](./assets/faye-protocol2.png 'Faye Message Protocol')
 <figcaption><a name="figure1"></a>Figure 1: Faye Message Protocol</figcaption>
 
 ### Building Basic Faye Client Apps
 
-As we've done in the [NestJS Microservices in Action](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-1-p3) series, we'll start by building simple native requestor and responder apps that exercise the Faye API directly.  This will help us make sure we understand the Faye API, and give us a convenient testbed.
+As we did in the [NestJS Microservices in Action](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-1-p3) series, we'll start by building simple native requestor and responder apps. These are TypeScript apps that exercise the Faye API directly.  This will help us make sure we understand the Faye API, and give us a convenient test bench.
 
-As covered in the [previous article series](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-1-p3), one of the challenges the Nest microservices package deals with is to layer a request/response message style **on top of** publish/subscribe semantics.  In other words, Nest requestors need to be able to run code like:
+As covered in the [previous article series](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-1-p3), one of the challenges the Nest microservices package deals with is to layer a *request/response* message style **on top of** *publish/subscribe* semantics.  In other words, Nest requestors need to be able to run code like this, which issues a request and returns a response from a remote microservice:
 
 ```ts
   @Get('customers')
@@ -85,9 +85,9 @@ As covered in the [previous article series](https://dev.to/nestjs/integrate-nest
 
 #### Supporting Request/Response
 
-Since Faye (as well as most brokers) only supports publish/subscribe, we need to follow a simple recipe to provide request/response semantics.  Here's a recap of the *generic pattern* for how this is often done.
+Since Faye (as well as most brokers) only supports *publish/subscribe*, we need to follow a simple recipe to provide *request/response* semantics.  Here's a recap of the *generic pattern* for how this is often done.
 
-Let's say component A wishes to "get customers" from component B, which has access to a customer DB. Component A can publish a "get customers" message, and (assuming it has subscribed to that topic) component B receives it, queries the customer DB for a list of customers, and sends a response message. The response message is where the magic happens. In order for B to respond to A, they both must do a few things, agreed upon by convention:
+Let's say component A wishes to "get customers" from component B, which has access to a customer DB. Component A can publish a `'/get-customers'` message, and (assuming it has subscribed to that topic) component B receives it, queries the customer DB for a list of customers, and sends a response message. The response message is where the magic happens. In order for B to respond to A, they both must do a few things, agreed upon by convention:
 
 - A chooses a **response topic** (sometimes called a **reply subject**)
 - A subscribes to the response topic
@@ -113,7 +113,7 @@ Let's build those native apps we mentioned.  **Note**: later we'll want to use t
 
 Assuming you're [following along](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/master/README.md#part-1-introduction-and-setup) on the `part1` branch, open the file `customerService/src/service.ts`.
 
-Here's the implementation of the `getCustomers` callback handler.  This is the code we registered to run (see the `subscribe()` call lower in the file) when our app receives an inbound message on the `'/get-customers_ack'` channel:
+Here's the implementation of the `getCustomers` Faye subscription handler.  This is the code we registered to run (see the `subscribe()` call lower in the file) when our app receives an inbound message on the `'/get-customers_ack'` channel:
 
 ```ts
 // src/service.ts
@@ -139,7 +139,7 @@ function getCustomers(packet): void {
 
 The logic should be easy to understand. Refer to the full listing and make sure you see how we are using the `'/get-customers_ack'` and `'/get-customers_res'` channels here.  We'll be seeing a lot of that pattern, so make sure it makes sense to you.
 
-One detail to point out is the call to `getPayload()`.  Let's discuss that.  As mentioned, we're building these native apps to conform to Nest protocols.  This includes using the channel names, as well as matching the internal Nest message format (this topic is covered extensively in the [NestJS Microservices in Action](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-1-p3)) series).  Because of this, the apps provide a convenient test bench for the Nest transporter `Server` and `ClientProxy` we're building in this article series.  The message format requirement means we need to wrap responses in a standard object we can depict like this:
+One detail to point out is the call to `getPayload()`.  Let's discuss that.  As mentioned, we're building these native apps to conform to Nest protocols.  This includes using the Nest-standard channel names, as well as matching the internal Nest message format (message format is covered extensively in the [NestJS Microservices in Action](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-1-p3)) series).  Because of this, the apps provide a convenient test bench for the Nest transporter `Server` and `ClientProxy` we're building in this article series.  The message format requirement means we need to wrap responses in a standard object we can depict like this:
 
    ```typescript
    {
@@ -165,7 +165,7 @@ One detail to point out is the call to `getPayload()`.  Let's discuss that.  As 
    }
    ```
 
-So we can see that `getPayload()` is a helper that wraps payloads in this standard Nest message structure. If you're paying close attention, you'll notice that `getPayload()` (not shown here &#8212; look at the `service.ts` source code to see it) copies the `message.id` field from the inbound request (which we'll ensure also has the canonical Nest message structure) to the outbound message.  We haven't really discussed these `id` fields yet, but they'll become very important when we dive into the "client side" of our transporter starting in [Part 4](https://dev.to/nestjs/part-4-basic-client-component-298b-temp-slug-9977921?preview=21ec3d333fc6d9d92c11dcbd8430a5132e93390de84cb4804914aa143492e925e4299ca3eb7f376918c1ed77df56e29db2572e5d6f7ab235b3e5f2b9).
+So `getPayload()` is a helper that wraps payloads in this standard Nest message structure. If you're paying close attention, you'll notice that `getPayload()` (not shown here &#8212; look at the `service.ts` source code to see it) copies the `message.id` field from the inbound request (which we'll ensure also has the canonical Nest message structure) to the outbound message.  We haven't really discussed these `id` fields yet, but they'll become very important when we dive into the "client side" of our transporter starting in [Part 4](https://dev.to/nestjs/part-4-basic-client-component-298b-temp-slug-9977921?preview=21ec3d333fc6d9d92c11dcbd8430a5132e93390de84cb4804914aa143492e925e4299ca3eb7f376918c1ed77df56e29db2572e5d6f7ab235b3e5f2b9).
 
 #### Native Requestor App (customerApp)
 
@@ -222,13 +222,13 @@ async function getCustomers(customerId, requestId = 0, requestDelay = 0) {
 }
 ```
 
-We first subscribe to `'/get-customers_res'` (our **response channel**).  The handler simply prints out the result when a message on this channel comes back. This is the "final response" to an end-user command (request) issued from the command line (see the basic command line processing logic at the bottom of the file).
+We **first subscribe** to `'/get-customers_res'` (our **response channel**).  We pass it a simple Faye subscription handler that prints out the result when a message on this channel comes back. This output becomes the "final response" to an end-user command (request) that's been issued from the command line (received by way of the basic command line processing logic at the bottom of the file).
 
-Then we publish the request on `'/get-customers_ack'`.
+**Then we publish** the request on `'/get-customers_ack'`.
 
 Because we're running this as a standalone node command line program, and thus want to exit after sending a request (letting us use it as a command processor that we can use to repeatedly send requests), we wait 500ms after publishing the request, then cancel the subscription and exit.  Cancelling the subscription is important hygiene &#8212; if we don't, subscriptions hang around (though Faye will eventually detect them and clean them up).
 
-Finally, you'll notice that much like the responder, we have a helper `getPayload()` utility to wrap our requests in the Nest message protocol. You'll also notice that we are generating our `id` field &#8212; the same `id` field we are handling on our responder app above.  For now, just think of the `id` field as something we need to have in order to speak native Nest message protocol.  Later, we'll dive into this in more detail.
+Finally, you'll notice that much like the `customerService` responder app, we have a helper `getPayload()` utility to wrap our requests in the Nest message protocol. You'll also notice that we are generating our `id` field &#8212; the same `id` field we are handling on our responder app above.  For now, just think of the `id` field as something we need to have in order to speak native Nest message protocol.  Later, we'll dive into this in more detail.
 
 For completeness, let's take a very quick look at how we run the Faye server. Though you can treat it as a black box, it's worth a moment to look at how it runs, and appreciate its native node.js-ness and simplicity.  Open up `faye-server/server.js`.  The code is shown below.  You can read more about running the Faye server [here](https://faye.jcoglan.com/node.html), but we're basically just starting it up, and for instrumentation purposes, listening for various events that we can log to the console to make it easy to trace the handshaking and message exchange. You shouldn't have to mess with this at all, but if you do, it's pretty basic stuff.
 
@@ -281,13 +281,13 @@ bayeux.on('unsubscribe', (clientId, channel) => {
 });
 ```
 
-We've now completed our requestor and responder, and can test them out.  While I only reviewed the `'/get-customers'` message flow above, the code also implements the `'/add-customer'` message.  Run the code now by following [these instructions](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/master/README.md#part-1-introduction-and-setup).  Here's what it looks like. In this video clip, the Faye broker is running in the top pane, the `customerService` app is running in the middle pane, and the `customerApp` app is running in the lower pane (and if you're curious, this is [tmux](https://github.com/tmux/tmux); you can get my setup [here](https://github.com/johnbiundo/nest-nats-sample#pro-tip-use-tmux-optional)).
+We've now completed our requestor and responder, and can test them out.  While I only reviewed the `'/get-customers'` message flow above, the code also implements the `'/add-customer'` message.  Run the code now by following [these instructions](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/master/README.md#part-1-introduction-and-setup).  Here's what it looks like. In this video clip, the Faye broker is running in the top pane, the `customerService` app is running in the middle pane, and the `customerApp` app is running in the lower pane (and if you're curious, this is running in the [tmux](https://github.com/tmux/tmux) virtual terminal; you can get my setup [here](https://github.com/johnbiundo/nest-nats-sample#pro-tip-use-tmux-optional) if you're interested).
 
 ![Native App Demo](./assets/faye-basic-demo2.gif 'Native App Demo')
 <figcaption><a name="faye-basic-demo"></a>Screen Capture: Native App Demo</figcaption>
 
 ### What's Next
 
-In [Part 2](https://dev.to/nestjs/part-2-basic-server-component-5313-temp-slug-6221883?preview=2f3ceab6d03c32bc1d00e56a907f4c2e87b388b516d6009c5c72a6f5a31ef8da2a310c035b7b0a84cd9760ab2ac5d241dd2ceaceaf807ba1e745bbb9), we'll write and test a basic version of the Nest transporter's **server** component.  This is the component that runs in the context of a **microservice listener** to enable apps to function as Nest responders (these terms and concepts are discussed extensively in the [NestJS Microservices in Action](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-1-p3) series).  We'll use this to build a simple Nest responder (microservice) app that will replace the native `customerApp` we just built, responding to our customer-related messages.
+In [Part 2](https://dev.to/nestjs/part-2-basic-server-component-5313-temp-slug-6221883?preview=2f3ceab6d03c32bc1d00e56a907f4c2e87b388b516d6009c5c72a6f5a31ef8da2a310c035b7b0a84cd9760ab2ac5d241dd2ceaceaf807ba1e745bbb9), we'll write and test a basic version of the Faye transporter's **server** component.  This is the component that runs in the context of a **microservice listener** to enable apps to function as Nest responders (these terms and concepts are discussed extensively in the [NestJS Microservices in Action](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-1-p3) series).  We'll test this component by using it in a simple Nest responder (microservice) app. That Nest microservice app will replace the native `customerApp` we just built, and we'll make sure it responds to the exact same customer-related messages.
 
 Feel free to ask questions, make comments or suggestions, or just say hello in the comments below. And join us at [Discord](https://discord.gg/nestjs) for more happy discussions about NestJS. I post there as _Y Prospect_.

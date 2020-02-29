@@ -43,9 +43,9 @@ It's time to turn our attention to the client component. But let's start by reca
 <figcaption><a name="remote-stream"></a>Figure 1: Remote Observable Stream</figcaption>
 ### What's Next
 
-In this animated sequence, our `nestMicroservice` *responder* app responds to a *request* message (`ClientProxy#send`) by emitting a stream of three results (circles).  We saw in the last article how Nest converts that stream to a sequence of 3 messages (boxes) to the broker on the response channel.  Our first meaningful task with the client component will be to consume those messages and convert them back into an observable (circles) in the `ClientProxy` layer so that our user-land controllers and services can use them as regular **RxJS** observables.
+In this animated sequence, our `nestMicroservice` *responder* app responds to a *request* message (`ClientProxy#send`) by emitting a stream of three results (circles).  We saw in the last article how our transporter server component converts that stream to a sequence of 3 messages (boxes) to the broker, sending those messages on the response channel.  Our first meaningful task with the client component will be to consume those broker messages and convert them back into an observable (circles) in the `ClientProxy` layer so that our user-land controllers and services can use them as regular **RxJS** observables.
 
-In this iteration (*Take 1*), we'll take a similar approach to our first iteration of the server.  We'll get a basic functioning client working so we can focus on its responsibilities and the main code path.  Later, we'll add more robustness.  As with the server side, we'll ignore events (`ClientProxy#emit`) for now.
+In this iteration (*Take 1*), we'll take a similar approach to our first iteration of the server.  We'll get a basic functioning client working so we can focus on its responsibilities and the main code path.  Later, we'll add more robustness.  As with the server side, we'll ignore events (the `ClientProxy#emit` path) for now.
 
 ### First Iteration (Take 1) of the Client Component
 
@@ -111,7 +111,7 @@ $ # HTTPie command to request `/jobs-stream1` with base duration of 1
 $ http get localhost:3000/jobs-stream1/1
 ```
 
-You can also read the [deep dive on Observables](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/master/observable-deepdive.md) for a thorough treatment (and a *treat* as well :smiley:).  For now, all we need to know is what we see in the animation above: when we make this request, we get a *stream of results* in the form of a sequence of messages.
+You can also read the [deep dive on Observables](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/master/observable-deepdive.md) for a thorough treatment (and a *treat* as well :wink:).  For now, all we need to know is what we see in the animation above: when we make this request, we get a *stream of results* in the form of a sequence of messages.
 
 Let's define our acceptance criteria for *Take 1* as follows.  Our `ClientFaye` object should let us send the `'/jobs-stream1'` request, and handle the response, converting the message stream back into an observable.
 
@@ -121,7 +121,7 @@ Let's define our acceptance criteria for *Take 1* as follows.  Our `ClientFaye` 
 
 Let's dive into the code.  Open the file `nestjs-faye-transporter/src/requestor/clients/faye-client.ts`.
 
-You might notice that in this iteration, we're not actually extending any framework class.  We'll need to do that in the next iteration, but it makes our code smaller and easier to focus on the core logic if we omit that in this step.
+You might notice that in this iteration, we're not actually extending any framework class.  We'll need to do that in the next iteration, but it makes our code smaller and easier to focus on the core logic if we omit that in this step and just define a new class.
 
 Let's start with the class members and constructor:
 
@@ -168,23 +168,13 @@ We expose this feature, of course, with the `send()` method right at the top of 
   }
 ```
 
-As required, it returns an `Observable`. We use the normal Observable creation pattern<sup>1</sup>, passing it a callback that handles emitting the values. Traditionally, this callback is called the *observable subscriber function*.  In the callback, rather than handle the subscriber function directly, we add a level of indirection, using a **factory function** to implement the *observable subscription function* based on the pattern (e.g., `'/jobs-stream1'` ) and data (e.g., `duration`) in the request, since these are unknown until the call to `send()` is made.  Since we'll be using these terms and concepts quite a bit, let's give this factory function pattern a standard name too: we'll call it the *observable subscription function factory* --xxx-- indicating that it takes some input arguments and returns a "configured" *observable subscriber function**.  This might sound a bit complicated, but let's break it down.
+As required, it returns an `Observable`. We use the normal Observable creation pattern<sup>1</sup>, passing it a callback that handles emitting the values. Traditionally, this callback is called the *observable subscriber function*.  In the callback function, rather than handle the *observer subscriber function* logic directly, we add a level of indirection, using a **factory function** to return us the the *observable subscription function* based on the pattern (e.g., `'/jobs-stream1'` ) and data (e.g., `duration`) in the request. We use this factory function because the pattern and data values are unknown until the call to `send()` is made.  Since we'll be using these terms and concepts quite a bit, let's give this factory function pattern a standard name too: we'll call it the *observable subscription function factory* &#8212; indicating that it takes some input arguments and returns a "configured" *observable subscriber function**.  This might sound a bit complicated, but let's break it down.
 
 > <sup>1</sup>I'm assuming familiarity with this pattern. If you're an RxJS junky, this should be easy to follow.  If you're not, I'll try not to wave my hands too much. I too struggled with this concept for a while, so I've created a small [side excursion here]() to help with this concept.  This should take you no more than 5-10 minutes to work through, and might be a helpful pre-requisite if some of the previous paragraph has you a little boggled.
 
 #### The Request Handler
 
-The `handleRequest()` method is where the action is at.  If we work our way inside out, it will make sense.  A good place to start is to focus on the Faye subscribe/response flow (ignoring the observable part for a moment).  Recall how we implemented this functionality in our native Faye `customerApp` way back in [Episode 1](https://dev.to/nestjs/build-a-custom-transporter-for-nestjs-microservices-dc6-temp-slug-6007254?preview=d3e07087758ff2aac037f47fb67ad5b465f45272f9c5c9385037816b139cf1ed089616c711ed6452184f7fb913aed70028a73e14fef8e3e41ee7c3fc#requestresponse).  Feel free to go have a quick look at that (here's a [link to the code](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/part4/customerApp/src/customer-app.ts#L20)). The quick summary for handling a request (a message expecting a response) is this:
-
-1. Subscribe to the response channel (we know to use the pattern name followed by `'_res'`)
-2. Send the request (we know to do this using the pattern name followed by `'_ack'`)
-3. When the response comes in from the subscription (step 1), we *return it*
-
-> One more quick aside.  We've seen this *subscribe-to-the-response-then-send-the-request* pattern a few times now, and we'll see it again. It's a vital pattern, and worth permanently ensconcing in your synapses.  To that end, let's invent a simple mnemonic.  That way we can pull this pattern up quickly whenever we need.  I'll refer to it as *STRPTQ*.  The letters come from "**S**ubscribe **T**o the **R**esponse, then **P**ublish **T**he Re**Q**uest".  I use **Q** to make it easier to remember re**Q**uest vs. **R**esponse, in the proper order.
-
-Now recalling our **observable requirement**: *returning it* means *emitting the results as an observable stream*
-
-This is really all we're doing in the `handleRequest()` method.  Let's take a look at it:
+The `handleRequest()` method is where the action is at.  We'll walk through it carefully below.
 
 ```typescript
   public handleRequest(partialPacket, observer): Function {
@@ -222,6 +212,16 @@ This is really all we're doing in the `handleRequest()` method.  Let's take a lo
     };
   }
 ```
+
+If we work our way inside out, it will make sense.  A good place to start is to focus on the Faye subscribe/response flow (ignoring the observable part for a moment).  Recall how we implemented this functionality in our native Faye `customerApp` way back in [Episode 1](https://dev.to/nestjs/build-a-custom-transporter-for-nestjs-microservices-dc6-temp-slug-6007254?preview=d3e07087758ff2aac037f47fb67ad5b465f45272f9c5c9385037816b139cf1ed089616c711ed6452184f7fb913aed70028a73e14fef8e3e41ee7c3fc#requestresponse).  Feel free to go have a quick look at that (here's a [link to the code](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/part4/customerApp/src/customer-app.ts#L20)). The quick summary for handling a request (a message expecting a response) is this:
+
+1. Subscribe to the response channel (we know to use the pattern name followed by `'_res'`)
+2. Send the request (we know to do this using the pattern name followed by `'_ack'`)
+3. When the response comes in from the subscription (step 1), we *return it*
+
+> One more quick aside.  We've seen this *subscribe-to-the-response-then-send-the-request* pattern a few times now, and we'll see it again. It's a vital pattern, and worth permanently ensconcing in your synapses.  To that end, let's invent a simple mnemonic.  That way we can mentally conjure this pattern concept quickly whenever we need it.  I'll refer to it as *STRPTQ*.  The letters come from "**S**ubscribe **T**o the **R**esponse, then **P**ublish **T**he Re**Q**uest".  I use **Q** to make it easier to remember re**Q**uest vs. **R**esponse, in the proper order.
+
+Now recalling our **observable requirement**: *returning it* means *emitting the results as an observable stream*
 
 The `partialPacket` parameter has most of the elements of our outbound message.  It's been invoked from `send()` with an object like:
 ```json
@@ -265,7 +265,7 @@ Let's restate the purpose of this chunk of code.  We're building the callback th
 3. Handle errors appropriately
 4. Handle the next value in the stream until the `isDisposed` property is truthy, indicating the end of the stream coming from the server
 
-As in any normal Observable, we handle these cases with the `observer.error()`, `observer.next()` and `observer.complete()` calls.
+As in any normal Observable, we handle these cases with the `observer.error()`, `observer.next()` and `observer.complete()` calls.  If this confuses you, remember that we're wrapping this call in an *observable subscription handler* for the Observable we created in our `send()` method. You might take a minute to [grok](xxx) all of this, and if it's still a little fuzzy, you can visit my [mini observable factory tutorial here](xxx).
 
 #### The Rest of the Code
 
@@ -306,9 +306,9 @@ If all is working, you should get a coordinated set of logs in each of the termi
 
 We knowingly deferred a few things to *Take 2* to keep focused on the core requirements and implementation of a client. We'll address them in [Part 5]().  But there's one **big** issue lurking.  Any guesses on what that might be? I've definitely foreshadowed this along the way (hint: repeatedly deferring the discussion of `id`).
 
-OK, let's get right to it. Ask yourself this: since our client is embedded in an HTTP app that is responding to multiple incoming requests, many of which in turn are triggering remote requests, how does the transporter client keep track of all of the outstanding remote requests and route them back to the correct originating (HTTP) request?
+OK, let's get right to it. Ask yourself this: since our client is embedded in an HTTP app that is responding to multiple incoming requests, many of which in turn are triggering remote requests, how does the transporter client keep track of all of the outstanding remote requests and route them back to the correct originating (HTTP) request handler (i.e., the code with the original `client.send()` call?
 
-Let's demonstrate the problem. You'll need one extra terminal window for this so we can launch two simultaneous requests.  You'll notice that in this branch, there is an extra route in `nestHttpApp`.  That route makes a new request (`'/race'`), which has a corresponding `@MessagePattern()` in `nestMicroservice`.  The point of these new features is to enable us to launch multiple requests that **overlap** in their execution.  Feel free to take a look at the code (these new routes/handlers are at the bottom of their respective Controller files), but all you really need to know is this: the `race` route in our `nestHttpApp` takes two parameters:
+Let's demonstrate the problem. You'll need one extra terminal window for this to enable launching two simultaneous requests.  You'll notice that in this branch, there is an extra route in `nestHttpApp`.  That route makes a new request (`'/race'`), which has a corresponding `@MessagePattern()` in `nestMicroservice`.  The point of these new features is to enable us to launch multiple requests that **overlap** in their execution.  Feel free to take a look at the code (these new routes/handlers are at the bottom of their respective Controller files), but all you really need to know is this: the `race` route in our `nestHttpApp` takes two parameters:
 * a requestId
 * a delay period (in seconds) specifying how long the server should wait before responding
 
@@ -318,7 +318,7 @@ For example, try making the following request (HTTPie format):
 $ http get localhost:3000/race/1/10
 ```
 
-This will return the following response, after 10 seconds:
+This will return the following response, after 10 seconds (`cid` in the response corresponds to the first route parameter, and `delay` in the response corresponds to the second parameter (expressed in milliseconds)):
 ```json
 {
     "cid": "1",
@@ -333,7 +333,7 @@ This will return the following response, after 10 seconds:
 
 ```
 
-With this in place, we can run two overlapping requests. Let's go ahead and run the following two requests.  You'll need to do this in two separate windows:
+With this in place, we can run two overlapping requests. Let's go ahead and run the following two requests.  You'll need to do this in two separate terminals, and you should launch the second request within 5 seconds of launching the first (to achieve the desired overlap):
 
 ```bash
 $ # run this in terminal 1, and be prepared to run the second one in terminal 2 a few seconds later
@@ -357,9 +357,9 @@ The results should (well, maybe not with all the foreshadowing :wink:) surprise 
 }
 ```
 
-This is obviously incorrect for the first request.  The issue demonstrates what I'll refer to as the *[multiplexing](http://250bpm.com/blog:18) challenge*.  That is, we are multiplexing our requests through a single pair of channels.  When we issue request #1, it subscribes to a response on the `'/race_res'` channel. Request #2 does the same thing, and since request #2 finishes first, the request #1 subscription gets its expected result on the response channel.
+This is obviously incorrect for the first request.  The issue demonstrates what I'll refer to as the *[multiplexing](http://250bpm.com/blog:18) challenge*.  That is, we are multiplexing our requests through a single pair of channels.  When we issue request #1, it subscribes to a response on the `'/race_res'` channel. Request #2 does the same thing, and since request #2 finishes first, the request #1 subscription gets **request #2's result** (the wrong answer!) on the response channel.
 
-Also, another nagging question... why do **both** subscribers get the result?  Hmmm... clearly something isn't working quite right here, and we'll have to work on this in our next (and final!) revision!
+Also, another nagging question... why do **both** subscribers get the result?  Hmmm... clearly something isn't working quite right here. We'll have to dig and and work on this in our next (and final!) revision!
 
 ### What's Next
 
