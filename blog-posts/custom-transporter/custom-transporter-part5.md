@@ -145,7 +145,7 @@ Let's look at that Observable creation step for a moment.  The first line `const
 The second line calls `publish()`, which is an abstract method on the superclass that we must implement.  This is where we'll implement the custom details of our strategy.  Let's tackle that next.
 
 Note that `send()` calls `publish()` with two parameters:
-* the arguments from the user-land `client.send()` call (e.g., if the user wrote `client.send('/get-customers', {}), the first argument would contain `{pattern: '/get-customers', data: {}}`).
+* the arguments from the user-land `client.send()` call (e.g., if the user wrote `client.send('/get-customers', {})`, the first argument would contain `{pattern: '/get-customers', data: {}}`).
 * the newly minted *handler factory*
 
 #### The `ClientFaye#publish()` Method
