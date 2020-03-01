@@ -14,7 +14,7 @@ canonical_url:
 This article series covers the topic of building a **custom transporter** for the [NestJS microservices subsystem](https://docs.nestjs.com/microservices/basics). Is this article right for you? I think it is if you fit into one of the following two audiences:
 
 * You're trying to build or modify a NestJS microservices transporter.  That one was probably pretty obvious :smile:.
-* You're a NestJS application developer (someone who writes code in what I'll often refer to as "user-land"), and want a deeper understanding of how NestJS microservices work.  Candidly, this is where I came from, and a main motivator for doing the research to write this article series.  Even if you never intend to build your own transporter, I feel you can still benefit from this deeper understanding, as I have done.  Along the way, I'll try to share insights on how you can become a better user of Nest microservices.
+* You're a NestJS application developer (someone who writes code in what I'll often refer to as "user-land"), and want a deeper understanding of how NestJS microservices work.  Candidly, this is where I came from, and a main motivator for doing the research to write this article series.  Even if you never intend to build your own transporter, you can still benefit from this deeper understanding, as I have done.  Along the way, I'll try to share insights on how you can become a better user of Nest microservices.
 
 #### Recommended Reading
 
@@ -23,7 +23,7 @@ If you haven't already read it, please check out my [NestJS Microservices in Act
 ![Star Trek Transporter](./assets/trek-transporter.gif 'Star Trek Transporter')
 <figcaption><a name="figure1"></a>Close, but no cigar!</figcaption>
 
-Anyway, while not strictly required, these articles assume a good understanding of the material in that article series.
+Anyway, while not strictly required, this series assume a good understanding of the material in that article series.
 
 ### Why Custom Transporters?
 
@@ -35,9 +35,9 @@ A related question is *How can I extend the capabilities of existing Nest transp
 
 * Part 1 (this article): Sets the background for the entire series.  We'll begin by examining the simple [Faye message broker](https://faye.jcoglan.com/) to set the stage for building a custom Nest transporter that sits on top of it.  By the time we're done with Part 5, we'll have a fully functional Faye Transporter!
 * [Part 2](https://dev.to/nestjs/part-2-basic-server-component-5313-temp-slug-6221883?preview=2f3ceab6d03c32bc1d00e56a907f4c2e87b388b516d6009c5c72a6f5a31ef8da2a310c035b7b0a84cd9760ab2ac5d241dd2ceaceaf807ba1e745bbb9): Tackles building an initial version of the **server side** of a transporter. The result is a working version that should familiarize you with the main concepts needed to understand how to build the server component of **any** custom transporter. It defers implementation of a few important details to the next article so as to keep us focused on the main path.
-* [Part 3](https://dev.to/nestjs/part-3-completing-the-server-component-2fai-temp-slug-8783531?preview=be5cb28367d68473fba3e9a91c71084b83414317c27529045d1732b885da4cedb2020d8a7a32482e950f79db2908dee597c475f0f0b1a77bb73f0cab): Cleans up some loose ends, and deep dives on a few of the more advanced and impressive features of the framework, and shows you how to enable these features in your custom transporter.
-* [Part 4](https://dev.to/nestjs/part-4-basic-client-component-298b-temp-slug-9977921?preview=21ec3d333fc6d9d92c11dcbd8430a5132e93390de84cb4804914aa143492e925e4299ca3eb7f376918c1ed77df56e29db2572e5d6f7ab235b3e5f2b9): Switches to the client side. As with the server side, this article walks through a **completely functional** implementation, though it defers a few of the more complex features to the next article.
-* [Part 5](https://dev.to/nestjs/part-5-completing-the-client-component-hlh-temp-slug-2907984?preview=82c11163db963ca01d8d62d3a7b14843b422a6b28f46762d999bbe4b7035ad634d48bbbdd740e36376121aa673354ff5259f8b3028bceb931e800d9e): Completes the client-side journey, resulting in a finished Custom Transporter for Faye.
+* [Part 3](https://dev.to/nestjs/part-3-completing-the-server-component-2fai-temp-slug-8783531?preview=be5cb28367d68473fba3e9a91c71084b83414317c27529045d1732b885da4cedb2020d8a7a32482e950f79db2908dee597c475f0f0b1a77bb73f0cab): Cleans up some loose ends, and dives deep on a few of the more advanced and impressive features of the framework, and shows you how to enable these features in your custom transporter.
+* [Part 4](https://dev.to/nestjs/part-4-basic-client-component-298b-temp-slug-9977921?preview=21ec3d333fc6d9d92c11dcbd8430a5132e93390de84cb4804914aa143492e925e4299ca3eb7f376918c1ed77df56e29db2572e5d6f7ab235b3e5f2b9): Switches to the client side. As with the server side, this article walks through a **basic functional implementation**, deferring a few of the more complex features to the next article.
+* [Part 5](https://dev.to/nestjs/part-5-completing-the-client-component-hlh-temp-slug-2907984?preview=82c11163db963ca01d8d62d3a7b14843b422a6b28f46762d999bbe4b7035ad634d48bbbdd740e36376121aa673354ff5259f8b3028bceb931e800d9e): Completes the client-side journey, resulting in a finished, fully functional Custom Transporter for Faye.
 * Part 6: (Coming soon!) Surveys a few of the built-in NestJS transporters and compares their implementation to the Faye implementation to shed light on some broker-specific nuanced implementation details.
 
 Let's get started!
@@ -61,7 +61,7 @@ $ sh build.sh
 
 ### Overview for Part 1
 
-For this case study, we'll build a custom transporter to work with the [Faye](https://faye.jcoglan.com/) message broker.  Faye is a simple OSS JavaScript publish/subscribe message broker that runs nicely on Node.js.  Getting it up and running, and understanding its API, are simple making it a convenient target. At the same time, it provides [all the features Nest needs](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-1-p3#broker-message-protocol) to build a transporter.
+For this case study, we'll build a custom transporter to work with the [Faye](https://faye.jcoglan.com/) message broker.  Faye is a simple OSS JavaScript publish/subscribe message broker that runs nicely on Node.js.  Getting it up and running, and understanding its API, are simple, making it a convenient target. At the same time, it provides [all the features Nest needs](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-1-p3#broker-message-protocol) to build a transporter.
 
 Faye uses a very simple &#8212; almost *canonical* &#8212; publish/subscribe protocol, as depicted in Figure 1 below.
 
@@ -92,9 +92,9 @@ Let's say component A wishes to "get customers" from component B, which has acce
 - A chooses a *response topic* (sometimes called a *reply subject*)
 - A **subscribes** to the response topic
 - A **publishes** a request, passing the *response topic* as part of the message
-- B **publishes** a response, using the *response topic* as the topic of its message0
+- B **publishes** a response, using the *response topic* as the topic of its message
 
-> :bulb: We've seen this *subscribe-to-the-response-then-send-the-request* pattern a few times now, and we'll see it again. It's a vital pattern, and worth permanently etching into your synapses.  To that end, let's invent a simple mnemonic.  That way we can mentally conjure this pattern quickly whenever we need it.  I'll refer to it as **STRPTQ**.  The letters come from "**S**ubscribe **T**o the **R**esponse, then **P**ublish **T**he Re**Q**uest".  I use **Q** to make it easier to remember re**Q**uest vs. **R**esponse, in the proper order.
+> :bulb: We've seen this *subscribe-to-the-response-then-send-the-request* pattern a few times now, and we'll see it again. It's a vital pattern, and worth permanently etching into your synapses.  To that end, let's invent a simple mnemonic.  That way we can mentally conjure this pattern quickly whenever we need it.  I'll refer to it as **STRPTQ**.  The letters come from "**S**ubscribe **T**o the **R**esponse, then **P**ublish **T**he Re<b>Q</b>uest".  I use **Q** to make it easier to remember re<b>Q</b>uest vs. **R**esponse, in the proper order.
 
 As we'll see in developing our Faye transporter, Nest makes this a bit easier by automatically choosing the response topic name for you. In fact, Nest builds **two** topics from each **pattern** you declare.  For example, assume you define a Nest microservice responder *message pattern* like this:
 
