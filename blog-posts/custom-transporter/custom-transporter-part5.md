@@ -45,7 +45,7 @@ The *big problem* we found with our first implementation is that it's a little n
 
 We uncovered the problem in our "race test" at the end of the last chapter. The triggering scenario for our problem, in basic terms, is: **we sent two requests, where the second request finished before the first one**.  Our shared response channel just isn't prepared to handle this. It's well-behaved in the context of one-at-a-time requests: it subscribes and waits for a response, then unsubscribes. But in the face of multiple overlapping requests, its behavior is clearly incorrect. Let's try to describe why, as this will guide us to a solution.  The problem is this: we can have only a single active *Faye subscription handler*<sup>1</sup> no matter how many messages we send (this is by definition, since we have a single channel).  Each request causes us to overwrite the previous *Faye subscription handler* when we re-issue the `fayeClient.subscribe(...)` call.  Moreover, that active one, with its built-in Observer, notifies **every** subscriber.
 
-> <sup>1</sup>The generic term "subscription handler" is unfortunately overloaded in our discussion.  In the last chapter we introduced our nifty *observable subscription handler* (and its derivative, the *observable subscription handler factory*).  Here we're talking about a *Faye subscription handler*.  These are two separate concepts, and we need to try to be very careful with our language.  **Especially** since we have been, and will continue to be, building objects that create a tight relationship between these two!  I'll do my best to keep the terminology straight, and you please do too!
+> <sup>1</sup>The generic term "subscription handler" is unfortunately overloaded in our discussion.  In the last chapter we introduced our nifty *observable subscriber function* (and its derivative, the *observable subscription handler factory*).  Here we're talking about a *Faye subscription handler*.  These are two separate concepts, and we need to try to be very careful with our language.  **Especially** since we have been, and will continue to be, building objects that create a tight relationship between these two!  I'll do my best to keep the terminology straight, and you please do too!
 
 ### Strategy for Solving the Multiplexing Challenge
 
@@ -60,30 +60,30 @@ We know `ClientProxy#send()` returns an Observable.  The job of that Observable 
 ![Convert Messages to Stream](./assets/client-proxy-observable.gif 'Convert Messages to Stream')
 <figcaption><a name="remote-stream"></a>Figure 1: Convert Messages to Stream</figcaption>
 
-One valuable lesson we learned in the last chapter is that we can use the Observable/observer pattern with a factory method to "wrap our Faye client inside an Observable". This was our *observable subscription function factory* pattern &#8212; implemented in the `handleRequest()` method ([review the source code here](xxx)) which **builds and returns** the *observable subscription function* (the bit of code that actually emits values through our Observable).  We're going to build on this lesson, and take it to the next level, to deal with the complexities of the multiplexing challenge.
+One valuable lesson we learned in the last chapter is that we can use the Observable/observer pattern with a factory method to "wrap our Faye client inside an Observable". This was our *observable subscriber function factory* pattern &#8212; implemented in the `handleRequest()` method ([review the source code here](xxx)) which **builds and returns** the *observable subscriber function* (the bit of code that actually emits values through our Observable).  We're going to build on this lesson, and take it to the next level, to deal with the complexities of the multiplexing challenge.
 
 #### Handling Multiple Requests: The Union of Observables and Correlation Ids
 
 The problem we have to solve is how to associate a unique *observable subscription handler* with each Observable (i.e., with each `send()` request that returns that Observable as a response). Furthermore, we need to do this while having only a **single active Faye subscription handler**.  This is going to require a little higher order programming.  Stick with me &#8212; this is the hardest part of the tutorial, but we can get through it.
 
-Let's propose defining our problem as follows: we are binding the *observable subscription function* logic to our *Faye subscription handler* too soon/too statically.  Our solution needs to do late/dynamic binding of the *observable subscription function* logic.  To be precise, it needs to delay binding the function returned by the *observable subscription function factory* into the *Faye subscription handler* until a request is made so it can associate a unique one to each request. We have to make a little leap here.  Conceptually, what we're going to do is **create and store** an instance of that *observable subscription factory function* each time a request is made. Later, when we get a response, we'll retrieve that stored function and use it to give us a unique *observable subscription function* for the request.  For the rest of this article, we'll refer to this stored function as our *handler factory*.
+Let's propose defining our problem as follows: we are binding the *observable subscriber function* logic to our *Faye subscription handler* too soon/too statically.  Our solution needs to do late/dynamic binding of the *observable subscriber function* logic.  To be precise, it needs to delay binding the function returned by the *observable subscriber function factory* into the *Faye subscription handler* until a request is made so it can associate a unique one to each request. We have to make a little leap here.  Conceptually, what we're going to do is **create and store** an instance of that *observable subscriber function factory* each time a request is made. Later, when we get a response, we'll retrieve that stored function and use it to give us a unique *observable subscriber function* for the request.  For the rest of this article, we'll refer to this stored function as our *handler factory*.
 
 > Let's take a quick timeout to avoid terminology soup confusion!  If the last paragraph [baked your noodle](https://www.youtube.com/watch?v=eVF4kebiks4) a little bit, refresh on the terminology again, then hit rewind and replay!
 >
 > *Faye subscription handler*: A callback registered with the Faye client library that is invoked whenever a message with a particular topic is received.
 >
-> *Observable subscription function*: A callback used during [Observable creation](xxx) to convert application events (e.g., inbound Faye messages) to Observer callbacks. For example, this is the mechanism that enables us to call the user-land handler with the value emitted by our Observer every time an inbound message is received.
+> *Observable subscriber function*: A callback used during [Observable creation](xxx) to convert application events (e.g., inbound Faye messages) to Observer callbacks. For example, this is the mechanism that enables us to call the user-land handler with the value emitted by our Observer every time an inbound message is received.
 >
-> *Observable factory*: A [higher order function](xxx) that **returns** an Observable with a dynamic *observable subscription function*.  We use this construct to create customized Observables that can listen to events from our transporter space and transmit them back via the Observable.  An example is with the [`handleRequest()` function](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/part4/nestjs-faye-transporter/src/requestor/clients/faye-client.ts#L27) we saw in the last chapter.
+> *Observable factory*: A [higher order function](xxx) that **returns** an Observable with a dynamic *observable subscriber function*.  We use this construct to create customized Observables that can listen to events from our transporter space and transmit them back via the Observable.  An example is with the [`handleRequest()` function](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/part4/nestjs-faye-transporter/src/requestor/clients/faye-client.ts#L27) we saw in the last chapter.
 >
 > *handler factory*:
 >
 
-Returning to our story: the construction we just conceived let's us associate a **unique** *observable subscription function* with each Observable.  The approach we'll take goes something like this:
+Returning to our story: the construction we just conceived let's us associate a **unique** *observable subscriber function* with each Observable.  The approach we'll take goes something like this:
 
 1. At the time a user-land request is issued, we'll create an instance of the *handler factory*, along with a unique identifier\* (`id` field) for the request. We'll store an association between the unique id and the *handler factory* in a map.
     > \*At last, we see the genesis of the `id` field we've been carrying along with our messages all this time!
-2. When a response is received, we'll extract the `id` from the response, and use it to look up the *handler factory*. We'll then use this unique instance of the *handler factory* to give us the actual final *observable subscription function* associated with the request, and use this to emit the result.  Since the only Observable associated with this *observable subscription function* is the originator of the request, that's the only one that receives the emitted result.
+2. When a response is received, we'll extract the `id` from the response, and use it to look up the *handler factory*. We'll then use this unique instance of the *handler factory* to give us the actual final *observable subscriber function* associated with the request, and use this to emit the result.  Since the only Observable associated with this *observable subscriber function* is the originator of the request, that's the only one that receives the emitted result.
 3. To tie these things together, we need to pass the `id` all the way through the request/response flow.  The requesting code generates the `id` property, it's attached to the outbound message, and finally returned on the corresponding inbound message. Then we use it as described in step 2 above.
 
 
@@ -96,7 +96,7 @@ One related issue we kind of glossed over is managing the Faye (response channel
 
 #### Connection Management
 
-One thing we'll find, as we integrate our code with the framework, is that we need to adhere to its expectations for how we provide a client library connection (i.e., the connection to the broker).  We'll mostly rely on some boilerplate code here, but let's briefly describe the strategy. Since we're packaging up a bunch of stuff inside *observable subscription functions* (and their factories, etc.), the framework expects us to provide access to the connection in a particular way.  For the most part, we can just utilize some boilerplate to handle this.  There's only a small bit that is specific to a client library.  This is all packaged up in a `connect()` method that we must implement in our `ClientFaye` class.
+One thing we'll find, as we integrate our code with the framework, is that we need to adhere to its expectations for how we provide a client library connection (i.e., the connection to the broker).  We'll mostly rely on some boilerplate code here, but let's briefly describe the strategy. Since we're packaging up a bunch of stuff inside *observable subscriber functions* (and their factories, etc.), the framework expects us to provide access to the connection in a particular way.  For the most part, we can just utilize some boilerplate to handle this.  There's only a small bit that is specific to a client library.  This is all packaged up in a `connect()` method that we must implement in our `ClientFaye` class.
 
 #### Odds and Ends
 
@@ -152,7 +152,7 @@ Stripping this method to the bone, here's what it's doing:
 1. Reusing a `connection` if it exists or obtaining a new one.  Note that since it depends on client library particulars to deal with obtaining a connection, it depends on the `connect()` method &#8212; which we are responsible for implementing and will get to soon.
 2. Creating and returning the Observable that is effectively the "container" within which we'll implement the strategy we [discussed above](#strategy-for-solving-the-multiplexing-challenge).
 
-Let's look at that Observable creation step for a moment.  The first line `const callback = this.createObserver(observer)` is where we create our *handler factory* (the unique-per-request *observable subscription function factory*). Remember: this factory gives us back a unique *observable subscription function* for the currently processing request, which is what we'll stash away in our map for retrieval during response handling.
+Let's look at that Observable creation step for a moment.  The first line `const callback = this.createObserver(observer)` is where we create our *handler factory* (the unique-per-request *observable subscriber function factory*). Remember: this factory gives us back a unique *observable subscriber function* for the currently processing request, which is what we'll stash away in our map for retrieval during response handling.
 
 The second line calls `publish()`, which is an abstract method on the superclass that we must implement.  This is where we'll implement the custom details of our strategy.  Let's tackle that next. But first, let's note that `send()` calls `publish()` with two parameters:
 * the arguments from the user-land `client.send()` call (e.g., if the user wrote `client.send('/get-customers', {})`, the first argument would contain `{pattern: '/get-customers', data: {}}`).
@@ -196,7 +196,7 @@ protected publish(
 
       // build the Faye API `subscribe()` callback handler
       // this is the function that does the late binding of the
-      // *observable subscription function* to the Faye response channel
+      // *observable subscriber function* to the Faye response channel
       // callback handler
       const subscriptionHandler = this.createSubscriptionHandler(packet);
 
@@ -211,7 +211,7 @@ protected publish(
         publishRequest();
       }
 
-      // remember, this is an *observable subscription function*, so it returns
+      // remember, this is an *observable subscriber function*, so it returns
       // the unsubscribe function.
       return () => {
         this.unsubscribeFromChannel(responseChannel);
@@ -237,7 +237,7 @@ With that in mind, we can explore a little further. Since this is the actual *Fa
 2. Destructure the message so we can deal with its constituent values: `err`, `response`, `isDisposed` and `id`
 3. Use the map to lookup the correct *handler factory*
 4. Discard any messages which are **not** destined for this client<sup>1</sup>
-5. Finally, return the **actual** *observable subscription function*.  Note: we automatically add `isDisposed: true` if there's an error, to force the closure of the Observable.
+5. Finally, return the **actual** *observable subscriber function*.  Note: we automatically add `isDisposed: true` if there's an error, to force the closure of the Observable.
 
 > <sup>1</sup>This is the code fragment:
 >  <code>if (!callback) {</code>
