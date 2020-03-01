@@ -82,11 +82,11 @@ Let's propose defining our problem as follows: we are binding the *observable su
 Returning to our story: the construction we just conceived let's us associate a **unique** *observable subscription function* with each observable.  The approach we'll take goes something like this:
 
 1. At the time a user-land request is issued, we'll create an instance of the *handler factory*, along with a unique identifier\* (`id` field) for the request. We'll store an association between the unique id and the *handler factory* in a map.
+    > \*At last, we see the genesis of the `id` field we've been carrying along with our messages all this time!
 2. When a response is received, we'll extract the `id` from the response, and use it to look up the *handler factory*. We'll then use this unique instance of the *handler factory* to give us the actual final *observable subscription function* associated with the request, and use this to emit the result.  Since the only observable associated with this *observable subscription function* is the originator of the request, that's the only one that receives the emitted result.
 3. To tie these things together, we need to pass the `id` all the way through the request/response flow.  The requesting code generates the `id` property, it's attached to the outbound message, and finally returned on the corresponding inbound message. Then we use it as described in step 2 above.
 
-> \*At last, we see the genesis of the `id` field we've been carrying along with our messages all this time!
-<p></p>
+
 
 > The pattern we described in step 3 above is often referred to as using [correlation ids](https://www.enterpriseintegrationpatterns.com/patterns/messaging/CorrelationIdentifier.html) (for example, here's a [tutorial showing how](https://www.rabbitmq.com/tutorials/tutorial-six-python.html) a similar concept can be used for writing native RabbitMQ client apps).
 
@@ -225,13 +225,13 @@ protected publish(
 
 With the time we put in on the strategy discussion, this code should hopefully make sense, at least at a high level.  Let's first dispense with a couple of the minor details so they don't distract, then we can focus on the core functionality.
 * At the top of the method (remember, this method is called synchronously when a user-land request is made), we prepare the outbound packet (the *request* message to be published), including assigning the packet `id` and serializing the packet.
-* Subscription management should be straightforward to follow. We essentially keep a counter of *response channel* subscriptions. We do a `count++` when publishing a request, and a `count--` when unsubscribing from the response channel. This let's us decide whether or not we need to subscribe to the response channel before publishing a request (solving our "we can only have one active subscription at a time" issue).
+* Subscription management should be straightforward to follow. We essentially keep a counter of *response channel* subscriptions. We (logically speaking) do a `count++` when publishing a request, and a `count--` when unsubscribing from the response channel. This let's us decide whether or not we need to subscribe to the response channel before publishing a request (solving our "we can only have one active subscription at a time" issue).
 
 #### The `createSubscriptionHandler` Method: Using the Handler Factory
 
 Finally, let's talk about the call to `createSubscriptionHandler()` &#8212; first at a high level, and then the details. First, let's recognize that this is the *actual function* that gets bound to the Faye `subscribe()` call on the response channel (i.e., `<message-pattern>_res`).  In it, we **do the late binding** of the *observable subscription handler*. This function looks up the *handler factory* by `id`, matching it with the request observable, and calls it with the deconstructed inbound message fields.
 
-With that in mind, we can explore a little further. Since this is the actual Faye subscription handler for the inbound response channel, its only argument (as dictated by the [Faye API](https://faye.jcoglan.com/browser/subscribing.html)) is an actual Faye inbound message. We should recognize that this is a factory function, so it's actually **returning** the handler &#8212; which is **how** we are able to do the late binding.  Here are the steps the *Faye subscription handler* method **returned by the factory** performs:
+With that in mind, we can explore a little further. Since this is the actual *Faye subscription handler* for the inbound response channel, its only argument (as dictated by the [Faye API](https://faye.jcoglan.com/browser/subscribing.html)) is an actual Faye inbound message. We should recognize that this is a factory function, so it's actually **returning** the handler &#8212; which is **how** we are able to do the late binding.  Here are the steps the *Faye subscription handler* method **returned by the factory** &#8212; the code that **actually runs** when an inbound message arrives &#8212; performs:
 
 1. Deserialize the packet.
 2. Destructure the message so we can deal with its constituent values: `err`, `response`, `isDisposed` and `id`
