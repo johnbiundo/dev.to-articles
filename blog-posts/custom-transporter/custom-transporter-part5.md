@@ -45,13 +45,13 @@ The *big problem* we found with our first implementation is that it's a little n
 
 We uncovered the problem in our "race test" at the end of the last chapter. The triggering scenario for our problem, in basic terms, is: **we sent two requests, where the second request finished before the first one**.  Our shared response channel just isn't prepared to handle this. It's well-behaved in the context of one-at-a-time requests: it subscribes and waits for a response, then unsubscribes. But in the face of multiple overlapping requests, its behavior is clearly incorrect. Let's try to describe why, as this will guide us to a solution.
 
-The problem is this: we can have only a single active *Faye subscription handler*<sup>1</sup> no matter how many messages we send (this is by definition, since our design is committed to a single response channel).  Each request causes us to overwrite the previous *Faye subscription handler* when we re-issue the `fayeClient.subscribe(...)` call.  Moreover, that active one, with its built-in Observer, notifies **every** subscriber.
+The problem is this: we can have only a single active *Faye subscription handler* for each topic (pattern)<sup>1</sup> no matter how many messages we send on that topic/pattern (this is by definition, since our design is committed to a single response channel).  Each request for a given pattern causes us to overwrite the previous *Faye subscription handler* when we re-issue the `fayeClient.subscribe(...)` call.  Moreover, that active one, with its built-in Observer, notifies **every** subscriber for that pattern.
 
 > <sup>1</sup>The generic term "subscription handler" is unfortunately overloaded in our discussion.  In the last chapter we introduced our nifty *observable subscriber function*.  Here we're talking about a *Faye subscription handler*.  These are two separate concepts, and we need to try to be very careful with our language.  **Especially** since we have been, and will continue to be, building objects that create a tight relationship between these two!  I'll do my best to keep the terminology straight, and you please do too!
 
 ### Strategy for Solving the Multiplexing Challenge
 
-Let's start working on a strategy to solve this challenge. Given the complexity of this problem, it's helpful to approach a solution starting from a somewhat abstract level, and successively refine our understanding and implementation.  We'll walk through the details of handling this in our Faye client component, but some of the details will vary from one transport library (e.g., broker) to the next because **each has its own message pattern and API**.  If you understand the concepts, there is a certain amount of boilerplate material that you can adapt to a particular transport library. Inevitably, if you need to build a new transporter client, you'll have to work through a few knotholes. In the mean time, pay more attention to the concepts than to understanding every line of code.
+Let's start working on a strategy to solve this challenge. Given the complexity of this problem, it's helpful to approach a solution starting from a somewhat abstract level, and successively refine our understanding and implementation.  We'll walk through the details of handling this in our Faye client component, but some of the details will vary from one transport library (e.g., broker) to the next because **each has its own message protocol and API**.  If you understand the concepts, there is a certain amount of boilerplate material that you can adapt to a particular transport library. Inevitably, if you need to build a new transporter client, you'll have to work through a few knotholes. In the mean time, pay more attention to the concepts than to understanding every line of code.
 
 #### The Observable Part
 
@@ -64,11 +64,11 @@ One valuable lesson we learned in the last chapter is that we can use the Observ
 
 #### Handling Multiple Requests: The Union of Observables and Correlation Ids
 
-The problem we have to solve is how to associate a unique *observable subscription handler* with each Observable (i.e., with each `send()` request that returns that Observable as a response). Furthermore, we need to do this while having only a **single active Faye subscription handler**.  This is going to require a little higher order programming.  Stick with me &#8212; this is the hardest part of the tutorial, but we can get through it.
+The problem we have to solve is how to associate a unique *observable subscription handler* with each Observable (i.e., with each `send()` request that returns that Observable as a response). Furthermore, we need to do this while having only a **single active Faye subscription handler for each pattern/topic**.  This is going to require a little higher order programming.  Stick with me &#8212; this is the hardest part of the tutorial, but we can get through it.
 
-Let's propose defining our problem as follows: we are binding the *observable subscriber function* logic to our *Faye subscription handler* too soon/too statically.  Our solution needs to do late/dynamic binding of the *observable subscriber function* logic.  To be precise, it needs to delay binding the the *observable subscriber function* into the *Faye subscription handler* until a request is made so it can associate a unique one to each request. This is tough, because there is only a **single** *Faye subscription handler*.  What to do? We have to make a little leap here.
+Let's propose defining our problem as follows: we are binding the *observable subscriber function* logic to our *Faye subscription handler* too soon/too statically.  Our solution needs to do late/dynamic binding of the *observable subscriber function* logic.  To be precise, it needs to delay binding the the *observable subscriber function* into the *Faye subscription handler* until a request is made so it can associate a unique one to each request. This is tough, because there is only a **single** *Faye subscription handler* for each pattern.  What to do? We have to make a little leap here.
 
-Conceptually, what we're going to do is the following.  We'll make our single *observable subscriber function* logic dynamic by extracting a chunk of what was previously static code and instead have it produced by a factory function. We'll call the factory function for each `send()` request.  The code we extract and produce from a factory will be the code that actually translates inbound messages to observer emits. We'll call that code the *response emitter* and the factory that produces it the *response emitter factory*. We'll see the factory in a moment.
+Conceptually, what we're going to do is the following.  We'll make our single *observable subscriber function* logic dynamic by extracting a chunk of what was previously static code and instead have it produced dynamically by a factory function. We'll invoke the factory function for each `send()` request.  The code we extract and produce from a factory will be the code that actually translates inbound messages to Observer emits. We'll call that code the *response emitter* and the factory that produces it the *response emitter factory*. We'll see the factory in a moment.
 
 We'll store a unique instance of the *response emitter* function each time we create an Observable. Later, when we get a response, we'll retrieve that stored function and plug it back into the single static *observable subscriber function*, giving us a unique *observable subscriber function* for each request.
 
@@ -99,7 +99,7 @@ Let's get started. The *response emitter factory* function is actually provided 
 >
 > *Observable subscriber function*: A callback used during [Observable creation](xxx) to convert application events (e.g., inbound Faye messages) to Observer callbacks. For example, this is the mechanism that enables us to call the user-land handler with the value emitted by our Observer every time an inbound message is received.
 >
-> *Response emitter factor factory*: A [higher order function](xxx), provided by the framework, that **returns** a *response emitter* (defined below).
+> *Response emitter factory*: A [higher order function](xxx), provided by the framework, that **returns** a *response emitter* (defined below).
 >
 > *Response emitter*: A function that delivers the dynamic part of our *observable subscriber function*.  It handles the actual Observer emit calls to produce the Observable stream. We will have a unique instance of the *response emitter* for each Observable, overcoming the multiplexing problem.
 >
@@ -110,23 +110,23 @@ Let's head toward implementation.  The approach we'll take to implement this goe
 
     > \*At last, we see the genesis of the `id` field we've been carrying along with our messages all this time!
 2. When a response is received, we'll extract the `id` from the response, and use it to look up the *response emitter*. We'll then call this unique instance of the *response emitter* from within the single shared *observable subscriber function*, and use this to emit the result.  Since the only Observable associated with this *response emitter* is the originator of the request, that's the only one that receives the emitted result.
-3. To tie these things together, we need to pass the `id` all the way through the request/response flow.  The requesting code generates the `id` property, it's attached to the outbound message, and finally returned on the corresponding inbound message. Then we use it as described in step 2 above.
+3. To tie these things together, we need to pass the `id` all the way through the request/response flow.  The requesting code generates the `id` property, it's attached (by the server side code) to the outbound message, and finally returned on the corresponding inbound message. Then we use it as described in step 2 above.
 
 > The pattern we described in step 3 above is often referred to as using [correlation ids](https://www.enterpriseintegrationpatterns.com/patterns/messaging/CorrelationIdentifier.html) (for example, here's a [tutorial showing how](https://www.rabbitmq.com/tutorials/tutorial-six-python.html) a similar concept can be used for writing native RabbitMQ client apps).
 
 #### Other Bookkeeping
 
-One related issue we kind of glossed over is managing the Faye (response channel) subscription process intelligently. We discussed the problem that we are essentially overwriting the *Faye subscription handler* each time we handle a new request. So an additional consequence of our design goal of **sharing a single inbound response channel** is that we we **must have only a single active subscription** to that response channel.  When all active requests have completed, we unsubscribe.  When a new request comes in, we subscribe again, and leave the subscription open until the channel quiesces (i.e., there are no more inflight requests) again.  We'll need to add some bookkeeping to improve our current behavior (of simply overwriting the handler with each new response).
+One related issue we kind of glossed over is managing the Faye (response channel) subscription process intelligently. We discussed the problem that we are essentially overwriting the *Faye subscription handler* each time we handle a new request for a given pattern. So an additional consequence of our design goal of **sharing a single inbound response channel per pattern/topic** is that we we **must have only a single active subscription** for the response channel per pattern/topic.  When all active requests for a given pattern/topic have completed, we unsubscribe.  When a new request comes in, we subscribe again, and leave the subscription open until the channel quiesces (i.e., there are no more inflight requests) again.  We'll need to add some bookkeeping to improve our current behavior (of simply overwriting the handler with each new request on a pattern/topic).
 
 #### Connection Management
 
-One thing we'll find, as we integrate our code with the framework, is that we need to adhere to its expectations for how we provide a client library connection (i.e., the connection to the broker).  Since we're packaging up a bunch of stuff inside *observable subscriber functions* (and their factories, etc.), the framework expects us to provide access to the connection in a particular way.  For the most part, we can just utilize some boilerplate to handle this.  There's only a small bit that is specific to a client library.  This is all packaged up in a `connect()` method that we must implement in our `ClientFaye` class.
+One thing we'll find, as we integrate our code with the framework, is that we need to adhere to its expectations for how we provide a client library connection (i.e., the connection to the broker).  Since we're packaging up a bunch of stuff inside *observable subscriber functions*, the framework expects us to provide access to the connection in a particular way.  For the most part, we can just utilize some boilerplate to handle this.  There's only a small bit that is specific to a client library.  This is all packaged up in a `connect()` method that we must implement in our `ClientFaye` class.
 
 #### Odds and Ends
 
 We'll also see sprinkled in some functions that deal with other loose ends:
-* we return channel names using a function, rather than hard coding them with the `_ack` and `_res` modifiers to avoid scattering magic strings throughout the code
-* since user-land *patterns* can be arbitrary objects (we use strings in these articles, but Nest allows constructs like `client.send({cmd: 'get-customers'}, {})`), we use a built-in inherited function to "normalize" (essentially flatten) the pattern for internal usage
+* we should return channel names using a function, rather than hard coding them with the `_ack` and `_res` modifiers to avoid scattering magic strings throughout the code
+* since user-land *patterns* can be arbitrary objects (we use strings in these articles, but Nest allows constructs like `client.send({cmd: 'get-customers'}, {})`), we'll use a built-in inherited function to "normalize" (essentially flatten) the pattern for internal usage
 
 ### Implementation
 
@@ -248,7 +248,7 @@ protected publish(
 
 With the time we put in on the strategy discussion, this code should hopefully make sense, at least at a high level.  Let's first dispense with a couple of the minor details so they don't distract, then we can focus on the core functionality.
 * At the top of the method (remember, this method is called synchronously when a user-land request is made), we prepare the outbound packet (the *request* message to be published), including assigning the packet `id` and serializing the packet.
-* Response channel subscription management should be straightforward to follow. We essentially keep a counter of *response channel* subscriptions. We (logically speaking) do a `count++` when publishing a request, and a `count--` when unsubscribing from the response channel. This let's us decide whether or not we need to subscribe to the response channel before publishing a request (solving our "we can only have one active subscription at a time" issue).
+* Response channel subscription management should be straightforward to follow. We essentially keep a counter of *response channel* subscriptions per pattern. We (logically speaking) do a `count++` when publishing a request on that channel, and a `count--` when receiving a response from the response channel. This let's us decide whether or not we need to subscribe to the response channel before publishing a request (solving our "we can only have one active subscription per pattern at a time" issue).
 
 #### The `createSubscriptionHandler` Method: Binding the Response Emitter
 
@@ -303,16 +303,15 @@ Let's explore a little further. The function returned by this factory, as we sai
 
 #### Discarding Messages for Other Clients
 
-Consider that in a distributed microservice-based architecture, we may have *multiple* clients (e.g., instances of `nestHttpApp` or other "requestor" apps), connected via the broker, to the same *responder* (e.g., `nestMicroservice`). In such a configuration, each client may issue the same requests (i.e., utilize the same message pattern).  When that happens, we'll have multiple clients communicating using the same Faye topic.  This is, of course, completely natural for Faye (and any message broker). However, since we have multiple subscribers on the same channel/Faye topic (e.g., `'/get-customers'`), **each** client (each subscriber) will be notified with **any** response message that matches the response topic.  Only those that come from the originating client will have a matching `id` and *response emitter*.  We can surmise that non-matching responses are properly destined to be handled by other client instances. We can simply ignore these, returning `undefined` to our *Faye subscription handler*, which is essentially a *no-op*.
-
+Consider that in a distributed microservice-based architecture, we may have *multiple* clients (e.g., instances of `nestHttpApp` or other *requestor* apps), connected via the broker, to the same *responder* (e.g., `nestMicroservice`). In such a configuration, each client may issue the same requests (i.e., utilize the same message pattern).  When that happens, we'll have multiple clients communicating using the same Faye topic.  This is, of course, completely natural for Faye (and any message broker). However, since we have multiple subscribers on the same pattern/topic (e.g., `'/get-customers'`), **each** client (each subscriber) will be notified with **any** response message that matches the response topic.  Only those that come from the originating client will have a matching `id` and *response emitter*.  We can surmise that non-matching responses are properly destined to be handled by other client instances. We can simply ignore these, returning `undefined` to our *Faye subscription handler*, which is essentially a *no-op*.
 
 ### Loose Ends
 
-Back in our massive `publish()` method discussion, we briefly mentioned unsubscribing our *Faye subscription handler* for a particular message pattern after when the response channel quiesces.
+Back in our massive discussion of the `publish()` method, we briefly mentioned unsubscribing our *Faye subscription handler* for a particular message pattern after the response channel quiesces.
 
-Let's talk about Observable life-cycle hooks briefly.  While it's possible for us to unsubscribe from an Observable in user-land (a `subscribe()` call on an Observable returns a function to unsubscribe), that's rarely needed.  The RxJS Observer has a nice hook to take care of this automatically for us when the final event in a stream is emitted.  In Nest transporter-land, this happens when we receive the last message in a stream, with the `isDisposed` property set to true.
+Let's talk about Observable life-cycle hooks briefly.  While it's possible for us to unsubscribe from an Observable in user-land (a `subscribe()` call on an Observable returns a function to unsubscribe), that's rarely needed.  The RxJS Observer takes care of this automatically for us when the final event in a stream is emitted, and has a hook for any further cleanup we need to do.  In Nest transporter-land, this life-cycle event happens when we receive the last message in a stream, with the `isDisposed` property set to true.
 
-From this Observable unsubscribe hook, we can run any cleanup code we need upon stream completion, such as determining whether to unsubscribe our *Faye subscription handler*.  To do this, we call the cleanup code from our Observable unsubscribe function.  Remember, this is the function **returned from** the *observable subscriber function*, so we can expect to find it back in our `publish()` method.  Let's take a look.  Note the function returned at the bottom of the `publish()` method body.  That's our *unsubscribe hook*.  From it, we can do any cleanup, as shown below:
+From the Observable unsubscribe hook, we can run any cleanup code we need upon stream completion, such as determining whether to unsubscribe our *Faye subscription handler*.  To do this, we call our custom cleanup code from the Observable unsubscribe function.  Remember, this is the function **returned from** the *observable subscriber function*, so we can expect to find it back in our `publish()` method.  Let's take a look.  Note the function returned at the bottom of the `publish()` method body.  That's our *unsubscribe hook*.  From it, we can do any cleanup, as shown below:
 
 ```typescript
 // nestjs-faye-transporter/src/requestor/clients/faye-client.ts
@@ -328,7 +327,7 @@ We do two important things at the termination of each message stream:
 1. We decide whether to unsubscribe for messages on that topic on the Faye response channel
 2. We delete the relevant *response emitter* function from the map
 
-Deciding whether to unsubscribe requires us to revisit the [subscription management](#other-bookkeeping) topic. You should be able to connect the dots by looking at the `unsubscribeFromChannel()` method shown below, and the discussion we had earlier about subscription bookkeeping.  Basically, we unsubscribe when the count of in-flight requests reaches 0.
+Deciding whether to unsubscribe requires us to revisit the [subscription management](#other-bookkeeping) topic. You should be able to connect the dots by looking at the `unsubscribeFromChannel()` method shown below, and the discussion we had earlier about subscription bookkeeping.  Basically, we unsubscribe when the count of in-flight requests for a given pattern/topic reaches 0.
 
 ```typescript
   protected unsubscribeFromChannel(channel: string) {
@@ -343,7 +342,7 @@ Deciding whether to unsubscribe requires us to revisit the [subscription managem
 
 ### Connection Management
 
-The framework follows a specific protocol for accessing the client connection. This protocol deals with connection establishment and connection errors as Observable events.  Rather than review this code in detail, we can safely say that it is **mostly boilerplate*.  Let's call out the parts that are specific to Faye.
+The framework follows a specific protocol for accessing the broker client library connection object. This protocol deals with connection establishment and connection errors as Observable events.  Rather than review this code in detail, we can safely say that it is *mostly boilerplate*.  Let's call out the parts that are specific to Faye.
 
 We need to implement a `connect()` method, which is tied to a class member called `connection`.  Let's take a look:
 
@@ -369,17 +368,17 @@ We need to implement a `connect()` method, which is tied to a class member calle
 
 We populate `this.connection` by first generating a live connection using the the library-specific protocol.  For Faye, this requires instantiating a `Client` object, then calling `connect()`.
 
-Once we have a connection, we run this through the framework by calling `this.connect$()` as shown above.  This method takes the connection object (`this.fayeClient`), and constants defining the events the API defines for "success" and "failure". In the case of Faye, we needed to define them in the file `/nestjs-faye-transporter/src/constants.ts`, and import those constants to this (the `faye-client.ts`) file.
+Once we have a connection, we run this through the framework by calling `this.connect$()` as shown above.  This method takes the connection object (`this.fayeClient`), and constants defining the events the client library defines for "success" and "failure". In the case of Faye, we define them in the file `/nestjs-faye-transporter/src/constants.ts`, and import those constants to this (the `faye-client.ts`) file.
 
-In this manner, the framework uses a connection if it exists, or creates one if needed, and handles the lifecycle events in a uniform way.
+In this manner, the framework uses a connection if it exists, or creates one if needed, and handles the connection lifecycle events in a uniform and efficient way.
 
 The call to `this.handleError()` is optional, and let's us emit a log message in the event the connection fails.
 
-As mentioned, most of this is boilerplate, and if integrating another broker, you can simply plug in the client library-specific calls where indicated for the Faye library calls above.
+As mentioned, most of this is boilerplate; if you're integrating another broker, you can simply plug in the client library-specific calls where indicated for the Faye library calls above.
 
 ### Event Handling
 
-The final feature to implement is *event handling* &#8212; handling user-land `client.emit(...)` calls.  As we found on the server side in Part 3, this is far simpler than dealing with *request/response* because we are dealing with one-way messages: we simply send a message over the outbound (request) channel, and we're done.  No subscribing to responses necessary.
+The final feature to implement is *event handling* &#8212; handling user-land `client.emit(...)` calls.  As we found on the server side in Part 3, this is far simpler than dealing with *request/response* style messaging because we are dealing with one-way messages: we simply send a message over the outbound (request) channel, and we're done.  No subscribing to responses necessary.
 
 Because this is straightforward and follows a predictable pattern, the framework handles most of this for us in the `ClientProxy#emit` method.  Here's what that code looks like:
 
@@ -408,7 +407,7 @@ protected abstract dispatchEvent<T = any>(packet: ReadPacket): Promise<T>;
 
 So our implementation simply needs to accept a request packet and publish the appropriate message.  We need to wrap that in a promise to match the signature above.
 
-Here's how we implement the `dispatchEvent()` method in our client:
+Here's how we implement the `dispatchEvent()` method in our Faye client component:
 
 ```typescript
   protected dispatchEvent(packet: ReadPacket): Promise<any> {
@@ -439,6 +438,6 @@ For those just interested in a deeper understanding of this key aspect of Nest M
 
 ### What's Next
 
-I have a sixth article planned, in which I'll compare several of Nest's built-in transporter implementations to provide further insight into the nuances of each implementation. I'll gauge from the responses to this series whether that's something people would find useful, so please comment below to encourage me to write that final article! :)
+I have a sixth article planned, in which I'll compare several of Nest's built-in transporter implementations to provide further insight into the nuances of each implementation. I'll gauge from the responses to this series whether that's something people would find useful, so please comment below to encourage me to write that final article! :smile:
 
 Feel free to ask questions, make comments or suggestions, or just say hello in the comments below. And join us at [Discord](https://discord.gg/nestjs) for more happy discussions about NestJS. I post there as _Y Prospect_.
