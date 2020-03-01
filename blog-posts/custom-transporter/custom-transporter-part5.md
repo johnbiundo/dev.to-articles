@@ -64,7 +64,13 @@ One valuable lesson we learned in the last chapter is that we can use the Observ
 
 The problem we have to solve is how to associate a unique *observable subscription handler* with each Observable (i.e., with each `send()` request that returns that Observable as a response). Furthermore, we need to do this while having only a **single active Faye subscription handler**.  This is going to require a little higher order programming.  Stick with me &#8212; this is the hardest part of the tutorial, but we can get through it.
 
-Let's propose defining our problem as follows: we are binding the *observable subscriber function* logic to our *Faye subscription handler* too soon/too statically.  Our solution needs to do late/dynamic binding of the *observable subscriber function* logic.  To be precise, it needs to delay binding the the *observable subscriber function* into the *Faye subscription handler* until a request is made so it can associate a unique one to each request. We have to make a little leap here.  Conceptually, what we're going to do is the following.  We'll make our single *observable subscriber function* logic dynamic by extracting a chunk of code into a factory function we'll call for each `send()` request. We'll store a unique instance of the function returned by this factory each time we create an Observable. Later, when we get a response, we'll retrieve that stored function and plug it back into the single static *observable subscribe function*, giving us a unique *observable subscriber function* for each request.  The factory function is actually provided by the framework:
+Let's propose defining our problem as follows: we are binding the *observable subscriber function* logic to our *Faye subscription handler* too soon/too statically.  Our solution needs to do late/dynamic binding of the *observable subscriber function* logic.  To be precise, it needs to delay binding the the *observable subscriber function* into the *Faye subscription handler* until a request is made so it can associate a unique one to each request. We have to make a little leap here. This is tough, because there is only a **single** *Faye subscription handler*.  What to do?
+
+Conceptually, what we're going to do is the following.  We'll make our single *observable subscriber function* logic dynamic by extracting a chunk of what was previously static code and instead have it produced by a factory function. We'll call the factory function for each `send()` request.  The code we extract, produce from a factory, save and recall will be the code that actually translates inbound messages to observer emits. We'll call that code the *response emitter* and the factory that produces it the *response emitter factory*. We'll see the factory in a moment.
+
+We'll store a unique instance of the *response emitter* function each time we create an Observable. Later, when we get a response, we'll retrieve that stored function and plug it back into the single static *observable subscribe function*, giving us a unique *observable subscriber function* for each request.
+
+Let's get started. The *response emitter factory* function is actually provided by the framework (it's called `createObserver`, but we're going to stick with our *response emitter factory* label):
 
 ```typescript
 // from https://github.com/nestjs/nest/blob/master/packages/microservices/client/client-proxy.ts#L82
@@ -85,22 +91,20 @@ Let's propose defining our problem as follows: we are binding the *observable su
   }
 ```
 
-Though the method name is `createObserver()`, I'm going to refer to it going forward as the *response emitter factory* to avoid confusion with the term *Observer*, which has a somewhat different meaning in RxJS. The function it returns, which we'll call the *response emitter*, is what we store and retrieve to make our *observable subscriber function* dynamic.
-
-> Let's take a quick timeout to avoid terminology soup confusion!
+> We've gotten quite meta here! Let's take a quick timeout to clarify all our terms!
 >
 > *Faye subscription handler*: A callback registered with the Faye client library that is invoked whenever a message with a particular topic is received.
 >
 > *Observable subscriber function*: A callback used during [Observable creation](xxx) to convert application events (e.g., inbound Faye messages) to Observer callbacks. For example, this is the mechanism that enables us to call the user-land handler with the value emitted by our Observer every time an inbound message is received.
 >
-> *Response emitter factor factory*: A [higher order function](xxx) that **returns** a *response emitter* (defined below)
+> *Response emitter factor factory*: A [higher order function](xxx), provided by the framework, that **returns** a *response emitter* (defined below)
 >
-> *response emitter*: A function that delivers the dynamic part of our *Faye subscription handler*.  We will have a unique instance of the *response emitter* for each Observable, overcoming the multiplexing problem.
+> *response emitter*: A function that delivers the dynamic part of our *observable subscriber function*.  We will have a unique instance of the *response emitter* for each Observable, overcoming the multiplexing problem.
 >
 
-The approach we'll take to implement this goes something like this:
+Let's head toward implementation.  The approach we'll take to implement this goes something like this:
 
-1. At the time a user-land `send()` call is made, we'll use the *response emitter factory* to create a unique instance of the *response emitter*, along with a unique identifier\* (`id` field) for the request. We'll store an association between the unique id and the *response emitter* in a map.
+1. At the time a user-land `send()` call is made, we'll call the *response emitter factory* to create a unique instance of the *response emitter*; we'll also generate a unique identifier\* (`id` field) for the request, and store an association between the unique id and the *response emitter* in a map.
 
     > \*At last, we see the genesis of the `id` field we've been carrying along with our messages all this time!
 2. When a response is received, we'll extract the `id` from the response, and use it to look up the *response emitter*. We'll then call this unique instance of the *response emitter* from within the single shared *observable subscriber function*, and use this to emit the result.  Since the only Observable associated with this *response emitter* is the originator of the request, that's the only one that receives the emitted result.
