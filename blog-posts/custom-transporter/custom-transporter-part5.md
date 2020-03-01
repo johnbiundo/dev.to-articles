@@ -43,15 +43,13 @@ I ended the last article with a discussion of the shortcomings of our *Take 1* (
 
 The *big problem* we found with our first implementation is that it's a little naïve about handling multiple simultaneous requests.  Let's make sure we understand why.  The first thing to think through is the premise of multiplexing.  What we're essentially doing is sharing a single pair of channels for sending and receiving unrelated requests.  Let's focus on the behavior of the response channel, as it seems like the potentially problematic one (after all, the request channel is just sort of "fire and forget").
 
-We uncovered the problem in our "race test" at the end of the last chapter. The triggering scenario for our problem, in basic terms, is: **we sent two requests, where the second request finished before the first one**.  Our shared response channel just isn't prepared to handle this. It's well-behaved in the context of one-at-a-time requests: it subscribes and waits for a response, then unsubscribes. But in the face of multiple overlapping requests, its behavior is clearly incorrect. Let's try to describe why, as this will guide us to a solution.  The problem is this: we can have only a single active *Faye subscription handler*<sup>1</sup> no matter how many messages we send (this is by definition, since we have a single channel).  Each request causes us to overwrite the previous *Faye subscription handler* when we re-issue the `fayeClient.subscribe(...)` call.  Moreover, that active one, with its built-in Observer, notifies **every** subscriber.
+We uncovered the problem in our "race test" at the end of the last chapter. The triggering scenario for our problem, in basic terms, is: **we sent two requests, where the second request finished before the first one**.  Our shared response channel just isn't prepared to handle this. It's well-behaved in the context of one-at-a-time requests: it subscribes and waits for a response, then unsubscribes. But in the face of multiple overlapping requests, its behavior is clearly incorrect. Let's try to describe why, as this will guide us to a solution.  The problem is this: we can have only a single active *Faye subscription handler*<sup>1</sup> no matter how many messages we send (this is by definition, since we have a single response channel).  Each request causes us to overwrite the previous *Faye subscription handler* when we re-issue the `fayeClient.subscribe(...)` call.  Moreover, that active one, with its built-in Observer, notifies **every** subscriber.
 
-> <sup>1</sup>The generic term "subscription handler" is unfortunately overloaded in our discussion.  In the last chapter we introduced our nifty *observable subscriber function* (and its derivative, the *observable subscription handler factory*).  Here we're talking about a *Faye subscription handler*.  These are two separate concepts, and we need to try to be very careful with our language.  **Especially** since we have been, and will continue to be, building objects that create a tight relationship between these two!  I'll do my best to keep the terminology straight, and you please do too!
+> <sup>1</sup>The generic term "subscription handler" is unfortunately overloaded in our discussion.  In the last chapter we introduced our nifty *observable subscriber function*.  Here we're talking about a *Faye subscription handler*.  These are two separate concepts, and we need to try to be very careful with our language.  **Especially** since we have been, and will continue to be, building objects that create a tight relationship between these two!  I'll do my best to keep the terminology straight, and you please do too!
 
 ### Strategy for Solving the Multiplexing Challenge
 
-OK, let's start working on the strategy.  We're going to work through a number of components of the strategy starting at a somewhat abstract level.
-
-> Given the complexity of this problem, it's helpful to approach a solution starting from a higher level, and successively refining our understanding and implementation.  We'll walk through the details of handling this in our Faye client component, but some of the details will vary from one transport library (e.g., broker) to the next because **each has its own message pattern and API**.  If you understand the concepts, there is a certain amount of boilerplate material that you can adapt to a particular transport library. Inevitably, if you need to build a new transporter client, you'll have to work through a few knotholes. In the mean time, pay more attention to the concepts than to understanding every line of code.
+OK, let's start working on the strategy. Given the complexity of this problem, it's helpful to approach a solution starting from a somewhat abstract level, and successively refining our understanding and implementation.  We'll walk through the details of handling this in our Faye client component, but some of the details will vary from one transport library (e.g., broker) to the next because **each has its own message pattern and API**.  If you understand the concepts, there is a certain amount of boilerplate material that you can adapt to a particular transport library. Inevitably, if you need to build a new transporter client, you'll have to work through a few knotholes. In the mean time, pay more attention to the concepts than to understanding every line of code.
 
 #### The Observable Part
 
@@ -60,33 +58,53 @@ We know `ClientProxy#send()` returns an Observable.  The job of that Observable 
 ![Convert Messages to Stream](./assets/client-proxy-observable.gif 'Convert Messages to Stream')
 <figcaption><a name="remote-stream"></a>Figure 1: Convert Messages to Stream</figcaption>
 
-One valuable lesson we learned in the last chapter is that we can use the Observable/observer pattern with a factory method to "wrap our Faye client inside an Observable". This was our *observable subscriber function factory* pattern &#8212; implemented in the `handleRequest()` method ([review the source code here](xxx)) which **builds and returns** the *observable subscriber function* (the bit of code that actually emits values through our Observable).  We're going to build on this lesson, and take it to the next level, to deal with the complexities of the multiplexing challenge.
+One valuable lesson we learned in the last chapter is that we can use the Observable/observer pattern to essentially "wrap our Faye client inside an Observable". This was our *observable subscriber function* pattern &#8212; implemented in the `handleRequest()` method ([review the source code here](xxx)) which builds the *observable subscriber function* (the bit of code that actually emits values through our Observable).  We're going to build on this lesson, and take it to the next level, to deal with the complexities of the multiplexing challenge.
 
 #### Handling Multiple Requests: The Union of Observables and Correlation Ids
 
 The problem we have to solve is how to associate a unique *observable subscription handler* with each Observable (i.e., with each `send()` request that returns that Observable as a response). Furthermore, we need to do this while having only a **single active Faye subscription handler**.  This is going to require a little higher order programming.  Stick with me &#8212; this is the hardest part of the tutorial, but we can get through it.
 
-Let's propose defining our problem as follows: we are binding the *observable subscriber function* logic to our *Faye subscription handler* too soon/too statically.  Our solution needs to do late/dynamic binding of the *observable subscriber function* logic.  To be precise, it needs to delay binding the function returned by the *observable subscriber function factory* into the *Faye subscription handler* until a request is made so it can associate a unique one to each request. We have to make a little leap here.  Conceptually, what we're going to do is **create and store** an instance of that *observable subscriber function factory* each time a request is made. Later, when we get a response, we'll retrieve that stored function and use it to give us a unique *observable subscriber function* for the request.  For the rest of this article, we'll refer to this stored function as our *handler factory*.
+Let's propose defining our problem as follows: we are binding the *observable subscriber function* logic to our *Faye subscription handler* too soon/too statically.  Our solution needs to do late/dynamic binding of the *observable subscriber function* logic.  To be precise, it needs to delay binding the the *observable subscriber function* into the *Faye subscription handler* until a request is made so it can associate a unique one to each request. We have to make a little leap here.  Conceptually, what we're going to do is the following.  We'll first break off a piece of the *observable subscribe function* so that we can store a unique instance of it with each request. Later, when we get a response, we'll retrieve that stored function and plug it back into the single static *observable subscribe function*, giving us a unique *observable subscriber function* for the request.  That little piece we break off is the part of the *observable subscription function* that emits results.  As a preview, here's what it looks like. This function is provided by the framework:
 
-> Let's take a quick timeout to avoid terminology soup confusion!  If the last paragraph [baked your noodle](https://www.youtube.com/watch?v=eVF4kebiks4) a little bit, refresh on the terminology again, then hit rewind and replay!
+```typescript
+// from https://github.com/nestjs/nest/blob/master/packages/microservices/client/client-proxy.ts#L82
+  protected createObserver<T>(
+    observer: Observer<T>,
+  ): (packet: WritePacket) => void {
+    return ({ err, response, isDisposed }: WritePacket) => {
+      if (err) {
+        return observer.error(err);
+      } else if (response !== undefined && isDisposed) {
+        observer.next(response);
+        return observer.complete();
+      } else if (isDisposed) {
+        return observer.complete();
+      }
+      observer.next(response);
+    };
+  }
+```
+
+Though the method name is `createObserver()`, I'm going to refer to it going forward as the *observable subscriber handler factory* to avoid confusion with the term *Observer*, which has a somewhat different meaning in RxJS. It returns a function, which we'll call the *handler function*.
+
+> Let's take a quick timeout to avoid terminology soup confusion!
 >
 > *Faye subscription handler*: A callback registered with the Faye client library that is invoked whenever a message with a particular topic is received.
 >
 > *Observable subscriber function*: A callback used during [Observable creation](xxx) to convert application events (e.g., inbound Faye messages) to Observer callbacks. For example, this is the mechanism that enables us to call the user-land handler with the value emitted by our Observer every time an inbound message is received.
 >
-> *Observable factory*: A [higher order function](xxx) that **returns** an Observable with a dynamic *observable subscriber function*.  We use this construct to create customized Observables that can listen to events from our transporter space and transmit them back via the Observable.  An example is with the [`handleRequest()` function](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/part4/nestjs-faye-transporter/src/requestor/clients/faye-client.ts#L27) we saw in the last chapter.
+> *Observable subscriber handler factory*: A [higher order function](xxx) that **returns** a *handler function* (see below)
 >
-> *handler factory*:
+> *handler function*: The dynamic part of our *Faye subscription handler*.  We will have a unique instance of the *handler function* for each Observable, overcoming the multiplexing problem.
 >
 
-Returning to our story: the construction we just conceived let's us associate a **unique** *observable subscriber function* with each Observable.  The approach we'll take goes something like this:
+The approach we'll take to implement this goes something like this:
 
-1. At the time a user-land request is issued, we'll create an instance of the *handler factory*, along with a unique identifier\* (`id` field) for the request. We'll store an association between the unique id and the *handler factory* in a map.
+1. At the time a user-land `send()` call is made, we'll use the *observable subscriber handler factory* to create a unique instance of the *handler function*, along with a unique identifier\* (`id` field) for the request. We'll store an association between the unique id and the *handler function* in a map.
+
     > \*At last, we see the genesis of the `id` field we've been carrying along with our messages all this time!
-2. When a response is received, we'll extract the `id` from the response, and use it to look up the *handler factory*. We'll then use this unique instance of the *handler factory* to give us the actual final *observable subscriber function* associated with the request, and use this to emit the result.  Since the only Observable associated with this *observable subscriber function* is the originator of the request, that's the only one that receives the emitted result.
+2. When a response is received, we'll extract the `id` from the response, and use it to look up the *handler function*. We'll then use this unique instance of the *handler function* within the *observable subscriber function* associated with the *faye subscription handler*, and use this to emit the result.  Since the only Observable associated with this *handler function* is the originator of the request, that's the only one that receives the emitted result.
 3. To tie these things together, we need to pass the `id` all the way through the request/response flow.  The requesting code generates the `id` property, it's attached to the outbound message, and finally returned on the corresponding inbound message. Then we use it as described in step 2 above.
-
-
 
 > The pattern we described in step 3 above is often referred to as using [correlation ids](https://www.enterpriseintegrationpatterns.com/patterns/messaging/CorrelationIdentifier.html) (for example, here's a [tutorial showing how](https://www.rabbitmq.com/tutorials/tutorial-six-python.html) a similar concept can be used for writing native RabbitMQ client apps).
 
