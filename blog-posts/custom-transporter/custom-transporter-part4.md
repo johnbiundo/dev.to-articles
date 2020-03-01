@@ -180,7 +180,23 @@ We expose this feature, of course, with the `send()` method right at the top of 
   }
 ```
 
-As required, it returns an `Observable`. We use the normal Observable creation pattern<sup>1</sup>, passing it a function that **access the message stream and emits the values through our Observable**. Traditionally, this callback is called the *observable subscriber function*.  Simple Observables may define the *subscriber function* in place, but we already know that ours is going to be a little complicated because the **source** of the data we are going to emit comes from the Faye broker.  Specifically, it comes from the callback we're going to register in the Faye `subscribe()` call which is invoked each time a message comes in on the response channel.  In these more complex scenarios, we delegate this *observer subscriber function* to a specialized function. That's what we're doing in the code above with the call to `handleRequest()`.
+#### The `send()` Method Returns an Observable
+
+As required, it returns an `Observable`. We need to delve into Observable land here for a while. This can be confusing/frustrating if you're not familiar with the topic, but by the time you're finished here, I *think* the light bulb will go on.
+
+In the `send()` method body, we construct an Observable using the *normal Observable creation pattern*<sup>1</sup>, and return it to user-land.  Applying the normal Observable creation pattern in our context means we pass the constructor a function that **accesses the Faye message stream and emits the values through our Observable**. Traditionally, this callback is called the *observable subscriber function*.
+
+Simple Observables (the ones you'll find in most Medium articles ;)) often define this *observable subscriber function* body right in place; but we already know that ours is going to be a little complex because the **source** of the data we are going to emit comes from the Faye broker.  Specifically, it comes from the callback we're going to register in the Faye `subscribe()` call which is invoked each time a message comes in on the response channel.  In these more complex scenarios, to keep the code clean, we delegate this *observer subscriber function* to a specialized function. That's what we're doing in the code above with `handleRequest()`.
+
+For the moment, you need to know two things:
+1. `handleRequest()` **is** our *observable subscriber function*
+2. `handleRequest()` is going to make a Faye client API call to subscribe to the response message queue, causing it to register to receive future inbound requests.  We'll see that code in a minute, but let's keep it abstract for another minute.
+
+This can seem kind of strange if you're not familiar with the Observable pattern<sup>1</sup>. Let's see if it helps to think about it this way.  We're setting up callbacks at several levels in a sort of cascade.  At the "innermost" level, we have the *Faye subscription handler* callback that will run we get an inbound message on the response channel.  When this handler runs, we want to in turn trigger a callback **through the Observer mechanism** to a higher-level callback --xxx-- the user-land response handler (the code that looks like `pipe(tap(step) => {...})` in the `app.controller.ts` file, shown above).
+
+That's what the `send()` method is setting up with the Observable it creates.  One more thing about observables to keep in mind.  What we just described effectively "sets up the cascade of callbacks", but these functions are **cold** in the sense that all we've done is register callbacks. The act of **subscribing** to the Observable kicks things in motion. The act of subscribing triggers the *observable subscribe function* to run; when you think about that, you realize that "Aha! So this in turn causes the Faye API `subscribe()` call inside `handleRequest()` to run
+
+If this still isn't completely intuitive, I feel your pain, but I advise you to just let it marinate in the background and proceed; if you **must scratch that itch**, see the footnote below.
 
 > <sup>1</sup>I'm assuming familiarity with this pattern. If you're an RxJS junky, this should be easy to follow.  If you're not, I'll try not to wave my hands too much. I too struggled with this concept for a while, so I've created a small [side excursion here](xxx) to help with this concept.  This should take you no more than 5-10 minutes to work through, and might be a helpful pre-requisite if some of this section has you a little boggled.
 
@@ -190,7 +206,7 @@ So let's dig into that `requestHandler()` method.
 
 The `handleRequest()` method is where we marry up our Observable pattern with our *request/response* handling pattern. It's easiest if we decompose this and look at a version that abstracts out the Observable code first.  Then we'll see how it all wires together.
 
-In this version, we can focus directly on the *request/response* handling pattern.  You'll quickly recognize this as our old friend the **STRPTQ** pattern. (As a refresher, feel free to review how we implemented this functionality in our native Faye `customerApp` way back in [Episode 1](https://dev.to/nestjs/build-a-custom-transporter-for-nestjs-microservices-dc6-temp-slug-6007254?preview=d3e07087758ff2aac037f47fb67ad5b465f45272f9c5c9385037816b139cf1ed089616c711ed6452184f7fb913aed70028a73e14fef8e3e41ee7c3fc#requestresponse).  Here's a [link to that code](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/part4/customerApp/src/customer-app.ts#L20)).
+In the first pseudocode-ish version below, we can focus directly on the *request/response* handling pattern.  You'll quickly recognize this as our old friend the **STRPTQ** pattern. (As a refresher, feel free to review how we implemented this functionality in our native Faye `customerApp` way back in [Episode 1](https://dev.to/nestjs/build-a-custom-transporter-for-nestjs-microservices-dc6-temp-slug-6007254?preview=d3e07087758ff2aac037f47fb67ad5b465f45272f9c5c9385037816b139cf1ed089616c711ed6452184f7fb913aed70028a73e14fef8e3e41ee7c3fc#requestresponse).  Here's a [link to that code](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/part4/customerApp/src/customer-app.ts#L20)).
 
 The quick summary for handling a request (a message expecting a response) with **STRPTQ** is:
 1. Subscribe to the response channel (we know to use the pattern name followed by `'_res'`)
@@ -231,7 +247,7 @@ With that in mind, the draft version of `handleRequest()` below should be pretty
 
 A few other notes from the code:
 
-* The `partialPacket` parameter has most of the elements of our outbound message.  It's been invoked from `send()` with an object like:
+* The `partialPacket` parameter has most of the elements of our outbound request message.  It's been invoked from `send()` with an object like:
     ```json
     {
       pattern: '/jobs-stream1/',
@@ -243,9 +259,9 @@ A few other notes from the code:
 
 * After running our serializer, the packet is ready to send.
 * In Faye, the `subscribe()` call returns a promise that resolves when the Faye server returns an acknowledgement.
-* Upon that acknowledgement, we publish the serialized packet we built earlier.
+* Upon that acknowledgement (promise resolution), we publish the serialized packet we built earlier.
 
-Now let's deal with marrying that up with our Observable.  Here's the final version:
+Now let's deal with marrying that up with our Observable.  Here's the final version of `handleRequest()`.
 
 ```typescript
   public handleRequest(partialPacket, observer): Function {
@@ -302,7 +318,7 @@ Let's focus in on the newly added part:
     };
 ```
 
-Let's review the purpose of this chunk of code.  We're building the callback that will be passed in our Faye client API `subscribe()` call to handle inbound messages.  As we handle each message, we are converting the sequence back into an Observable stream.  We do that by taking the following steps for each inbound message from Faye:
+Let's review the purpose of this chunk of code.  This is (in terms of the concepts we started out with), our **inner callback** --xxx-- the function that will be passed in our Faye client API `subscribe()` call to handle inbound messages.  As we handle each message in this function, we are converting the sequence back into an Observable stream.  We do that by taking the following steps for each inbound message from Faye:
 
 1. Deserialize it and destructure it, leaving us with an `error`, `response` and `isDisposed` value for each inbound message
 2. Determine if the Observable stream has errored or is complete
