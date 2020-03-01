@@ -64,7 +64,7 @@ One valuable lesson we learned in the last chapter is that we can use the Observ
 
 The problem we have to solve is how to associate a unique *observable subscription handler* with each Observable (i.e., with each `send()` request that returns that Observable as a response). Furthermore, we need to do this while having only a **single active Faye subscription handler**.  This is going to require a little higher order programming.  Stick with me &#8212; this is the hardest part of the tutorial, but we can get through it.
 
-Let's propose defining our problem as follows: we are binding the *observable subscriber function* logic to our *Faye subscription handler* too soon/too statically.  Our solution needs to do late/dynamic binding of the *observable subscriber function* logic.  To be precise, it needs to delay binding the the *observable subscriber function* into the *Faye subscription handler* until a request is made so it can associate a unique one to each request. We have to make a little leap here.  Conceptually, what we're going to do is the following.  We'll first break off a piece of the *observable subscribe function* so that we can store a unique instance of it with each request. Later, when we get a response, we'll retrieve that stored function and plug it back into the single static *observable subscribe function*, giving us a unique *observable subscriber function* for the request.  That little piece we break off is the part of the *observable subscription function* that emits results.  As a preview, here's what it looks like. This function is provided by the framework:
+Let's propose defining our problem as follows: we are binding the *observable subscriber function* logic to our *Faye subscription handler* too soon/too statically.  Our solution needs to do late/dynamic binding of the *observable subscriber function* logic.  To be precise, it needs to delay binding the the *observable subscriber function* into the *Faye subscription handler* until a request is made so it can associate a unique one to each request. We have to make a little leap here.  Conceptually, what we're going to do is the following.  We'll make our single *observable subscriber function* logic dynamic by extracting a chunk of code into a factory function we'll call for each `send()` request. We'll store a unique instance of the function returned by this factory each time we create an Observable. Later, when we get a response, we'll retrieve that stored function and plug it back into the single static *observable subscribe function*, giving us a unique *observable subscriber function* for each request.  The factory function is actually provided by the framework:
 
 ```typescript
 // from https://github.com/nestjs/nest/blob/master/packages/microservices/client/client-proxy.ts#L82
@@ -85,7 +85,7 @@ Let's propose defining our problem as follows: we are binding the *observable su
   }
 ```
 
-Though the method name is `createObserver()`, I'm going to refer to it going forward as the *observable subscriber handler factory* to avoid confusion with the term *Observer*, which has a somewhat different meaning in RxJS. It returns a function, which we'll call the *handler function*.
+Though the method name is `createObserver()`, I'm going to refer to it going forward as the *response emitter factory* to avoid confusion with the term *Observer*, which has a somewhat different meaning in RxJS. The function it returns, which we'll call the *response emitter*, is what we store and retrieve to make our *observable subscriber function* dynamic.
 
 > Let's take a quick timeout to avoid terminology soup confusion!
 >
@@ -93,17 +93,17 @@ Though the method name is `createObserver()`, I'm going to refer to it going for
 >
 > *Observable subscriber function*: A callback used during [Observable creation](xxx) to convert application events (e.g., inbound Faye messages) to Observer callbacks. For example, this is the mechanism that enables us to call the user-land handler with the value emitted by our Observer every time an inbound message is received.
 >
-> *Observable subscriber handler factory*: A [higher order function](xxx) that **returns** a *handler function* (see below)
+> *Response emitter factor factory*: A [higher order function](xxx) that **returns** a *response emitter* (defined below)
 >
-> *handler function*: The dynamic part of our *Faye subscription handler*.  We will have a unique instance of the *handler function* for each Observable, overcoming the multiplexing problem.
+> *response emitter*: A function that delivers the dynamic part of our *Faye subscription handler*.  We will have a unique instance of the *response emitter* for each Observable, overcoming the multiplexing problem.
 >
 
 The approach we'll take to implement this goes something like this:
 
-1. At the time a user-land `send()` call is made, we'll use the *observable subscriber handler factory* to create a unique instance of the *handler function*, along with a unique identifier\* (`id` field) for the request. We'll store an association between the unique id and the *handler function* in a map.
+1. At the time a user-land `send()` call is made, we'll use the *response emitter factory* to create a unique instance of the *response emitter*, along with a unique identifier\* (`id` field) for the request. We'll store an association between the unique id and the *response emitter* in a map.
 
     > \*At last, we see the genesis of the `id` field we've been carrying along with our messages all this time!
-2. When a response is received, we'll extract the `id` from the response, and use it to look up the *handler function*. We'll then use this unique instance of the *handler function* within the *observable subscriber function* associated with the *faye subscription handler*, and use this to emit the result.  Since the only Observable associated with this *handler function* is the originator of the request, that's the only one that receives the emitted result.
+2. When a response is received, we'll extract the `id` from the response, and use it to look up the *response emitter*. We'll then call this unique instance of the *response emitter* from within the single shared *observable subscriber function*, and use this to emit the result.  Since the only Observable associated with this *response emitter* is the originator of the request, that's the only one that receives the emitted result.
 3. To tie these things together, we need to pass the `id` all the way through the request/response flow.  The requesting code generates the `id` property, it's attached to the outbound message, and finally returned on the corresponding inbound message. Then we use it as described in step 2 above.
 
 > The pattern we described in step 3 above is often referred to as using [correlation ids](https://www.enterpriseintegrationpatterns.com/patterns/messaging/CorrelationIdentifier.html) (for example, here's a [tutorial showing how](https://www.rabbitmq.com/tutorials/tutorial-six-python.html) a similar concept can be used for writing native RabbitMQ client apps).
@@ -130,7 +130,7 @@ With this strategy in mind, here's the outline of how we'll implement it.
 
 1. Unlike our *Take 1* version, where we created a new standalone class, we're now going to start by extending the `ClientProxy` class.  This is, of course, how we "plug in" to the framework.
 2. We're going to let the framework take over the implementation of `send()` for us, rather than implement it ourselves as we did in Part 4. The superclass `send()` method is now the entry point for processing a user-land `send()` call, and dictates how we plug in our pieces without disrupting the overall machinery.
-3. The superclass `send()` method calls upon a concrete implementation of `publish()`, which is where we'll implement the strategy we've been discussing, dealing with our *handler factory* construct, unique identifiers, and so forth, [as described above](#handling-multiple-requests-the-union-of-observables-and-correlation-ids).
+3. The superclass `send()` method calls upon a concrete implementation of `publish()`, which is where we'll implement the strategy we've been discussing, dealing with our *response emitter factory* construct, unique identifiers, and so forth, [as described above](#handling-multiple-requests-the-union-of-observables-and-correlation-ids).
 4. We're going to implement a method to *unsubscribe* from a Faye topic.
 5. We're going to provide a concrete implementation of `dispatchEvent()`, which is how `ClientProxy#emit()` is handled.
 6. We're going to beef up *connection management*, as we mentioned above, to enable the framework to efficiently share our connection across multiple calls.
@@ -170,11 +170,11 @@ Stripping this method to the bone, here's what it's doing:
 1. Reusing a `connection` if it exists or obtaining a new one.  Note that since it depends on client library particulars to deal with obtaining a connection, it depends on the `connect()` method &#8212; which we are responsible for implementing and will get to soon.
 2. Creating and returning the Observable that is effectively the "container" within which we'll implement the strategy we [discussed above](#strategy-for-solving-the-multiplexing-challenge).
 
-Let's look at that Observable creation step for a moment.  The first line `const callback = this.createObserver(observer)` is where we create our *handler factory* (the unique-per-request *observable subscriber function factory*). Remember: this factory gives us back a unique *observable subscriber function* for the currently processing request, which is what we'll stash away in our map for retrieval during response handling.
+Let's look at that Observable creation step for a moment.  The first line `const callback = this.createObserver(observer)` is where we create our *response emitter*.
 
 The second line calls `publish()`, which is an abstract method on the superclass that we must implement.  This is where we'll implement the custom details of our strategy.  Let's tackle that next. But first, let's note that `send()` calls `publish()` with two parameters:
 * the arguments from the user-land `client.send()` call (e.g., if the user wrote `client.send('/get-customers', {})`, the first argument would contain `{pattern: '/get-customers', data: {}}`).
-* the newly minted *handler factory*
+* the newly minted *response emitter*
 
 #### The `ClientFaye#publish()` Method
 
@@ -201,7 +201,7 @@ protected publish(
       // `publish()` call, when this function is called, it:
       // * updates the bookkeeping associated with the Faye subscription handler
       //   count
-      // * stashes our *handler factory* in the map
+      // * stashes our *response emitter* (called `callback` below) in the map
       const publishRequest = () => {
         subscriptionsCount = this.subscriptionsCount.get(responseChannel) || 0;
         this.subscriptionsCount.set(responseChannel, subscriptionsCount + 1);
@@ -212,10 +212,9 @@ protected publish(
         );
       };
 
-      // build the Faye API `subscribe()` callback handler
-      // this is the function that does the late binding of the
-      // *observable subscriber function* to the Faye response channel
-      // callback handler
+      // build the Faye subscription handler
+      // this function retrieves the *response emitter*
+      // and binds it to the rest of the Faye subscription handler logic
       const subscriptionHandler = this.createSubscriptionHandler(packet);
 
       // perform Faye `subscribe()` first (if needed), then Faye `publish()`
@@ -245,11 +244,11 @@ With the time we put in on the strategy discussion, this code should hopefully m
 * At the top of the method (remember, this method is called synchronously when a user-land request is made), we prepare the outbound packet (the *request* message to be published), including assigning the packet `id` and serializing the packet.
 * Subscription management should be straightforward to follow. We essentially keep a counter of *response channel* subscriptions. We (logically speaking) do a `count++` when publishing a request, and a `count--` when unsubscribing from the response channel. This let's us decide whether or not we need to subscribe to the response channel before publishing a request (solving our "we can only have one active subscription at a time" issue).
 
-#### The `createSubscriptionHandler` Method: Using the Handler Factory
+#### The `createSubscriptionHandler` Method: Binding the Response Emitter
 
-Finally, let's talk about the call to `createSubscriptionHandler()` &#8212; first at a high level, and then the details. First, let's recognize that this is the *actual function* that gets bound to the Faye `subscribe()` call on the response channel (i.e., `<message-pattern>_res`).  In it, we **do the late binding** of the *observable subscription handler*. This function looks up the *handler factory* by `id`, matching it with the request Observable, and calls it with the destructured inbound message fields.
+Finally, let's talk about the call to `createSubscriptionHandler()` &#8212; first at a high level, and then the details. First, let's recognize that this a factory that returns the *actual Faye subscription handler* that gets bound to the Faye `subscribe()` call on the response channel (i.e., `<message-pattern>_res`).  In it, we **do the late binding** of the *observable subscription handler*. We do the late binding by looking up the *response emitter* by `id`, matching it with the request Observable, and calling it with the destructured inbound message fields.
 
-With that in mind, we can explore a little further. Since this is the actual *Faye subscription handler* for the inbound response channel, its only argument (as dictated by the [Faye API](https://faye.jcoglan.com/browser/subscribing.html)) is an actual Faye inbound message. We should recognize that this is a factory function, so it's actually **returning** the handler &#8212; which is **how** we are able to do the late binding.  Here are the steps the *Faye subscription handler* method **returned by the factory** &#8212; the code that **actually runs** when an inbound message arrives &#8212; performs:
+With that in mind, we can explore a little further. The returned function has only one argument (as dictated by the [Faye API](https://faye.jcoglan.com/browser/subscribing.html)) &#8212; an actual Faye inbound message.  Here are the steps the *Faye subscription handler* that is produced from all this machinery performs:
 
 1. Deserialize the packet.
 2. Destructure the message so we can deal with its constituent values: `err`, `response`, `isDisposed` and `id`
