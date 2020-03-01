@@ -202,7 +202,7 @@ The comments should help with understanding what's happening, but at a high leve
 
 The only slightly tricky part is the call to `getMessageHandler()`.  This is just a higher-order function that is returning us the **actual** *Faye subscription handler* function.
 
-If all this looks somewhat familiar, it's because we're basically following the same pattern we used in the native `customerService` app in the previous article ([Part 1](https://dev.to/nestjs/build-a-custom-transporter-for-nestjs-microservices-dc6-temp-slug-6007254?preview=d3e07087758ff2aac037f47fb67ad5b465f45272f9c5c9385037816b139cf1ed089616c711ed6452184f7fb913aed70028a73e14fef8e3e41ee7c3fc)).
+If all this looks somewhat familiar, it's because we're basically following the same **STRPTQ** (*subscribe-to-the-response-then-publish-the-request*) pattern we used in the native `customerService` app in the previous article ([Part 1](https://dev.to/nestjs/build-a-custom-transporter-for-nestjs-microservices-dc6-temp-slug-6007254?preview=d3e07087758ff2aac037f47fb67ad5b465f45272f9c5c9385037816b139cf1ed089616c711ed6452184f7fb913aed70028a73e14fef8e3e41ee7c3fc)).
 
 ### Acceptance Testing
 
@@ -321,7 +321,7 @@ Not so fast... did you forget this is a six-part series :smiley:? Read on to see
 
 ### Understanding the Limitations of Take 1
 
-We already know we have to clean up a few things, like adding **event handling** (e.g., handlers decorated with `@EventPattern(...)`), adding TypeScript types, and plugging in more cleanly to the framework.  But the biggest limitation of our Take 1 implementation is its (lack of) handling of [RxJS observables](http://reactivex.io/).  To fully appreciate this, we'll have to take a bit deeper dive into the overall flow and handling of requests through the Nest system.
+We already know we have to clean up a few things, like adding **event handling** (e.g., handlers decorated with `@EventPattern(...)`), adding TypeScript types, and plugging in more cleanly to the framework.  But the biggest limitation of our Take 1 implementation is its (lack of) handling of [RxJS Observables](http://reactivex.io/).  To fully appreciate this, we'll have to take a bit deeper dive into the overall flow and handling of requests through the Nest system.
 
 We'll explore this in greater detail in the next article, but let's start with a picture.  The following animation shows the path a hypothetical inbound HTTP request would take through our application. Inner boxes with a red background are part of the Nest infrastructure. User supplied code lives in the user-land space with a white background.  Controllers are in light blue, and "Services" are in yellow.
 
@@ -340,14 +340,14 @@ An inbound HTTP request kicks off the following sequence of events.  Bolded word
     getCustomers(id: integer): Observable<Customer>
     ```
 
-Once the `getCustomers` method returns, we start the *return trip*, where things get more interesting. This "more interesting" part is mainly because Nest is very **observable-aware**.
+Once the `getCustomers` method returns, we start the *return trip*, where things get more interesting. This "more interesting" part is mainly because Nest is very **Observable-aware**.
 
 ![Nest Response Handling](./assets/transporter-response2.gif 'Nest Response Handling')
 <figcaption><a name="Nest Response Handling"></a>Figure 3: Nest Response Handling</figcaption>
 
 In this sequence, I'll introduce the role of what I'm informally calling the "Mapper" (there's no such official term or single component inside Nest called a Mapper).  Conceptually, it's the part(s) of the system that handle(s) dealing with Observables.
 
-> In the next article, we'll go through a few use cases for **why observables are so cool, why they're a perfect fit in this flow, AND how they're actually really easy to use**.  I know this diagram doesn't make it seem that way, but hey, we're building our own transporter (my inner [trekky](http://sfi.org/) can't help but giggle over that :rocket:).  The beauty of it is that once we handle this case properly &#8212; and the framework will make this easy as we'll see in the next chapter &#8212; everything we might want to do with Observables (and their potential is just, well... *mind bending*) **just works**.
+> In the next article, we'll go through a few use cases for **why Observables are so cool, why they're a perfect fit in this flow, AND how they're actually really easy to use**.  I know this diagram doesn't make it seem that way, but hey, we're building our own transporter (my inner [trekky](http://sfi.org/) can't help but giggle over that :rocket:).  The beauty of it is that once we handle this case properly &#8212; and the framework will make this easy as we'll see in the next chapter &#8212; everything we might want to do with Observables (and their potential is just, well... *mind bending*) **just works**.
 
 Here's the walk through of the return trip flow:
 
@@ -358,7 +358,7 @@ Here's the walk through of the return trip flow:
 5. On the `nestHttpApp` side, the broker client library (which has previously subscribed to the broker on the *response channel* &#8212; though we haven't coded that part yet), **receives the response message**.
 6. The `ClientProxy` class (again, we haven't built this yet) takes care of **routing** (and **mapping**, if it's dealing with non-primitive responses).
 7. This routes the response to the <u>originating service</u>, then back to the <u>originating controller</u>.
-8. Finally, the Nest HttpAdapter software again, if needed, **maps responses** to a suitable form for HTTP transport.  For example, if the response is an observable or a promise, it **converts it to an appropriate form** for return over HTTP.
+8. Finally, the Nest HttpAdapter software again, if needed, **maps responses** to a suitable form for HTTP transport.  For example, if the response is an Observable or a promise, it **converts it to an appropriate form** for return over HTTP.
 
 So what exactly is the issue?
 
@@ -376,7 +376,7 @@ async getCustomers(data: any): Promise<any> {
 }
 ```
 
-But what happens if our handler returns an observable? The framework enables this for all built-in transporters, so we should handle it too.  Let's test this really quickly.  Replace that last line in `app.controller.ts` with:
+But what happens if our handler returns an Observable? The framework enables this for all built-in transporters, so we should handle it too.  Let's test this really quickly.  Replace that last line in `app.controller.ts` with:
 
 ```typescript
 return of({customers});
@@ -387,7 +387,7 @@ You'll also have to add the following line to the top of the file:
 import { of } from 'rxjs';
 ```
 
-This construct uses the RxJS `of` operator to convert our `getCustomers()` method handler respomse to an **observable** &#8212; a stream (containing only a single value in our case, but still, a stream) of values.
+This construct uses the RxJS `of` operator to convert our `getCustomers()` method handler respomse to an **Observable** &#8212; a stream (containing only a single value in our case, but still, a stream) of values.
 
 If you make this change, then re-issue the `/get-customers` message (run `npm run get-customers` in terminal 3), you'll get a rather ugly failure in the `nestMicroservice` window.  This is our fault! We aren't handling this case, which, again, is expected of any Nest microservice transporter.
 

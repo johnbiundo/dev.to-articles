@@ -43,7 +43,7 @@ It's time to turn our attention to the client component. But let's start by reca
 <figcaption><a name="remote-stream"></a>Figure 1: Remote Observable Stream</figcaption>
 ### What's Next
 
-In this animated sequence, our `nestMicroservice` *responder* app responds to a *request* message (`ClientProxy#send`) by emitting a stream of three results (circles).  We saw in the last article how our transporter server component converts that stream to a sequence of 3 messages (boxes) to the broker, sending those messages on the response channel.  Our first meaningful task with the client component will be to consume those broker messages and convert them back into an observable (circles) in the `ClientProxy` layer so that our user-land controllers and services can use them as regular **RxJS** observables.
+In this animated sequence, our `nestMicroservice` *responder* app responds to a *request* message (`ClientProxy#send`) by emitting a stream of three results (circles).  We saw in the last article how our transporter server component converts that stream to a sequence of 3 messages (boxes) to the broker, sending those messages on the response channel.  Our first meaningful task with the client component will be to consume those broker messages and convert them back into an Observable (circles) in the `ClientProxy` layer so that our user-land controllers and services can use them as regular **RxJS** observables.
 
 In this iteration (*Take 1*), we'll take a similar approach to our first iteration of the server.  We'll get a basic functioning client working so we can focus on its responsibilities and the main code path.  Later, we'll add more robustness.  As with the server side, we'll ignore events (the `ClientProxy#emit` path) for now.
 
@@ -113,15 +113,25 @@ $ http get localhost:3000/jobs-stream1/1
 
 You can also read the [deep dive on Observables](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/master/observable-deepdive.md) for a thorough treatment (and a *treat* as well :wink:).  For now, all we need to know is what we see in the animation above: when we make this request, we get a *stream of results* in the form of a sequence of messages.
 
-Let's define our acceptance criteria for *Take 1* as follows.  Our `ClientFaye` object should let us send the `'/jobs-stream1'` request, and handle the response, converting the message stream back into an observable.
+Let's define our acceptance criteria for *Take 1* as follows.  Our `ClientFaye` object should let us send the `'/jobs-stream1'` request, and handle the response, converting the message stream back into an Observable.
 
 > **Note**: in [part5](https://dev.to/nestjs/part-5-completing-the-client-component-hlh-temp-slug-2907984?preview=82c11163db963ca01d8d62d3a7b14843b422a6b28f46762d999bbe4b7035ad634d48bbbdd740e36376121aa673354ff5259f8b3028bceb931e800d9e) we'll complete the implementation and have a fully functioning Faye Custom Transporter &#8212; both client and server side.
+
+### Take 1 Strategy
+
+Before diving into the code, let's review our overall strategy.  At a top level, it's pretty simple. For each user-land *request* (e.g., the `send(...)` call above), we want to issue the remote request and wait for the results (doing this send/receive through the Faye message broker API), and convert the response message(s) into an Observable stream.
+
+Issuing the request and waiting for the results using the broker API is familiar territory.  We'll just implement our very familiar STRPTQ (*subscribe-to-the-response-then-publish-the-request*) pattern to accomplish this.
+
+How do we convert the broker message stream into an Observable stream? We can use the Observable/observer pattern to do this. While I won't go into a lot of detail (you can [read more, including simple examples, here](xxx)), the basic idea is simple, and is the primary use case for Observables.  The easiest way to see this is through the code review below.
 
 ### Take 1 Code Review
 
 Let's dive into the code.  Open the file `nestjs-faye-transporter/src/requestor/clients/faye-client.ts`.
 
 You might notice that in this iteration, we're not actually extending any framework class.  We'll need to do that in the next iteration, but it makes our code smaller and easier to focus on the core logic if we omit that in this step and just define a new class.
+
+#### Class Definition
 
 Let's start with the class members and constructor:
 
@@ -141,6 +151,8 @@ export class ClientFaye {
 ```
 
 We should be familiar with the `serializer` and `deserializer` properties, and how they're initialized, from the server side.  The `fayeClient` holds our connection to the Faye broker and is the object we'll use to make Faye client API calls.  The constructor just sets this stuff up.
+
+#### Implementing `send()`
 
 With that covered, we can look at the API our class exposes.  First, recall that the user-land call we need to support is:
 
@@ -168,13 +180,72 @@ We expose this feature, of course, with the `send()` method right at the top of 
   }
 ```
 
-As required, it returns an `Observable`. We use the normal Observable creation pattern<sup>1</sup>, passing it a callback that handles emitting the values. Traditionally, this callback is called the *observable subscriber function*.  In the callback function, rather than handle the *observer subscriber function* logic directly, we add a level of indirection, using a **factory function** to return us the the *observable subscription function* based on the pattern (e.g., `'/jobs-stream1'` ) and data (e.g., `duration`) in the request. We use this factory function because the pattern and data values are unknown until the call to `send()` is made.  Since we'll be using these terms and concepts quite a bit, let's give this factory function pattern a standard name too: we'll call it the *observable subscription function factory* &#8212; indicating that it takes some input arguments and returns a "configured" *observable subscriber function**.  This might sound a bit complicated, but let's break it down.
+As required, it returns an `Observable`. We use the normal Observable creation pattern<sup>1</sup>, passing it a function that **access the message stream and emits the values through our Observable**. Traditionally, this callback is called the *observable subscriber function*.  Simple Observables may define the *subscriber function* in place, but we already know that ours is going to be a little complicated because the **source** of the data we are going to emit comes from the Faye broker.  Specifically, it comes from the callback we're going to register in the Faye `subscribe()` call which is invoked each time a message comes in on the response channel.  In these more complex scenarios, we delegate this *observer subscriber function* to a specialized function. That's what we're doing in the code above with the call to `handleRequest()`.
 
-> <sup>1</sup>I'm assuming familiarity with this pattern. If you're an RxJS junky, this should be easy to follow.  If you're not, I'll try not to wave my hands too much. I too struggled with this concept for a while, so I've created a small [side excursion here]() to help with this concept.  This should take you no more than 5-10 minutes to work through, and might be a helpful pre-requisite if some of the previous paragraph has you a little boggled.
+> <sup>1</sup>I'm assuming familiarity with this pattern. If you're an RxJS junky, this should be easy to follow.  If you're not, I'll try not to wave my hands too much. I too struggled with this concept for a while, so I've created a small [side excursion here](xxx) to help with this concept.  This should take you no more than 5-10 minutes to work through, and might be a helpful pre-requisite if some of this section has you a little boggled.
+
+So let's dig into that `requestHandler()` method.
 
 #### The Request Handler
 
-The `handleRequest()` method is where the action is at.  We'll walk through it carefully below.
+The `handleRequest()` method is where we marry up our Observable pattern with our *request/response* handling pattern. It's easiest if we decompose this and look at a version that abstracts out the Observable code first.  Then we'll see how it all wires together.
+
+In this version, we can focus directly on the *request/response* handling pattern.  You'll quickly recognize this as our old friend the **STRPTQ** pattern. (As a refresher, feel free to review how we implemented this functionality in our native Faye `customerApp` way back in [Episode 1](https://dev.to/nestjs/build-a-custom-transporter-for-nestjs-microservices-dc6-temp-slug-6007254?preview=d3e07087758ff2aac037f47fb67ad5b465f45272f9c5c9385037816b139cf1ed089616c711ed6452184f7fb913aed70028a73e14fef8e3e41ee7c3fc#requestresponse).  Here's a [link to that code](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/part4/customerApp/src/customer-app.ts#L20)).
+
+The quick summary for handling a request (a message expecting a response) with **STRPTQ** is:
+1. Subscribe to the response channel (we know to use the pattern name followed by `'_res'`)
+2. Send the request (we know to do this using the pattern name followed by `'_ack'`)
+3. When the response comes in from the subscription (step 1), we *return it*.
+
+With that in mind, the draft version of `handleRequest()` below should be pretty clear.  I'll make a few explanatory comments below the code sample.
+
+```typescript
+  public handleRequest(partialPacket, observer): Function {
+    const packet = Object.assign(partialPacket, { id: uuid() });
+    const serializedPacket = this.serializer.serialize(packet);
+
+    const requestChannel = `${packet.pattern}_ack`;
+    const responseChannel = `${packet.pattern}_res`;
+
+    const subscriptionHandler = ...
+    /*
+      Provides the code we want to plug in as our *Faye subscription handler*.  Guess what?
+      This is where we'll wire in our Observable :)
+    */
+
+    // Execute the familiar subscribe-to-response-then-publish-the-request pattern
+    const subscription = this.fayeClient.subscribe(
+      responseChannel,
+      subscriptionHandler,
+    );
+
+    subscription.then(() => {
+      this.fayeClient.publish(requestChannel, serializedPacket);
+    });
+
+    /*
+      Handle any other Observable requirements
+    */
+  }
+```
+
+A few other notes from the code:
+
+* The `partialPacket` parameter has most of the elements of our outbound message.  It's been invoked from `send()` with an object like:
+    ```json
+    {
+      pattern: '/jobs-stream1/',
+      data: 1
+    }
+    ```
+
+    We complete the formation of our outbound packet by adding that pesky `id` parameter (that we **still** haven't talked about &#8212; I promise to address this in [Part 5](https://dev.to/nestjs/part-5-completing-the-client-component-hlh-temp-slug-2907984?preview=82c11163db963ca01d8d62d3a7b14843b422a6b28f46762d999bbe4b7035ad634d48bbbdd740e36376121aa673354ff5259f8b3028bceb931e800d9e)!).
+
+* After running our serializer, the packet is ready to send.
+* In Faye, the `subscribe()` call returns a promise that resolves when the Faye server returns an acknowledgement.
+* Upon that acknowledgement, we publish the serialized packet we built earlier.
+
+Now let's deal with marrying that up with our Observable.  Here's the final version:
 
 ```typescript
   public handleRequest(partialPacket, observer): Function {
@@ -213,34 +284,7 @@ The `handleRequest()` method is where the action is at.  We'll walk through it c
   }
 ```
 
-If we work our way inside out, it will make sense.  A good place to start is to focus on the Faye subscribe/response flow (ignoring the observable part for a moment).  Recall how we implemented this functionality in our native Faye `customerApp` way back in [Episode 1](https://dev.to/nestjs/build-a-custom-transporter-for-nestjs-microservices-dc6-temp-slug-6007254?preview=d3e07087758ff2aac037f47fb67ad5b465f45272f9c5c9385037816b139cf1ed089616c711ed6452184f7fb913aed70028a73e14fef8e3e41ee7c3fc#requestresponse).  Feel free to go have a quick look at that (here's a [link to the code](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/part4/customerApp/src/customer-app.ts#L20)). The quick summary for handling a request (a message expecting a response) is this:
-
-1. Subscribe to the response channel (we know to use the pattern name followed by `'_res'`)
-2. Send the request (we know to do this using the pattern name followed by `'_ack'`)
-3. When the response comes in from the subscription (step 1), we *return it*
-
-> One more quick aside.  We've seen this *subscribe-to-the-response-then-send-the-request* pattern a few times now, and we'll see it again. It's a vital pattern, and worth permanently ensconcing in your synapses.  To that end, let's invent a simple mnemonic.  That way we can mentally conjure this pattern concept quickly whenever we need it.  I'll refer to it as *STRPTQ*.  The letters come from "**S**ubscribe **T**o the **R**esponse, then **P**ublish **T**he Re**Q**uest".  I use **Q** to make it easier to remember re**Q**uest vs. **R**esponse, in the proper order.
-
-Now recalling our **observable requirement**: *returning it* means *emitting the results as an observable stream*
-
-The `partialPacket` parameter has most of the elements of our outbound message.  It's been invoked from `send()` with an object like:
-```json
-{
-  pattern: '/jobs-stream1/',
-  data: 1
-}
-```
-
-So we complete the formation of our outbound packet by adding that pesky `id` parameter (that we **still** haven't gotten to &#8212; I promise to address this in [Part 5](https://dev.to/nestjs/part-5-completing-the-client-component-hlh-temp-slug-2907984?preview=82c11163db963ca01d8d62d3a7b14843b422a6b28f46762d999bbe4b7035ad634d48bbbdd740e36376121aa673354ff5259f8b3028bceb931e800d9e)!).  After running our serializer, the packet is ready to send.
-
-Let's skip the chunk beginning with the line `const subscriptionHandler = rawPacket => {` for a moment.
-
-The next three chunks of code, respectively:
-1. Perform our subscription, as discussed above. In Faye, the `subscribe()` call returns a promise that resolves when the Faye server returns an acknowledgement.
-2. Upon that acknowledgement, we publish the serialized packet we built earlier.
-3. Finally, we return a way to unsubscribe from the observable.  This is part of the Observable creation pattern.  Recall that ultimately, `handleRequest()` is a factory function returning the body of an observable subscription callback, so this is normal Observable creation.
-
-Let's tackle the part we skipped a minute ago, where we build the subscription handler.  Here it is again:
+Let's focus in on the newly added part:
 
 ```typescript
     const subscriptionHandler = rawPacket => {
@@ -258,14 +302,28 @@ Let's tackle the part we skipped a minute ago, where we build the subscription h
     };
 ```
 
-Let's restate the purpose of this chunk of code.  We're building the callback that will be passed in our Faye client API `subscribe()` call to handle inbound messages.  As we handle each message, we are converting the sequence back into an observable stream.  We do that by taking the following steps for each inbound message from Faye:
+Let's review the purpose of this chunk of code.  We're building the callback that will be passed in our Faye client API `subscribe()` call to handle inbound messages.  As we handle each message, we are converting the sequence back into an Observable stream.  We do that by taking the following steps for each inbound message from Faye:
 
 1. Deserialize it and destructure it, leaving us with an `error`, `response` and `isDisposed` value for each inbound message
-2. Determine if the observable stream has errored or is complete
+2. Determine if the Observable stream has errored or is complete
 3. Handle errors appropriately
 4. Handle the next value in the stream until the `isDisposed` property is truthy, indicating the end of the stream coming from the server
 
-As in any normal Observable, we handle these cases with the `observer.error()`, `observer.next()` and `observer.complete()` calls.  If this confuses you, remember that we're wrapping this call in an *observable subscription handler* for the Observable we created in our `send()` method. You might take a minute to [grok](xxx) all of this, and if it's still a little fuzzy, you can visit my [mini observable factory tutorial here](xxx).
+As in any normal Observable, we handle these cases with the `observer.error()`, `observer.next()` and `observer.complete()` calls. If this confuses you, remember that all of this is part of the *observable subscribe function* for the Observable we created in our `send()` method. You might take a minute to [grok](xxx) all of this, and if it's still a little fuzzy, you can visit my [mini Observable factory tutorial here](xxx).
+
+#### Handling Unsubscribe
+
+Any *observable subscribe function* must return a way to unsubscribe from the Observable.  This is part of the Observable creation pattern.  The unsubscribe method can be called by the user; more often, it is called automatically when the Observable stream ends (e.g., when the final message is returned from our remote responder).
+
+The last bit of code in `handleRequest()` takes care of that:
+
+```typescript
+    return () => {
+      this.fayeClient.unsubscribe(responseChannel);
+    };
+```
+
+The net effect of this is that when the stream completes (e.g., when the inbound message has `isDisposed` set to true), we unsubscribe from the response channel.
 
 #### The Rest of the Code
 
@@ -304,7 +362,7 @@ If all is working, you should get a coordinated set of logs in each of the termi
 
 ### Limitations of Take 1
 
-We knowingly deferred a few things to *Take 2* to keep focused on the core requirements and implementation of a client. We'll address them in [Part 5]().  But there's one **big** issue lurking.  Any guesses on what that might be? I've definitely foreshadowed this along the way (hint: repeatedly deferring the discussion of `id`).
+We knowingly deferred a few things to *Take 2* to keep focused on the core requirements and implementation of a client. We'll address them in [Part 5]().  But there's one **big** issue lurking.  Any guesses on what that might be? I've definitely foreshadowed this along the way (hint: repeatedly deferring the discussion of that pesky message `id`).
 
 OK, let's get right to it. Ask yourself this: since our client is embedded in an HTTP app that is responding to multiple incoming requests, many of which in turn are triggering remote requests, how does the transporter client keep track of all of the outstanding remote requests and route them back to the correct originating (HTTP) request handler (i.e., the code with the original `client.send()` call?
 
@@ -359,7 +417,7 @@ The results should (well, maybe not with all the foreshadowing :wink:) surprise 
 
 This is obviously incorrect for the first request.  The issue demonstrates what I'll refer to as the *[multiplexing](http://250bpm.com/blog:18) challenge*.  That is, we are multiplexing our requests through a single pair of channels.  When we issue request #1, it subscribes to a response on the `'/race_res'` channel. Request #2 does the same thing, and since request #2 finishes first, the request #1 subscription gets **request #2's result** (the wrong answer!) on the response channel.
 
-Also, another nagging question... why do **both** subscribers get the result?  Hmmm... clearly something isn't working quite right here. We'll have to dig and and work on this in our next (and final!) revision!
+Also, there's another nagging question... why do **both** subscribers get the result?  Hmmm... clearly something isn't working quite right here. We'll have to dig and work on this in our next (and final!) revision!
 
 ### What's Next
 

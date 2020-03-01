@@ -165,7 +165,7 @@ Finally, let's talk about the call to `createSubscriptionHandler()`.  Back insid
 3. Destructure the message so we can deal with its constituents `err`, `response`, `isDisposed` and `id`
 4. Use the map to lookup the correct callback handler
 5. Discard any messages which are **not** destined for this client\**
-6. Finally, return the results of the **actual** user-land handler call; we automatically add `isDisposed: true` if there's an error, to force the closure of the observable.
+6. Finally, return the results of the **actual** user-land handler call; we automatically add `isDisposed: true` if there's an error, to force the closure of the Observable.
 
 \* Blah
 \** Blah

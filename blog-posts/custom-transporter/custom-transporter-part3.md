@@ -105,10 +105,10 @@ public getMessageHandler(pattern: string, handler: Function): Function {
 Let's discuss the differences.  For now, ignore the `fayeCtx` object &#8212; we'll cover that [below](#subscription-context).
 
 The reorganized code does two main things:
-1. It converts our handler response to an observable
+1. It converts our handler response to an Observable
 2. It builds a publish function that it can delegate to the framework (which will then use it to publish a stream if that's what the user-land handler returns)
 
-For the first item, we call a built-in (inherited from `Server`) utility to convert the response to an observable.
+For the first item, we call a built-in (inherited from `Server`) utility to convert the response to an Observable.
 
 ```typescript
 const response$ = this.transformToObservable(

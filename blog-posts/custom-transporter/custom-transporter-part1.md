@@ -78,7 +78,7 @@ As covered in the [previous article series](https://dev.to/nestjs/integrate-nest
   @Get('customers')
   getCustomers(): Observable<any> {
     this.logger.log('client#send -> topic: "get-customers"');
-    // the following request returns a response as an observable
+    // the following request returns a response as an Observable
     return this.client.send('/get-customers', {});
   }
 ```
@@ -89,10 +89,12 @@ Since Faye (as well as most brokers) only supports *publish/subscribe*, we need 
 
 Let's say component A wishes to "get customers" from component B, which has access to a customer DB. Component A can publish a `'/get-customers'` message, and (assuming it has subscribed to that topic) component B receives it, queries the customer DB for a list of customers, and sends a response message. The response message is where the magic happens. In order for B to respond to A, they both must do a few things, agreed upon by convention:
 
-- A chooses a **response topic** (sometimes called a **reply subject**)
-- A subscribes to the response topic
-- A passes the response topic as part of the initial message
-- B uses the response topic as the topic of its own subsequent response message
+- A chooses a *response topic* (sometimes called a *reply subject*)
+- A **subscribes** to the response topic
+- A **publishes** a request, passing the *response topic* as part of the message
+- B **publishes** a response, using the *response topic* as the topic of its message0
+
+> :bulb: We've seen this *subscribe-to-the-response-then-send-the-request* pattern a few times now, and we'll see it again. It's a vital pattern, and worth permanently etching into your synapses.  To that end, let's invent a simple mnemonic.  That way we can mentally conjure this pattern quickly whenever we need it.  I'll refer to it as **STRPTQ**.  The letters come from "**S**ubscribe **T**o the **R**esponse, then **P**ublish **T**he Re**Q**uest".  I use **Q** to make it easier to remember re**Q**uest vs. **R**esponse, in the proper order.
 
 As we'll see in developing our Faye transporter, Nest makes this a bit easier by automatically choosing the response topic name for you. In fact, Nest builds **two** topics from each **pattern** you declare.  For example, assume you define a Nest microservice responder *message pattern* like this:
 
@@ -153,7 +155,7 @@ One detail to point out is the call to `getPayload()`.  Let's discuss that.  As 
       */
      response: any
      /**
-      *  Status of an observable response. False once the final
+      *  Status of an Observable response. False once the final
       *  stream value has been retrieved.
       */
      isDisposed: boolean
