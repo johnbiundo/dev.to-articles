@@ -449,6 +449,6 @@ As mentioned earlier in this article, there's also a series of routes related to
 
 ### What's Next
 
-In [Part 4](https://dev.to/nestjs/part-4-basic-client-component-298b-temp-slug-9977921?preview=21ec3d333fc6d9d92c11dcbd8430a5132e93390de84cb4804914aa143492e925e4299ca3eb7f376918c1ed77df56e29db2572e5d6f7ab235b3e5f2b9), we turn our attention to the "client" side of the transporter.  We'll build the Faye-flavored `ClientProxy` from scratch.  Like the server construction we've done, we'll break this into two parts so we can work through the main concepts first, then handle some edge cases and details in the subsequent part.
+In Part 4 (Publishes Wednesday), we turn our attention to the "client" side of the transporter.  We'll build the Faye-flavored `ClientProxy` from scratch.  Like the server construction we've done, we'll break this into two parts so we can work through the main concepts first, then handle some edge cases and details in the subsequent part.
 
 Feel free to ask questions, make comments or suggestions, or just say hello in the comments below. And join us at [Discord](https://discord.gg/nestjs) for more happy discussions about NestJS. I post there as _Y Prospect_.
