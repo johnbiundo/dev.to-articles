@@ -52,7 +52,7 @@ For this article, you should `git checkout` the branch `part1`.  You can get mor
 
 #### Build the Apps for This Part
 
-For each article in the series, we introduce some new components (and sometimes entirely new **projects**).  For convenience, at the start of each article, you should run the command\*
+For each article in the series, we introduce some new components (and sometimes entirely new **projects**).  For convenience, at the start of each article, you should run the command:\*
 
 ```bash
 $ sh build.sh

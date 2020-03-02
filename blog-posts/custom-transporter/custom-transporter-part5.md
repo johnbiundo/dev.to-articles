@@ -27,7 +27,7 @@ For this article, you should `git checkout` the branch `part5`.  You can get mor
 
 #### Build the Apps for This Part
 
-For each article in the series, we introduce some new components (and sometimes entirely new **projects**).  For convenience, at the start of each article, you should run the command\*
+For each article in the series, we introduce some new components (and sometimes entirely new **projects**).  For convenience, at the start of each article, you should run the command:\*
 
 ```bash
 $ # from root directory of project (e.g., transporter-tutorial, or whatever you chose as the root)
@@ -64,7 +64,7 @@ One valuable lesson we learned in the last chapter is that we can use the Observ
 
 #### Handling Multiple Requests: The Union of Observables and Correlation Ids
 
-The problem we have to solve is how to associate a unique *observable subscription handler* with each Observable (i.e., with each `send()` request that returns that Observable as a response). Furthermore, we need to do this while having only a **single active Faye subscription handler for each pattern/topic**.  This is going to require a little higher order programming.  Stick with me &#8212; this is the hardest part of the tutorial, but we can get through it.
+The problem we have to solve is how to associate a unique *observable subscriber function* with each Observable (i.e., with each `send()` request that returns that Observable as a response). Furthermore, we need to do this while having only a **single active Faye subscription handler for each pattern/topic**.  This is going to require a little higher order programming.  Stick with me &#8212; this is the hardest part of the tutorial, but we can get through it.
 
 Let's propose defining our problem as follows: we are binding the *observable subscriber function* logic to our *Faye subscription handler* too soon/too statically.  Our solution needs to do late/dynamic binding of the *observable subscriber function* logic.  To be precise, it needs to delay binding the the *observable subscriber function* into the *Faye subscription handler* until a request is made so it can associate a unique one to each request. This is tough, because there is only a **single** *Faye subscription handler* for each pattern.  What to do? We have to make a little leap here.
 
@@ -252,7 +252,7 @@ With the time we put in on the strategy discussion, this code should hopefully m
 
 #### The `createSubscriptionHandler` Method: Binding the Response Emitter
 
-Finally, let's talk about the call to `createSubscriptionHandler()` &#8212; first at a high level, and then the details. First, let's recognize that this a factory that returns the *actual Faye subscription handler* that gets bound to the Faye `subscribe()` call on the response channel (i.e., `<message-pattern>_res`).  In it, we **do the late binding** of the *observable subscription handler*. We do the late binding by looking up the *response emitter* by `id`, matching it with the request Observable, and calling it with the destructured inbound message fields. Here's the code:
+Finally, let's talk about the call to `createSubscriptionHandler()` &#8212; first at a high level, and then the details. First, let's recognize that this a factory that returns the *actual Faye subscription handler* that gets bound to the Faye `subscribe()` call on the response channel (i.e., `<message-pattern>_res`).  In it, we **do the late binding** of the *observable subscriber function*. We do the late binding by looking up the *response emitter* by `id`, matching it with the request Observable, and calling it with the destructured inbound message fields. Here's the code:
 
 ```typescript
   public createSubscriptionHandler(packet: ReadPacket & PacketId): Function {
