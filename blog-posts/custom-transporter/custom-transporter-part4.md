@@ -11,7 +11,7 @@ canonical_url:
 
 ### Introduction
 
-This is Part 4 of a six-part series.  If you landed here from Google, you may want to start with [Part 1](https://dev.to/nestjs/build-a-custom-transporter-for-nestjs-microservices-dc6-temp-slug-6007254?preview=d3e07087758ff2aac037f47fb67ad5b465f45272f9c5c9385037816b139cf1ed089616c711ed6452184f7fb913aed70028a73e14fef8e3e41ee7c3fc#requestresponse).
+This is Part 4 of a six-part series.  If you landed here from Google, you may want to start with [Part 1](https://dev.to/nestjs/part-1-introduction-and-setup-1a2l).
 
 In this article, we build the first iteration of the client component of the Faye Custom Transporter.
 

@@ -11,7 +11,7 @@ canonical_url:
 
 ### Introduction
 
-This is Part 2 of a six-part series.  If you landed here from Google, you may want to start with [Part 1](https://dev.to/nestjs/build-a-custom-transporter-for-nestjs-microservices-dc6-temp-slug-6007254?preview=d3e07087758ff2aac037f47fb67ad5b465f45272f9c5c9385037816b139cf1ed089616c711ed6452184f7fb913aed70028a73e14fef8e3e41ee7c3fc#requestresponse).
+This is Part 2 of a six-part series.  If you landed here from Google, you may want to start with [Part 1](https://dev.to/nestjs/part-1-introduction-and-setup-1a2l).
 
 In this article, we build the first iteration of the server component of our Faye Custom Transporter.  We'll then test it with a simple Nest responder (microservice) app.
 
@@ -203,7 +203,7 @@ The comments should help with understanding what's happening, but at a high leve
 
 The only slightly tricky part is the call to `getMessageHandler()`.  This is just a higher-order function that is returning us the **actual** *Faye subscription handler* function.
 
-If all this looks somewhat familiar, it's because we're basically following the same **STRPTQ** (*subscribe-to-the-response-then-publish-the-request*) pattern we used in the native `customerService` app in the previous article ([Part 1](https://dev.to/nestjs/build-a-custom-transporter-for-nestjs-microservices-dc6-temp-slug-6007254?preview=d3e07087758ff2aac037f47fb67ad5b465f45272f9c5c9385037816b139cf1ed089616c711ed6452184f7fb913aed70028a73e14fef8e3e41ee7c3fc)).
+If all this looks somewhat familiar, it's because we're basically following the same **STRPTQ** (*subscribe-to-the-response-then-publish-the-request*) pattern we used in the native `customerService` app in the previous article ([Part 1](https://dev.to/nestjs/part-1-introduction-and-setup-1a2l)).
 
 ### Acceptance Testing
 

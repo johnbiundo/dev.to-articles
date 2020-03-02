@@ -11,7 +11,7 @@ canonical_url:
 
 ### Introduction
 
-This is Part 6 of a six-part series.  If you landed here from Google, you may want to start with [Part 1](xxx).
+This is Part 6 of a six-part series.  If you landed here from Google, you may want to start with [Part 1](https://dev.to/nestjs/part-1-introduction-and-setup-1a2l).
 
 In this article, we build the final iteration of the server component of our Faye Custom Transporter.
 
