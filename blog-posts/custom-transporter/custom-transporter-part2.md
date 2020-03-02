@@ -387,7 +387,7 @@ You'll also have to add the following line to the top of the file:
 import { of } from 'rxjs';
 ```
 
-This construct uses the RxJS `of` operator to convert our `getCustomers()` method handler resposse to an **Observable** &#8212; a stream (containing only a single value in our case, but still, a stream) of values.
+This construct uses the RxJS `of` operator to convert our `getCustomers()` method handler response to an **Observable** &#8212; a stream (containing only a single value in our case, but still, a stream) of values.
 
 If you make this change, then re-issue the `/get-customers` message (run `npm run get-customers` in terminal 3), you'll get a rather ugly failure in the `nestMicroservice` window.  This is our fault! We aren't handling this case, which, again, is expected of any Nest microservice transporter.
 
