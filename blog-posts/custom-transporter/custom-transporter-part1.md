@@ -118,7 +118,7 @@ This is the app that responds to inbound messages (requests) and generates respo
 Here's the implementation of the `getCustomers` *Faye subscription handler*.  This is the code we register to run when our app receives an inbound message on the `'/get-customers_ack'` channel (see the `subscribe()` call lower in the file):
 
 ```ts
-// src/service.ts
+// customerService/src/service.ts
 function getCustomers(packet): void {
   const message = parsePacket(packet);
   console.log(
@@ -155,7 +155,7 @@ One detail to point out is the call to `getPayload()`.  Let's discuss that.  As 
       */
      response: any
      /**
-      *  Status of an Observable response. False once the final
+      *  Status of an Observable response. `true` once the final
       *  stream value has been retrieved.
       */
      isDisposed: boolean
@@ -173,30 +173,20 @@ So `getPayload()` is a helper that wraps payloads in this standard Nest message 
 
 This is the user-facing app that makes outbound requests. The requestor is in `customerApp/src/customer-app.ts`.  Below is the implementation of the `getCustomers()` function from that app.
 
-There's a little bit of boilerplate, including wrapping the body in a Promise (which isn't required, but will come in handy later when we want to orchestrate a test with multiple outstanding requests).  But the main logic should be easy to see.  It implements the **requestor** side of that [**STRPTQ** request/response protocol](#supporting-requestresponse) we walked through a couple of minutes ago.
+There's a little bit of boilerplate, but the main logic should be easy to see.  It implements the **requestor** side of that [**STRPTQ** request/response protocol](#supporting-requestresponse) we walked through a couple of minutes ago.
 
 ```ts
-// src/customer-app.ts
-async function getCustomers(customerId, requestId = 0, requestDelay = 0) {
+// customerApp/src/customer-app.ts
+async function getCustomers(customerId) {
   // build Nest-shaped message
-  const payload = getPayload(
-    '/get-customers',
-    customerId
-      ? { customerId, requestId, requestDelay }
-      : { requestId, requestDelay },
-    uuid(),
-  );
+  const payload = getPayload('/get-customers', { customerId }, uuid());
 
   return new Promise((resolve, reject) => {
     // subscribe to the response message
     const subscription = client.subscribe('/get-customers_res', result => {
-      // handle either objects or stringified results since Nest stringfies,
-      // but Faye client lib automatically serializes/deserializes objects
-      const parsedResult = parseResult(result);
-
       console.log(
-        `==> Receiving 'get-customers' reply (request: ${requestId}): \n${JSON.stringify(
-          parsedResult.response,
+        `==> Receiving 'get-customers' reply: \n${JSON.stringify(
+          result.response,
           null,
           2,
         )}\n`,
@@ -226,7 +216,7 @@ async function getCustomers(customerId, requestId = 0, requestDelay = 0) {
 
 We **first subscribe** to `'/get-customers_res'` (the **response channel**).  We pass it a simple *Faye subscription handler* that prints out the result when a message on this channel comes back. This output becomes the "final response" to an end-user command (request) that's been issued from the command line (received by way of the basic command line processing logic at the bottom of the file).
 
-**Then we publish** the request on `'/get-customers_ack'`.
+**Then we publish** the request on `'/get-customers_ack'`.  Note that the call to `subscribe()` returned a `subscription` which is a Promise that resolves once the Faye server acknowledges that the subscribe operation has completed.
 
 Because we're running this as a standalone Node.js command line program, and thus want to exit after sending a request (which let's us use it as a command processor to conveniently send requests), we wait 500ms after publishing the request, then cancel the subscription and exit.  Cancelling the subscription is important hygiene &#8212; if we don't, subscriptions hang around (though Faye will eventually detect them and clean them up).  This is a bit brute force, and we'll want to do more sophisticated subscription management in our transporter client, but suffices for now.
 
@@ -235,6 +225,7 @@ Finally, you'll notice that much like the `customerService` responder app, we ha
 For completeness, let's take a very quick look at how we run the Faye server. Though you can treat it as a black box, it's worth a moment to look at how it runs, and appreciate its native node.js-ness and simplicity.  Open up `faye-server/server.js`.  The code is shown below.  You can read more about running the Faye server [here](https://faye.jcoglan.com/node.html), but we're basically just starting it up, and for instrumentation purposes, listening for various events that we can log to the console to make it easy to trace the handshaking and message exchange. You shouldn't have to mess with this at all, but if you do, it's pretty basic stuff.
 
 ```ts
+// faye-server/server.js
 const http = require('http');
 const faye = require('faye');
 
@@ -285,7 +276,7 @@ bayeux.on('unsubscribe', (clientId, channel) => {
 
 ### Testing the Apps
 
-We've now completed our requestor and responder, and can test them out.  While I only reviewed the `'/get-customers'` message flow above, the code in this branch also implements the `'/add-customer'` message.  Run the code now by following [these instructions](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/master/README.md#part-1-introduction-and-setup).  Here's what it looks like. In this video loop, the Faye broker is running in the top pane, the `customerService` app is running in the middle pane, and the `customerApp` app is running in the lower pane (and if you're curious, this is running in the [tmux](https://github.com/tmux/tmux) virtual terminal; you can get my setup [here](https://github.com/johnbiundo/nest-nats-sample#pro-tip-use-tmux-optional) if you're interested).
+We've now completed our requestor and responder, and can test them out.  While I only reviewed the `'/get-customers'` message flow above, the code in this branch also implements the `'/add-customer'` message.  Take a minute to run the code now by following [these simple instructions](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/master/README.md#running-the-code).  Here's what it looks like. In this video loop, the Faye broker is running in the top pane, the `customerService` app is running in the middle pane, and the `customerApp` app is running in the lower pane (and if you're curious, this is running in the [tmux](https://github.com/tmux/tmux) virtual terminal; you can get my setup [here](https://github.com/johnbiundo/nest-nats-sample#pro-tip-use-tmux-optional) if you're interested).
 
 ![Native App Demo](./assets/faye-basic-demo2.gif 'Native App Demo')
 <figcaption><a name="faye-basic-demo"></a>Screen Capture: Native App Demo</figcaption>
