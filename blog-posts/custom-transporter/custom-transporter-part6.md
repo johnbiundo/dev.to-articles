@@ -11,7 +11,7 @@ canonical_url:
 
 ### Introduction
 
-This is part 6 of a six-part series.  If you landed here from Google, you may want to start with [part 1](xxx).
+This is Part 6 of a six-part series.  If you landed here from Google, you may want to start with [Part 1](xxx).
 
 In this article, we build the final iteration of the server component of our Faye Custom Transporter.
 
@@ -19,7 +19,7 @@ In this article, we build the final iteration of the server component of our Fay
 
 #### Get the Code
 
-All of the code in these articles is available [here](xxx).  As always, these tutorials work best if you follow along with the code.  The [README](xxx) covers all the steps you need to get the repository, build the apps, and follow along.  It's easy!  I strongly encourage you to do so.  Note that each article has a corresponding branch in the repository.  For example, this article (part 3), has a corresponding branch called `part3`. Read on, or [get more details here](xxx) on using the repository.
+All of the code in these articles is available [here](xxx).  As always, these tutorials work best if you follow along with the code.  The [README](xxx) covers all the steps you need to get the repository, build the apps, and follow along.  It's easy!  I strongly encourage you to do so.  Note that each article has a corresponding branch in the repository.  For example, this article (Part 3), has a corresponding branch called `part3`. Read on, or [get more details here](xxx) on using the repository.
 
 #### Git checkout the current version
 
