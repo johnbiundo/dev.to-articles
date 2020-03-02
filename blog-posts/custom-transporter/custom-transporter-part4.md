@@ -377,7 +377,7 @@ If all is working, you should get a coordinated set of logs in each of the termi
 
 ### Limitations of Take 1
 
-We knowingly deferred a few things to *Take 2* to keep focused on the core requirements and implementation of a client. We'll address them in [Part 5]().  But there's one **big** issue lurking.  Any guesses on what that might be? I've definitely foreshadowed this along the way (hint: repeatedly deferring the discussion of that pesky message `id`).
+We knowingly deferred a few things to *Take 2* to keep focused on the core requirements and implementation of a client. We'll address them in Part 5.  But there's one **big** issue lurking.  Any guesses on what that might be? I've definitely foreshadowed this along the way (hint: repeatedly deferring the discussion of that pesky message `id`).
 
 OK, let's get right to it. Ask yourself this: since our client is embedded in an HTTP app that is responding to multiple incoming requests, many of which in turn are triggering these `client.send(...)` remote requests, how does the transporter client keep track of all of the outstanding remote requests and route them back to the correct originating (HTTP) request handler (i.e., the code with the original `client.send()` call?
 
@@ -436,7 +436,7 @@ Also, there's another nagging question... why do **both** subscribers get the re
 
 ### What's Next
 
-With these issues in mind, we're ready to build a final version of the Faye Custom Transporter client component, completing our development project.  In [Part 5](https://dev.to/nestjs/part-5-completing-the-client-component-hlh-temp-slug-2907984?preview=82c11163db963ca01d8d62d3a7b14843b422a6b28f46762d999bbe4b7035ad634d48bbbdd740e36376121aa673354ff5259f8b3028bceb931e800d9e) we cover:
+With these issues in mind, we're ready to build a final version of the Faye Custom Transporter client component, completing our development project.  In Part 5 we cover:
 
 * a
 * b

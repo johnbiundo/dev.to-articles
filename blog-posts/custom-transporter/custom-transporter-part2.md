@@ -36,10 +36,10 @@ $ sh build.sh
 
 ### Organizing the Code
 
-Even though the scope of this tutorial is relatively small &#8212; at the end of the day we'll just be creating a few classes &#8212; we're going to be accumulating a number of assets along the way to test and exercise our code. It's time to think a little bit about code organization.  First, let's take a look at what we'll end up with:
+Even though the scope of this tutorial is relatively small &#8212; at the end of the day we'll just be creating a few main classes &#8212; we're going to be accumulating a number of assets along the way to test and exercise our code. It's time to think a little bit about code organization.  First, let's take a look at what we'll end up with:
 
 * Our Faye Custom Transporter is going to consist of some interfaces and constants, some serializers/deserializers (discussed extensively in the [previous article series](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-1-p3)), and the main components: a **client** component (class) providing the `ClientProxy` subclass we can use in any *Nest requestor* apps and a **server** component (class) we can use in any *Nest responder* apps.
-* The native apps we wrote in the [previous article](https://dev.to/nestjs/build-a-custom-transporter-for-nestjs-microservices-dc6-temp-slug-6007254?preview=d3e07087758ff2aac037f47fb67ad5b465f45272f9c5c9385037816b139cf1ed089616c711ed6452184f7fb913aed70028a73e14fef8e3e41ee7c3fc#requestresponse) that let us explore the Faye API and give us some test drivers.
+* The native apps we wrote in the [previous article](https://dev.to/nestjs/build-a-custom-transporter-for-nestjs-microservices-dc6-temp-slug-6007254?preview=d3e07087758ff2aac037f47fb67ad5b465f45272f9c5c9385037816b139cf1ed089616c711ed6452184f7fb913aed70028a73e14fef8e3e41ee7c3fc#requestresponse) that let us explore the Faye client API and give us some test drivers.
 * A pair of regular Nest apps that will host and exercise our transporter code as we build it: a *Nest requestor* that is a simple Nest HTTP app called `nestHttpApp` and a *Nest responder* that is a classic Nest **microservice**, called `nestMicroservice`.  (**Note**: see [the previous article series](https://dev.to/nestjs/integrate-nestjs-with-external-services-using-microservice-transporters-part-1-p3) for more on this terminology, but think of a *Nest requestor* as an app that makes remote requests over some non-HTTP transport (like Faye) and a *Nest responder* as a Nest application that listens for inbound requests over that transport).
 
 Where to keep all of these assets?
@@ -134,13 +134,13 @@ Alright, we're finally ready to look at our `ServerFaye` class &#8212; the one w
 This iteration (*Take 1*) is going to be the absolute bare-bones class needed to implement the server component of the Faye transporter.  We're going to keep our first version basic so that we can focus on the core flow.  Our first cut will:
 
 - minimize error handling
-- not rely on some nice features of the framework that make our code really robust
+- not yet utilize some of the nice features of the framework that make our code really robust
 - not handle events (e.g., inbound messages coming from `client.emit(...)`)
 - not really be type safe (we omit a bunch of typing to declutter the code)
 
 To state it in terms of requirements: the goal is to respond to a well-formed inbound **request** (i.e., a request from a **request-response** style message).  We'll test this requirement by replacing our native `customerService` responder app from the last article with our `nestMicroservices` app running our new Faye Custom Transporter, and sending it the same `'/get-customers'` request from our native `customerApp`.
 
-> In [Part 3](https://dev.to/nestjs/part-3-completing-the-server-component-2fai-temp-slug-8783531?preview=be5cb28367d68473fba3e9a91c71084b83414317c27529045d1732b885da4cedb2020d8a7a32482e950f79db2908dee597c475f0f0b1a77bb73f0cab), we'll complete the implementation and have a fully functioning Faye Custom Transporter (server component).  At that point, you'll also have all of the concepts in place to write your own custom transporter server component, as well as the ability to look inside the built-in transporters (like [the MQTT transporter server](https://github.com/nestjs/nest/blob/master/packages/microservices/server/server-mqtt.ts)) and understand what's going on.  That will prepare you for even more adventures, like customizing the Nest built-in transporters to add features&#8212; the subject of my next NestJS microservice tutorial (already underway, and coming very soon :boom:)!
+> In Part 3, we'll complete the implementation and have a fully functioning Faye Custom Transporter (server component).  At that point, you'll also have all of the concepts in place to write your own custom transporter server component, as well as the ability to look inside the built-in transporters (like [the MQTT transporter server](https://github.com/nestjs/nest/blob/master/packages/microservices/server/server-mqtt.ts)) and understand what's going on.  That will prepare you for even more adventures, like customizing the Nest built-in transporters to add features&#8212; the subject of my next NestJS microservice tutorial (already underway, and coming very soon :boom:)!
 
 #### Take 1 Code Review
 
@@ -394,7 +394,7 @@ If you make this change, then re-issue the `/get-customers` message (run `npm ru
 
 ### What's Next
 
-With these issues in mind, we're ready to step up our game and make the Faye Custom Transporter server component much more robust.  We'll tackle that in the next article.  In [Part 3](https://dev.to/nestjs/part-3-completing-the-server-component-2fai-temp-slug-8783531?preview=be5cb28367d68473fba3e9a91c71084b83414317c27529045d1732b885da4cedb2020d8a7a32482e950f79db2908dee597c475f0f0b1a77bb73f0cab), we cover:
+With these issues in mind, we're ready to step up our game and make the Faye Custom Transporter server component much more robust.  We'll tackle that in the next article.  In Part 3 we cover:
 * A little side expedition on how and why you should care about the "Observables issue" we just uncovered
 * Addressing that issue
 * Handling events (e.g., `@EventPattern(...)` decorated methods) in our responder app
