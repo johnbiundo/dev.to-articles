@@ -394,7 +394,7 @@ If you make this change, then re-issue the `/get-customers` message (run `npm ru
 
 ### What's Next
 
-With these issues in mind, we're ready to step up our game and make the Faye Custom Transporter server component much more robust.  We'll tackle that in the next article.  In Part 3 we cover:
+With these issues in mind, we're ready to step up our game and make the Faye Custom Transporter server component much more robust.  We'll tackle that in the next article.  In [Part 3](https://dev.to/nestjs/part-3-completing-the-server-component-4a80) we cover:
 * A little side expedition on how and why you should care about the "Observables issue" we just uncovered
 * Addressing that issue
 * Handling events (e.g., `@EventPattern(...)` decorated methods) in our responder app
