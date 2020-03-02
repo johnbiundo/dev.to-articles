@@ -46,7 +46,7 @@ You **could actually ignore** this issue entirely.  The server component we buil
 - The feature provides some amazing benefits, virtually for free
 - Your transporter really **should** be plug-and-play compatible with other transporters to be a good Nest citizen (Nestizen? :smiley:)
 
-I could go on and on, but instead, I've encapsulated all the [concrete examples and detailed analysis here](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/master/observable-deepdive.md) to try to keep this tutorial on track.  Suffice to say, I strongly encourage you to follow that link and take that little side trip to both understand why this is an important step &#8212; and you might even get inspired to use Nest microservices in some new and interesting ways.
+I could go on and on, but instead, I've encapsulated all the [concrete examples and detailed analysis here](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/master/observable-deepdive.md) to try to keep this tutorial on track.  Suffice to say, I strongly encourage you to follow that link and take that little side trip to both understand why this is an important step &#8212; and because you might even get inspired to use Nest microservices in some new and interesting ways.
 
 With all that said, let's jump in!
 
@@ -54,7 +54,7 @@ With all that said, let's jump in!
 
 After that build-up, you might think we're about to embark on some form of brain surgery (maybe I should say ":rocket: science" in keeping with the trekkie theme? :wink:).  Fortunately, that's not really the case.  Let's start by considering the requirements.
 
-At the highest level, we need to consider the possibility that the user-land handler returns a stream (Observable that emits multiple values). Our earlier version won't handle that (as we saw at the end of the last article).  The problem lies with our `publish()` logic being unaware of a response **stream**.  It simply awaits a single response and publishes.  Let's take a quick look at the part of the code that publishes to refresh ourselves:
+At the highest level, we need to consider the possibility that the user-land handler returns a stream (Observable that emits multiple values). Our earlier version won't handle that (as we saw at the end of the last article).  The problem lies with our response message publishing logic being unaware of a response **stream**.  It simply awaits a single response and publishes.  Let's take a quick look at the part of the code that publishes to refresh ourselves:
 
 ```typescript
 // nestjs-faye-transporter/src/responder/transporters/server-faye.ts
@@ -77,7 +77,7 @@ public getMessageHandler(pattern: string, handler: Function): Function {
 We could try to handle this streaming ourselves, but it's a tad tricky bit of code, and as such, a great candidate for the framework to handle for us. Which it does! As always with frameworks, if we want to delegate a responsibility, we have to invert our thinking a bit. Rather than publishing directly, we instead need to **build** a publish function and hand it to the framework
 
 
-Now, here's the *Observable-aware* version. This is what you'll see now (on the current branch, `part3`) when you open the `nestjs-faye-transporter/src/responder/transporters/server-faye.ts` file:
+Now, here's the new, improved, *Observable-aware* version. This is what you'll see now (on the current branch, `part3`) when you open the `nestjs-faye-transporter/src/responder/transporters/server-faye.ts` file:
 
 ```typescript
 //nestjs-faye-transporter/src/responder/transporters/server-faye.ts
@@ -130,7 +130,7 @@ const publish = (response: any) => {
 
 This code is very similar to the way we published in the *Take 1* version (from branch `part2`), but now packaged as a function we can hand off to the framework.  Study it for a moment and make sure you understand it &#8212; it should be pretty straightforward. The `Object.assign(...)` code's job is to copy the `id` field from the inbound request to the outbound response.  We did that in the earlier version as well, but there we were defining the response object in place, so the technique was a little different.
 
-**Note**: We still haven't discussed **why** we need that `id`.  For now, just trust the process :smiley:.  Don't worry, we'll cover this in [Part 4](https://dev.to/nestjs/part-4-basic-client-component-298b-temp-slug-9977921?preview=21ec3d333fc6d9d92c11dcbd8430a5132e93390de84cb4804914aa143492e925e4299ca3eb7f376918c1ed77df56e29db2572e5d6f7ab235b3e5f2b9).
+**Note**: We still haven't discussed **why** we need that `id`.  For now, just trust the process :smiley:.  Don't worry, we'll cover this in [Part 5](https://dev.to/nestjs/part-5-completing-the-client-component-hlh-temp-slug-2907984?preview=82c11163db963ca01d8d62d3a7b14843b422a6b28f46762d999bbe4b7035ad634d48bbbdd740e36376121aa673354ff5259f8b3028bceb931e800d9e).
 
 Finally, we delegate the publishing step to the framework with the final line:
 
