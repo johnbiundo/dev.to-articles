@@ -1,5 +1,5 @@
 ---
-published: False
+published: true
 title: "Part 3: Completing the Server Component"
 description: "tags: nestjs, nest, faye, microservices, node.js"
 series: "Advanced NestJS Microservices"
