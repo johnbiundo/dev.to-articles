@@ -428,7 +428,7 @@ The logic should be easy to follow.  We simply extract the pattern, normalize it
 
 At this point, we should have a complete implementation of the Faye Custom Transporter! :beer: :beer: :beer:!
 
-To test it, you'll want to start up the `nestHttpApp` and `nestMicroservice`, and run **any** of the routes.  See [these notes](xxx) for more help in running the tests.
+To test it, you'll want to start up the `nestHttpApp` and `nestMicroservice`, and run **any** of the routes.  See [these notes]([xxx](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/master/README.md#part-5-final-client-component)) for more help in running the tests.
 
 ### Conclusion
 

@@ -321,7 +321,7 @@ In this branch (`part3`), we provided a new project, `nestHttpApp`.   This is a 
 
     > GET /customers
 
-    **Note:** You can do this in any number of ways &#8212; via a browser, browsing to `localhost:3000/customers`, via something like [HTTPie - my favorite](https://httpie.org/), or with a desktop program like [Postman](https://www.postman.com/).
+    **Note:** You can do this in any number of ways &#8212; via a browser, browsing to `localhost:3000/customers`, via something like [HTTPie - my favorite](https://httpie.org/), or with a desktop program like [Postman](https://www.postman.com/). See [here](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/master/README.md#part-3-completing-the-server-component) for more help on running these requests.
 
 Keep an eye on the `nestMicroservice` app's console log.  You should see a line like the following, demonstrating that we've successfully passed the ` FayeContext` data to the handler:
 > [AppController] Faye Context: {"args":["/get-customers"]}"
@@ -443,7 +443,7 @@ and
 
 > POST /customer  // <-- with a payload
 
-See the [README](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/master/README.md) for more information on running these and similar tests.
+See [here](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/master/README.md#part-3-completing-the-server-component) for more help on running these and similar tests..
 
 As mentioned earlier in this article, there's also a series of routes related to exploring how microservices handle promises and observables when they are returned from a **request**.  You can [read more here](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/master/observable-deepdive.md).
 

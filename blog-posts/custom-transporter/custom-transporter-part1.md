@@ -283,6 +283,8 @@ bayeux.on('unsubscribe', (clientId, channel) => {
 });
 ```
 
+### Testing the Apps
+
 We've now completed our requestor and responder, and can test them out.  While I only reviewed the `'/get-customers'` message flow above, the code also implements the `'/add-customer'` message.  Run the code now by following [these instructions](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/master/README.md#part-1-introduction-and-setup).  Here's what it looks like. In this video clip, the Faye broker is running in the top pane, the `customerService` app is running in the middle pane, and the `customerApp` app is running in the lower pane (and if you're curious, this is running in the [tmux](https://github.com/tmux/tmux) virtual terminal; you can get my setup [here](https://github.com/johnbiundo/nest-nats-sample#pro-tip-use-tmux-optional) if you're interested).
 
 ![Native App Demo](./assets/faye-basic-demo2.gif 'Native App Demo')
