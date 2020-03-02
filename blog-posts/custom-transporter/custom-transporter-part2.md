@@ -27,12 +27,12 @@ For this article, you should `git checkout` the branch `part2`.  You can get mor
 
 #### Build the Apps for This Part
 
-For each article in the series, we introduce some new components (and sometimes entirely new **projects**).  For convenience, at the start of each article, you should run the command:\*
+For each article in the series, we introduce some new components (and sometimes entirely new **projects**).  For convenience, at the start of each article, you should run the following command from the top-level directory (where you cloned the repo): \*
 
 ```bash
 $ sh build.sh
 ```
-\**This is a shell script that runs on Linux-like systems.  You may have to make an adjustment for non-Linux systems.  Note that the script is simply a convenience that runs `npm install` inside each top-level directory, so you can always fall back to that technique if you have trouble with the script.*
+\**This is a shell script that runs on Linux-like systems.  You may have to make an adjustment for non-Linux systems.  Note that the script is simply a convenience that runs `npm install && npm run build`inside each top-level directory, so you can always fall back to that technique if you have trouble with the script.*
 
 ### Organizing the Code
 
