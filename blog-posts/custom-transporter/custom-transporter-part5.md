@@ -383,6 +383,7 @@ The final feature to implement is *event handling* &#8212; handling user-land `c
 Because this is straightforward and follows a predictable pattern, the framework handles most of this for us in the `ClientProxy#emit` method.  Here's what that code looks like:
 
 ```typescript
+// from https://github.com/nestjs/nest/blob/master/packages/microservices/client/client-proxy.ts
   public emit<TResult = any, TInput = any>(
     pattern: any,
     data: TInput,
@@ -402,6 +403,7 @@ Because this is straightforward and follows a predictable pattern, the framework
 Here, once again, the framework is handling connection management for us, and all we really need to do is provide a concrete implementation for `dispatchEvent()`.  The superclass defines an abstract `dispatchEvent` method as follows:
 
 ```typescript
+// from https://github.com/nestjs/nest/blob/master/packages/microservices/client/client-proxy.ts
 protected abstract dispatchEvent<T = any>(packet: ReadPacket): Promise<T>;
 ```
 

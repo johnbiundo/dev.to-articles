@@ -106,6 +106,7 @@ It should be clear what we're doing: instead of passing the normal [transporter 
 Let's briefly review how our `nestMicroservice` app works.  Its only real job is to take in a `'/get-customers'` message and return a list of customers.  It performs the exact same function as the `customerApp` we built in Part 1. The action is in the `nestMicroservices/src/app.controller.ts` file:
 
 ```typescript
+// nestMicroservices/src/app.controller.ts
 @Controller()
 export class AppController {
   logger = new Logger('AppController');

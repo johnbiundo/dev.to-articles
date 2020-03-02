@@ -147,6 +147,7 @@ Anyway, let's discuss what the framework is doing for us.  As mentioned, `send()
 > Note: we **don't need to fully understand** how this method works, and I won't belabor it here.  It's fair to treat it as a black box, as long as we understand **how to use it**.  We'll make sure we do!
 
 ```typescript
+// from https://github.com/nestjs/nest/blob/master/packages/microservices/server/server.ts
   public send(
     stream$: Observable<any>,
     respond: (data: WritePacket) => void,
@@ -262,6 +263,7 @@ export class FayeContext extends BaseRpcContext<FayeContextArgs> {
 Essentially, it keeps an array of context values &#8212; in our case just strings, though you can specify a more complex type if you need to.  For example, [MQTT](https://github.com/nestjs/nest/blob/master/packages/microservices/ctx-host/mqtt.context.ts#L3) uses:
 
 ```typescript
+// from https://github.com/nestjs/nest/blob/master/packages/microservices/ctx-host/mqtt.context.ts
 type MqttContextArgs = [string, Record<string, any>];
 
 export class MqttContext extends BaseRpcContext<MqttContextArgs> {
