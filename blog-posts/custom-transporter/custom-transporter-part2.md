@@ -1,5 +1,5 @@
 ---
-published: False
+published: true
 title: "Part 2: Basic Server Component"
 description: "tags: nestjs, nest, faye, microservices, node.js"
 series: "Advanced NestJS Microservices"
@@ -353,7 +353,7 @@ In this sequence, I'll introduce a part of the transporter infrastructure respon
 Here's the walk through of the return trip flow:
 
 1. <u>Our handler</u> in `nestMicroservice` (perhaps directly, or perhaps by calling a service) returns the result. In terms of our example, it's returning a list of customers.
-2. Now, if the response is a "plain" value (JavaScript primitive, array or object), there's not much work to be done other than send it back to the broker. But, if the response is an Observable stream, **Nest steps in and makes this extremely easy** for everything downstream to work with.  That's where **marshalling** comes in..
+2. Now, if the response is a "plain" value (JavaScript primitive, array or object), there's not much work to be done other than send it back to the broker. But, if the response is an Observable stream, **Nest steps in and makes this extremely easy** for everything downstream to work with.  That's where **marshalling** comes in.
 3. Once the response is prepared from `nestMicroservice`, it's **delivered to the Faye broker** via the broker client library.
 4. The broker takes care of **publishing the response**.
 5. On the `nestHttpApp` side, the broker client library (which has previously subscribed to the broker on the *response channel* &#8212; though we haven't coded that part yet), **receives the response message**.
@@ -390,7 +390,7 @@ import { of } from 'rxjs';
 
 This construct uses the RxJS `of` operator to convert our `getCustomers()` method handler response to an **Observable** &#8212; a stream (containing only a single value in our case, but still, a stream) of values.
 
-If you make this change, then re-issue the `/get-customers` message (run `npm run get-customers` in terminal 3), you'll get a rather ugly failure in the `nestMicroservice` window.  This is our fault! We aren't handling this case, which, again, is expected of any Nest microservice transporter.
+If you make this change, then re-issue the `/get-customers` message (run `npm run get-customers` in terminal 3), you'll get a rather ugly failure in the `nestMicroservice` window.  This is our fault! If you think about it, we aren't doing any marshalling anywhere in our code. So we aren't handling this case, which, again, is expected of any Nest microservice transporter.
 
 ### What's Next
 
