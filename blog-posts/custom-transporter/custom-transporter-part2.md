@@ -326,7 +326,7 @@ We already know we have to clean up a few things, like adding **event handling**
 
 We'll explore this in greater detail in the next article, but let's start with a picture.  The following animation shows the path a hypothetical inbound HTTP request would take through our application. Inner boxes with a red background are part of the Nest infrastructure. User supplied code lives in the user-land space with a white background.  Controllers are in light blue, and "Services" are in yellow.
 
-![Nest Request Handling](./assets/transporter-request.gif 'Nest Request Handling')
+![Nest Request Handling](./assets/transporter-request2.gif 'Nest Request Handling')
 <figcaption><a name="Nest Request Handling"></a>Figure 2: Nest Request Handling</figcaption>
 
 An inbound HTTP request kicks off the following sequence of events.  Bolded words represent Nest system responsibilities.  Underlined words represent user code. There's probably nothing terribly surprising going on here, but let's just briefly walk through it.
@@ -343,23 +343,23 @@ An inbound HTTP request kicks off the following sequence of events.  Bolded word
 
 Once the `getCustomers` method returns, we start the *return trip*, where things get more interesting. This "more interesting" part is mainly because Nest is very **Observable-aware**.
 
-![Nest Response Handling](./assets/transporter-response2.gif 'Nest Response Handling')
+![Nest Response Handling](./assets/transporter-response3.gif 'Nest Response Handling')
 <figcaption><a name="Nest Response Handling"></a>Figure 3: Nest Response Handling</figcaption>
 
-In this sequence, I'll introduce the role of what I'm informally calling the "Mapper" (there's no such official term or single component inside Nest called a Mapper).  Conceptually, it's the part(s) of the system that handle(s) dealing with Observables.
+In this sequence, I'll introduce a part of the transporter infrastructure responsible for what I'm informally calling "Marshalling" (there's no such official term or single component inside Nest that does Marshalling).  Conceptually, it's the part(s) of the system that handle(s) dealing with transferring Observable streams over the network.
 
 > In the next article, we'll go through a few use cases for **why Observables are so cool, why they're a perfect fit in this flow, AND how they're actually really easy to use**.  I know this diagram doesn't make it seem that way, but hey, we're building our own transporter (my inner [trekky](http://sfi.org/) can't help but giggle over that :rocket:).  The beauty of it is that once we handle this case properly &#8212; and the framework will make this easy as we'll see in the next chapter &#8212; everything we might want to do with Observables (and their potential is just, well... *mind bending*) **just works**.
 
 Here's the walk through of the return trip flow:
 
 1. <u>Our handler</u> in `nestMicroservice` (perhaps directly, or perhaps by calling a service) returns the result. In terms of our example, it's returning a list of customers.
-2. Now, if the response is a "plain" value (JavaScript primitive, array or object), there's not much work to be done other than send it back to the broker. But, if the response is a Promise or Observable, **Nest steps in and makes this extremely easy** for everything downstream to work with.  That's the job of the **mapper**.
+2. Now, if the response is a "plain" value (JavaScript primitive, array or object), there's not much work to be done other than send it back to the broker. But, if the response is an Observable stream, **Nest steps in and makes this extremely easy** for everything downstream to work with.  That's where **marshalling** comes in..
 3. Once the response is prepared from `nestMicroservice`, it's **delivered to the Faye broker** via the broker client library.
 4. The broker takes care of **publishing the response**.
 5. On the `nestHttpApp` side, the broker client library (which has previously subscribed to the broker on the *response channel* &#8212; though we haven't coded that part yet), **receives the response message**.
-6. The `ClientProxy` class (again, we haven't built this yet) takes care of **routing** (and **mapping**, if it's dealing with non-primitive responses).
+6. The `ClientProxy` class (again, we haven't built this yet) takes care of **routing** (and **marshalling**, if it's dealing with a stream of responses).
 7. This routes the response to the <u>originating service</u>, then back to the <u>originating controller</u>.
-8. Finally, the Nest HttpAdapter software again, if needed, **maps responses** to a suitable form for HTTP transport.  For example, if the response is an Observable or a promise, it **converts it to an appropriate form** for return over HTTP.
+8. Finally, the Nest HttpAdapter software again, if needed, **marshalls responses** to a suitable form for HTTP transport.  For example, if the response is an Observable or a promise, it **converts it to an appropriate form** for return over HTTP.
 
 So what exactly is the issue?
 
