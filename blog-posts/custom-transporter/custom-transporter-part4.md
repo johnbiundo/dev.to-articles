@@ -212,9 +212,9 @@ Here are the connections you need to make:
 * this triggers calling the *observable subscription function*...
 * which in turn *calls back to* our user-land `client.send(...)` subscription
 
-That's what the `send()` method is setting up with the Observable it creates.  One more thing about Observables to keep in mind.  What we just described effectively "sets up the cascade of callbacks", but these functions are **cold** in the sense that all we've done is register callbacks. The act of **subscribing** to the Observable kicks things in motion. The act of subscribing triggers the *observable subscriber function* to run; when you think about that, you realize that "Aha! So this in turn causes the Faye API `subscribe()` call inside `handleRequest()` to run", and we see that this is how we start the stream flowing and turn the process from **cold** to **hot**.
+That's what the `send()` method is setting up with the Observable it creates.  One more thing about Observables to keep in mind.  What we just described effectively "sets up the cascade of callbacks", but these functions are **cold** in the sense that all we've done is register callbacks. The act of **subscribing** to the Observable kicks things in motion. The act of subscribing is the event that triggers the *observable subscriber function* to run; when you think about that, you realize that "Aha! So this in turn causes the Faye API `subscribe()` call inside `handleRequest()` to run", and we see that this is how we start the stream flowing and turn the process from **cold** to **hot**.
 
-Another thing to know is that if the user-land `client.send()` call doesn't **explicitly** subscribe, but instead just **returns** the result, Nest **automatically** subscribes to the result. As a `ClientProxy` developer, you don't have to worry about this.  But as a quick aside, note that this behavior is useful as a default, and works great in most situations.  But in case you're wondering *how does Nest return a potential stream of results* over HTTP?  The answer is that it returns the **last** result in the stream.  Again, in many cases this is fine.  In our example above (shown again below), however, we want to access the values in the stream, hence we **do** subscribe, and we operate on the stream.
+Another thing to know is that if the user-land `client.send()` call doesn't **explicitly** subscribe, but instead just **returns** the result, Nest **automatically** subscribes to the result. As a `ClientProxy` developer, you don't have to worry about this.  But as a quick aside, note that this behavior is useful as a default, and works great in most situations.  But in case you're wondering *how does Nest return a potential stream of results* over HTTP?  The answer is that it returns the **last** result in the stream.  Again, in many cases this is fine.  In our example above (shown again below), however, we want to access the values in the stream, hence we add a `pipe()` operator that allows us to operate on the stream itself, once it's subscribed:
 
 ```typescript
 // nestHttpApp/src/app.controller.ts
@@ -239,9 +239,9 @@ So let's dig into that `requestHandler()` method.
 
 The `handleRequest()` method is where we marry up our Observable pattern with our *request/response* handling pattern. It's easiest if we decompose this and look at a version that abstracts out the Observable code first.  Then we'll see how it all wires together.
 
-In the first pseudocode-ish version below, we can focus directly on the *request/response* handling pattern.  You'll quickly recognize this as our old friend the **STRPTQ** pattern. (As a refresher, feel free to review how we implemented this functionality in our native Faye `customerApp` way back in [Episode 1](https://dev.to/nestjs/part-1-introduction-and-setup-1a2l).  Here's a [link to that code](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/part4/customerApp/src/customer-app.ts#L20)).
+In the first pseudocode-ish version below, we can focus directly on the *request/response* handling pattern.  You'll quickly recognize this as our old friend the **STRPTQ** pattern. (As a refresher, feel free to review how we implemented this functionality in our native Faye `customerApp` way back in [Episode 1](https://dev.to/nestjs/part-1-introduction-and-setup-1a2l).  Here's a [link to that code](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/part4/customerApp/src/customer-app.ts#L20).  Or just open up `customerApp/src/customer-app.ts`).
 
-With that in mind, the draft version of `handleRequest()` below should be pretty clear.  I'll make a few explanatory comments below the code sample.
+With that in mind, the pseudocode-ish version of `handleRequest()` below should be pretty clear.  I'll make a few explanatory comments below the code sample.
 
 ```typescript
   public handleRequest(partialPacket, observer): Function {
@@ -284,7 +284,7 @@ A few other notes from the code:
 
     We complete the formation of our outbound packet by adding that pesky `id` parameter (that we **still** haven't talked about &#8212; I promise to address this in [Part 5](https://dev.to/nestjs/part-5-completing-the-client-component-hlh-temp-slug-2907984?preview=82c11163db963ca01d8d62d3a7b14843b422a6b28f46762d999bbe4b7035ad634d48bbbdd740e36376121aa673354ff5259f8b3028bceb931e800d9e)!).
 
-* After running our serializer, the packet is ready to send.
+* After running our serializer, the request packet is ready to send.
 * In Faye, the `subscribe()` call returns a promise that resolves when the Faye server returns an acknowledgement.
 * Upon that acknowledgement (promise resolution), we publish the serialized packet we built earlier.
 
@@ -348,8 +348,8 @@ Let's focus in on the newly added part:
 Let's review the purpose of this chunk of code.  This is (in terms of the concepts we started out with), our **inner callback** &#8212; the function that will be passed in our Faye client API `subscribe()` call to handle inbound messages.  As we handle each message in this function, we are converting the sequence back into an Observable stream.  We do that by taking the following steps **for each inbound message received from Faye**:
 
 1. Deserialize it and destructure it, leaving us with an `error`, `response` and `isDisposed` value for each inbound message
-2. Determine if the **inbound message stream** has errored or is complete
-3. Emit an observable value, based on the message
+2. Based on the contents of the message, determine if the **inbound message stream** has errored or is complete
+3. Emit an observable value, based on step 2
 
 As in any normal *observable subscriber function*, we handle these cases with the `observer.error()`, `observer.next()` and `observer.complete()` calls. If this confuses you, remember that all of this plugs into the Observable we created in our `send()` method. You might take a minute to [grok](https://en.wikipedia.org/wiki/Grok) all of this, and if it's still a little fuzzy, you can visit my [mini Observable factory tutorial here](xxx).
 
@@ -400,15 +400,15 @@ $ # HTTPie request to get the jobs stream with a base duration of 1
 $ http get localhost:3000/jobs-stream1/1
 ```
 
-If all is working, you should get a coordinated set of logs in each of the terminal windows indicating that we have, indeed, successfully subscribed to the results of our remote request. :beer:!
+If all is working, you should get a coordinated set of logs in each of the terminal windows indicating that we have, indeed, successfully subscribed to the results of our remote request. You'll see our RxJS pipe come into play, making simulated calls to our notifier as each step in the job completes (as each message in the stream arrives). :beer:!
 
 ### Limitations of Take 1
 
-We knowingly deferred a few things to *Take 2* to keep focused on the core requirements and implementation of a client. We'll address them in Part 5.  But there's one **big** issue lurking.  Any guesses on what that might be? I've definitely foreshadowed this along the way (hint: repeatedly deferring the discussion of that pesky message `id`).
+We knowingly deferred a few things to *Take 2* to keep focused on the core requirements and implementation of a client. We'll address them in Part 5.  But there's one **big** issue lurking.  Any guesses on what that might be? I've definitely foreshadowed this along the way (**hint**: repeatedly deferring the discussion of that pesky message `id`).
 
-OK, let's get right to it. Ask yourself this: since our client is embedded in an HTTP app that is responding to multiple incoming requests, many of which in turn are triggering these `client.send(...)` remote requests, how does the transporter client keep track of all of the outstanding remote requests and route them back to the correct originating (HTTP) request handler (i.e., the code with the original `client.send()` call?
+OK, let's get right to it. Ask yourself this: since our client is embedded in an HTTP app that is itself responding to multiple incoming requests, many of which in turn are triggering these `client.send(...)` remote requests, how does the transporter client keep track of all of the outstanding remote requests and route them back to the correct originating (HTTP) request handler (i.e., the code with the original `client.send()` call?
 
-Let's demonstrate the problem. You'll need one extra terminal window for this to enable launching two simultaneous requests.  You'll notice that in this branch, there is an extra route in `nestHttpApp`.  That route makes a new request (`'/race'`), which has a corresponding `@MessagePattern()` in `nestMicroservice`.  The point of these new features is to enable us to launch multiple requests that **overlap** in their execution.  Feel free to take a look at the code (these new routes/handlers are at the bottom of their respective Controller files), but all you really need to know is this: the `race` route in our `nestHttpApp` takes two parameters:
+Let's try it out. You'll need one extra terminal window for this to enable launching two simultaneous requests.  You'll notice that in this branch, there is an extra route in `nestHttpApp`.  That route makes a new request (`'/race'`), which has a corresponding `@MessagePattern()` in `nestMicroservice`.  The point of these new features is to enable us to launch multiple requests that **overlap** in their execution.  Feel free to take a look at the code (these new routes/handlers are at the bottom of their respective Controller files), but all you really need to know is this: the `race` route in our `nestHttpApp` takes two parameters:
 * a requestId
 * a delay period (in seconds) specifying how long the server should wait before responding
 
@@ -418,7 +418,7 @@ For example, try making the following request (HTTPie format):
 $ http get localhost:3000/race/1/10
 ```
 
-This will return the following response, after 10 seconds (`cid` in the response corresponds to the first route parameter, and `delay` in the response corresponds to the second parameter (expressed in milliseconds)):
+This will return the following response after 10 seconds (`cid` in the response corresponds to the first route parameter, and `delay` in the response corresponds to the second parameter (expressed in milliseconds)):
 ```json
 {
     "cid": "1",
@@ -442,7 +442,7 @@ $ # run this one in terminal 2, within a couple of seconds of running the top 1
 $ http get localhost:3000/race/2/5
 ```
 
-The results should (well, maybe not with all the foreshadowing :wink:) surprise you.  **Both** requests return the following result:
+The results may (well, maybe not with all the foreshadowing :wink:) surprise you.  **Both** requests return the following result:
 
 ```json
 {
@@ -457,7 +457,7 @@ The results should (well, maybe not with all the foreshadowing :wink:) surprise 
 }
 ```
 
-This is obviously incorrect for the first request.  The issue demonstrates what I'll refer to as the *[multiplexing](http://250bpm.com/blog:18) challenge*.  That is, we are multiplexing our requests through a single pair of channels.  When we issue request #1, it subscribes to a response on the `'/race_res'` channel. Request #2 does the same thing, and since request #2 finishes first, the request #1 subscription gets **request #2's result** (the wrong answer!) on the response channel.
+This is obviously incorrect for the first request.  The issue demonstrates what I'll refer to as the *[multiplexing](http://250bpm.com/blog:18) challenge*.  That is, we are multiplexing our requests for each *pattern* through a single pair of channels.  When we issue request #1, it subscribes to a response on the `'/race_res'` channel. Request #2 does the same thing, and since request #2 finishes first, the request #1 subscription gets **request #2's result** (the wrong answer!) on the response channel.
 
 Also, there's another nagging question... why do **both** subscribers get the result?  Hmmm... clearly something isn't working quite right here. We'll have to dig and work on this in our next (and final!) revision!
 
