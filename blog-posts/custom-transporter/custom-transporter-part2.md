@@ -349,7 +349,7 @@ Once the `getCustomers` method returns, we start the *return trip*, where things
 
 In this sequence, I'll introduce a part of the transporter infrastructure responsible for what I'm informally calling "Marshalling" (there's no such official term or single component inside Nest that does Marshalling).  Conceptually, it's the part(s) of the system that handle(s) dealing with transferring Observable streams over the network.
 
-> In the next article, we'll go through a few use cases for **why Observables are so cool, why they're a perfect fit in this flow, AND how they're actually really easy to use**.  I know this diagram doesn't make it seem that way, but hey, we're building our own transporter (my inner [trekky](http://sfi.org/) can't help but giggle over that :rocket:).  The beauty of it is that once we handle this case properly &#8212; and the framework will make this easy as we'll see in the next chapter &#8212; everything we might want to do with Observables (and their potential is just, well... *mind bending*) **just works**.
+> In [Part 3](https://dev.to/nestjs/part-3-completing-the-server-component-4a80) we'll go through a few use cases for **why Observables are so cool, why they're a perfect fit in this flow, AND how they're actually really easy to use**.  I know this diagram doesn't make it seem that way, but hey, we're building our own transporter (my inner [trekky](http://sfi.org/) can't help but giggle over that :rocket:).  The beauty of it is that once we handle this case properly &#8212; and the framework will make this easy as we'll see in the next chapter &#8212; everything we might want to do with Observables (and their potential is just, well... *mind bending*) **just works**.
 
 Here's the walk through of the return trip flow:
 
