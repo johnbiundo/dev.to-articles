@@ -144,16 +144,17 @@ To state it in terms of requirements: the goal is to respond to a well-formed in
 
 Let's dive into the code.  Open the file `nestjs-faye-transporter/src/responder/transporters/server-faye.ts`.
 
-An important concept is that this class extends `Server` (view this parent class here: [@nestjs/microservices/server/server.ts](https://github.com/nestjs/nest/blob/master/packages/microservices/server/server.ts)). We won't walk through all the details of the `ServerFaye` class, but the main things to know are:
+An important concept is that this class extends `Server` (view this parent class here: [@nestjs/microservices/server/server.ts](https://github.com/nestjs/nest/blob/master/packages/microservices/server/server.ts)). We won't walk through all the details of the `Server` superclass, but the main things to know are:
 
-1) It inherits some properties and methods from the built-in `Server` class
-2) After being instantiated in the `main.ts` file, the instance is essentially *managed for us* as part of the Nest lifecycle. This means that when the application bootstraps, and our custom `ServerFaye` class is instantiated, its inherited properties are populated with data, and the framework calls the entry point of our class.  That entry point is the `listen()` method.
+1) Our `ServerFaye` class inherits some properties and methods from the built-in `Server` class
+2) After being instantiated in the `main.ts` file, the `ServerFaye` instance is essentially *managed for us* as part of the Nest lifecycle. This means that when the application bootstraps, and our custom `ServerFaye` class is instantiated, its inherited properties are populated with data, and the framework calls the entry point of our class.  That entry point is the `listen()` method.
 
-So let's start with `listen()`. Its job is to make a connection to the broker, and then run `start()`, which is where the fun begins.
+So let's dig into the `ServerFaye` class, starting with the `listen()` entry point. Its job is to make a connection to the broker, and then run `start()`, which is where the fun begins.
 
 The interesting thing in `start()` is the call to `this.bindHandlers()`.  Take a look at that method:
 
 ```ts
+// nestjs-faye-transporter/src/responder/transporters/server-faye.ts
   public bindHandlers() {
     /**
      * messageHandlers is populated by the Framework (on the `Server` superclass)
@@ -228,6 +229,8 @@ Going back to our requirements, our main acceptance test is simple: send a well-
 
 Before we can run the test, we need to cover one more preliminary.  Ask yourself this: how does our `nestMicroservice` app know how to find the code in our `nestjs-faye-transporter` package?  The answer is pretty simple (though it belies the awesomeness of NPM!).
 
+> **Note**: If you ran the `build.sh` script at the beginning of this article, you **probably do not** need to run the `npm link` commands below. Doing so again is harmless, and it's useful to understand what's happening so I include the steps below.  Also, **sometimes** things just get flakey with the links, and you need to re-run them.  I'd actually suggest you go ahead and do so even if you *did* already run the `build.sh` script, just to see the behavior.  These steps are prety quick anyway.
+>
 We're going to use the `npm link` command ([read details here](https://medium.com/dailyjs/how-to-use-npm-link-7375b6219557), but the following is all you need to know for this tutorial).  There are two simple steps:
 
 1. In terminal 2, make sure you're in the folder `nestjs-faye-transporter` (our NPM package folder).  Then run `npm link` at the OS level.  You should see output like this (I use `nvm`; if you don't your output will look *slightly* different):
