@@ -438,8 +438,8 @@ Also, there's another nagging question... why do **both** subscribers get the re
 
 With these issues in mind, we're ready to build a final version of the Faye Custom Transporter client component, completing our development project.  In Part 5 we cover:
 
-* a
-* b
-* c
+* Solving the multiplexing issue
+* Client library connection management
+* Event handling on the client side
 
 Feel free to ask questions, make comments or suggestions, or just say hello in the comments below. And join us at [Discord](https://discord.gg/nestjs) for more happy discussions about NestJS. I post there as _Y Prospect_.
