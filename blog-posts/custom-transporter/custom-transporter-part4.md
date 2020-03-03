@@ -123,7 +123,7 @@ Before diving into the code, let's review our overall strategy.  At a top level,
 
 Issuing the request and waiting for the results using the broker API is familiar territory.  We'll just implement our very familiar *STRPTQ* (*subscribe-to-the-response-then-publish-the-request*) pattern to accomplish this.
 
-How do we convert the broker message stream into an Observable stream? We can use the Observable/observer pattern to do this. While I won't go into a lot of detail (you can [read more, including simple examples, here](xxx)), the basic idea is simple, and is the primary use case for Observables.  The easiest way to see this is through the code review below.
+How do we convert the broker message stream into an Observable stream? We can use the Observable/observer pattern to do this. While I won't go into a lot of detail (you can [read more, including simple examples, here](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/master/observable-quick-intro.md)), the basic idea is simple, and is the primary use case for Observables.  The easiest way to see this is through the code review below.
 
 ### Take 1 Code Review
 
@@ -231,7 +231,7 @@ Another thing to know is that if the user-land `client.send()` call doesn't **ex
 
 If this still isn't completely intuitive, I feel your pain, but I advise you to just let it marinate in the background and proceed.  Trust me, you can still follow most of this even if this still feels *strange*.  If you really **must scratch that itch**, see the footnote below.
 
-> <sup>1</sup>I'm assuming familiarity with this pattern. If you're an RxJS junky, this should be easy to follow.  If you're not, I'll try not to wave my hands too much. I too struggled with this concept for a while, so I've created a small [side excursion here](xxx) to help with this concept.  This should take you no more than 5-10 minutes to work through, and might be a helpful pre-requisite if some of this section has you a little boggled.
+> <sup>1</sup>I'm assuming familiarity with this pattern. If you're an RxJS junky, this should be easy to follow.  If you're not, I'll try not to wave my hands too much. I too struggled with this concept for a while, so I've created a small [side excursion here](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/master/observable-quick-intro.md) to help with this concept.  This should take you no more than 5-10 minutes to work through, and might be a helpful pre-requisite if some of this section has you a little boggled.
 
 So let's dig into that `requestHandler()` method.
 
@@ -351,7 +351,7 @@ Let's review the purpose of this chunk of code.  This is (in terms of the concep
 2. Based on the contents of the message, determine if the **inbound message stream** has errored or is complete
 3. Emit an observable value, based on step 2
 
-As in any normal *observable subscriber function*, we handle these cases with the `observer.error()`, `observer.next()` and `observer.complete()` calls. If this confuses you, remember that all of this plugs into the Observable we created in our `send()` method. You might take a minute to [grok](https://en.wikipedia.org/wiki/Grok) all of this, and if it's still a little fuzzy, you can visit my [mini Observable factory tutorial here](xxx).
+As in any normal *observable subscriber function*, we handle these cases with the `observer.error()`, `observer.next()` and `observer.complete()` calls. If this confuses you, remember that all of this plugs into the Observable we created in our `send()` method. You might take a minute to [grok](https://en.wikipedia.org/wiki/Grok) all of this, and if it's still a little fuzzy, you can visit my [mini Observable factory tutorial here](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/master/observable-quick-intro.md).
 
 #### Handling Unsubscribe
 
