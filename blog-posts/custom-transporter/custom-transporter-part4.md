@@ -69,6 +69,9 @@ import {
   OutboundMessageIdentitySerializer,
 } from '@faye-tut/nestjs-faye-transporter';
 
+
+import { tap, reduce, filter } from 'rxjs/operators';
+
 @Controller()
 export class AppController {
   logger = new Logger('AppController');
@@ -87,7 +90,7 @@ We simply instantiate the client in the class constructor.  We could also use [c
 
 The JSON options object we pass to `ClientFaye` should be quite similar to the `options` object we support on the server side, as it is either configuring the Faye connection, or passing some generic transporter options, like `serializer`.
 
-Once we instantiate a client like this, we can use it just like a `ClientProxy` object to make requests and emit events. Let's take a look at one such request.  Further down in the `app.controller.ts` file, notice this call.  Here, we make a call to `client.send()` and &#8212; since the result will emit a stream &#8212; we pipe that stream through some RxJS operators.
+Once we instantiate a client like this, we can use it just like a `ClientProxy` object to make requests and emit events. Let's take a look at one such request.  Further down in the `app.controller.ts` file, notice this call.  Here, we make a call to `client.send()` and &#8212; since, in this case, we want to manipulate the entire stream of results (what we do with those results isn't important here, we're just showing that we are wanting to access the stream) &#8212; we pipe that stream through the RxJS `tap()` operator.
 
 ```typescript
 // nestHttpApp/src/app.controller.ts
@@ -123,7 +126,7 @@ Before diving into the code, let's review our overall strategy.  At a top level,
 
 Issuing the request and waiting for the results using the broker API is familiar territory.  We'll just implement our very familiar *STRPTQ* (*subscribe-to-the-response-then-publish-the-request*) pattern to accomplish this.
 
-How do we convert the broker message stream into an Observable stream? We can use the Observable/observer pattern to do this. While I won't go into a lot of detail (you can [read more, including simple examples, here](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/master/observable-quick-intro.md)), the basic idea is simple, and is the primary use case for Observables.  The easiest way to see this is through the code review below.
+How do we convert the broker *message stream* into an *Observable stream*? We can use the Observable/observer pattern to do this. While I won't go into a lot of detail (you can [read more, including simple examples, here](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/master/observable-quick-intro.md)), the basic idea is simple, and is the primary use case for Observables.  The easiest way to see this is through the code review below.
 
 ### Take 1 Code Review
 
@@ -210,11 +213,13 @@ Here are the connections you need to make:
 
 * inner callback (broker) called when inbound message received...
 * this triggers calling the *observable subscription function*...
-* which in turn *calls back to* our user-land `client.send(...)` subscription
+* which in turn *calls back to* our user-land `client.send(...)` subscription handler
 
 That's what the `send()` method is setting up with the Observable it creates.  One more thing about Observables to keep in mind.  What we just described effectively "sets up the cascade of callbacks", but these functions are **cold** in the sense that all we've done is register callbacks. The act of **subscribing** to the Observable kicks things in motion. The act of subscribing is the event that triggers the *observable subscriber function* to run; when you think about that, you realize that "Aha! So this in turn causes the Faye API `subscribe()` call inside `handleRequest()` to run", and we see that this is how we start the stream flowing and turn the process from **cold** to **hot**.
 
-Another thing to know is that if the user-land `client.send()` call doesn't **explicitly** subscribe, but instead just **returns** the result, Nest **automatically** subscribes to the result. As a `ClientProxy` developer, you don't have to worry about this.  But as a quick aside, note that this behavior is useful as a default, and works great in most situations.  But in case you're wondering *how does Nest return a potential stream of results* over HTTP?  The answer is that it returns the **last** result in the stream.  Again, in many cases this is fine.  In our example above (shown again below), however, we want to access the values in the stream, hence we add a `pipe()` operator that allows us to operate on the stream itself, once it's subscribed:
+Another thing to know is that if the user-land `client.send()` call doesn't **explicitly** subscribe, but instead just **returns** the result, Nest **automatically** subscribes to the result. As a `ClientProxy` developer, you don't have to worry about this.  But as a quick aside, note that this behavior is useful as a default, and works great in most situations.
+
+Now if you've clicked ahead to the next question and you're wondering *how does Nest return a potential stream of results* over HTTP?  The answer is that it returns the **last** result in the stream.  Again, in many cases this is fine.  In our user-land `client.send(...)` call (shown again below), however, we want to access the values in the stream, thus we add a `pipe()` operator that allows us to operate on the stream itself, once it's subscribed:
 
 ```typescript
 // nestHttpApp/src/app.controller.ts
@@ -282,7 +287,7 @@ A few other notes from the code:
     }
     ```
 
-    We complete the formation of our outbound packet by adding that pesky `id` parameter (that we **still** haven't talked about &#8212; I promise to address this in [Part 5](https://dev.to/nestjs/part-5-completing-the-client-component-hlh-temp-slug-2907984?preview=82c11163db963ca01d8d62d3a7b14843b422a6b28f46762d999bbe4b7035ad634d48bbbdd740e36376121aa673354ff5259f8b3028bceb931e800d9e)!).
+    We complete the formation of our outbound packet by using `uuid()` to add that pesky `id` parameter (that we **still** haven't talked about &#8212; I promise to address this in [Part 5](https://dev.to/nestjs/part-5-completing-the-client-component-hlh-temp-slug-2907984?preview=82c11163db963ca01d8d62d3a7b14843b422a6b28f46762d999bbe4b7035ad634d48bbbdd740e36376121aa673354ff5259f8b3028bceb931e800d9e)!).
 
 * After running our serializer, the request packet is ready to send.
 * In Faye, the `subscribe()` call returns a promise that resolves when the Faye server returns an acknowledgement.
@@ -345,11 +350,11 @@ Let's focus in on the newly added part:
     };
 ```
 
-Let's review the purpose of this chunk of code.  This is (in terms of the concepts we started out with), our **inner callback** &#8212; the function that will be passed in our Faye client API `subscribe()` call to handle inbound messages.  As we handle each message in this function, we are converting the sequence back into an Observable stream.  We do that by taking the following steps **for each inbound message received from Faye**:
+Let's review the purpose of this chunk of code.  This is (in terms of the concepts we started out with), our **inner callback** &#8212; the function that will be passed in our Faye client API `subscribe()` call to handle inbound messages.  As we handle each message in this function, this code converts the message back into a value in the Observable stream.  We do that by taking the following steps **for each inbound message received from Faye**:
 
 1. Deserialize it and destructure it, leaving us with an `error`, `response` and `isDisposed` value for each inbound message
 2. Based on the contents of the message, determine if the **inbound message stream** has errored or is complete
-3. Emit an observable value, based on step 2
+3. Emit an Observable value, based on step 2
 
 As in any normal *observable subscriber function*, we handle these cases with the `observer.error()`, `observer.next()` and `observer.complete()` calls. If this confuses you, remember that all of this plugs into the Observable we created in our `send()` method. You might take a minute to [grok](https://en.wikipedia.org/wiki/Grok) all of this, and if it's still a little fuzzy, you can visit my [mini Observable factory tutorial here](https://github.com/johnbiundo/nestjs-faye-transporter-sample/blob/master/observable-quick-intro.md).
 
@@ -459,7 +464,7 @@ The results may (well, maybe not with all the foreshadowing :wink:) surprise you
 
 This is obviously incorrect for the first request.  The issue demonstrates what I'll refer to as the *[multiplexing](http://250bpm.com/blog:18) challenge*.  That is, we are multiplexing our requests for each *pattern* through a single pair of channels.  When we issue request #1, it subscribes to a response on the `'/race_res'` channel. Request #2 does the same thing, and since request #2 finishes first, the request #1 subscription gets **request #2's result** (the wrong answer!) on the response channel.
 
-Also, there's another nagging question... why do **both** subscribers get the result?  Hmmm... clearly something isn't working quite right here. We'll have to dig and work on this in our next (and final!) revision!
+Also, there's another nagging question... why do **both** subscribers get the result?  Hmmm... clearly something isn't working quite right here. We'll have to dig in and work on this in our next (and final!) revision!
 
 ### What's Next
 
