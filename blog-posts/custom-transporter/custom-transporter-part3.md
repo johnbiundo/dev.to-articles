@@ -31,7 +31,6 @@ For each article in the series, we introduce some new components (and sometimes 
 
 ```bash
 $ # from root directory of project (e.g., transporter-tutorial, or whatever you chose as the root)
-$ # from the root folder (where repo was cloned into)
 $ sh build.sh
 ```
 \**This is a shell script that runs on Linux-like systems.  You may have to make an adjustment for non-Linux systems.  Note that the script is simply a convenience that runs `npm install && npm run build`inside each top-level directory, so you can always fall back to that technique if you have trouble with the script.*
