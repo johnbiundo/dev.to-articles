@@ -1,5 +1,5 @@
 ---
-published: false
+published: true
 title: "Part 5: Completing the Client Component"
 description: "tags: nestjs, nest, faye, microservices, node.js"
 series: "Advanced NestJS Microservices"
@@ -140,7 +140,7 @@ With this strategy in mind, here's the outline of how we'll implement it.
 > Note that there's a fair amount of interaction back and forth between our `ClientFaye` subclass and the `ClientProxy` superclass it extends, so pay close attention to that, and I'll try to give clear signposts to guide you.
 
 1. Unlike our *Take 1* version, where we created a new standalone class, we're now going to start by extending the `ClientProxy` class.  This is, of course, how we "plug in" to the framework.
-2. We're going to let the framework take over the implementation of `send()` for us (at least the *shell* of the implementation), rather than creating a concrete implementation ourselves, as we did in Part 4. The superclass `send()` method is now the entry point for processing a user-land `send()` call, and dictates how we plug in our pieces without disrupting the overall machinery.
+2. We're going to let the framework take over the implementation of `send()` for us (at least the *shell* of the implementation), rather than creating a concrete implementation ourselves, as we did in [Part 4](https://dev.to/nestjs/part-4-basic-client-component-16f9). The superclass `send()` method is now the entry point for processing a user-land `send()` call, and dictates how we plug in our pieces without disrupting the overall machinery.
 3. The superclass `send()` method calls upon a concrete implementation of `publish()`, which is where we'll implement the strategy we've been discussing, dealing with our *response emitter factory* construct, unique identifiers, and so forth, [as described above](#handling-multiple-requests-the-union-of-observables-and-correlation-ids).
 4. We're going to implement a method to *unsubscribe* from a Faye topic.
 5. We're going to handle events (`ClientProxy#emit()`) by providing a concrete implementation of `dispatchEvent()`.
