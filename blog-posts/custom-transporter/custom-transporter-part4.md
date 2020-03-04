@@ -1,5 +1,5 @@
 ---
-published: False
+published: true
 title: "Part 4: Basic Client Component"
 description: "tags: nestjs, nest, faye, microservices, node.js"
 series: "Advanced NestJS Microservices"
