@@ -468,7 +468,7 @@ Also, there's another nagging question... why do **both** subscribers get the re
 
 ### What's Next
 
-With these issues in mind, we're ready to build a final version of the Faye Custom Transporter client component, completing our development project.  In Part 5 we cover:
+With these issues in mind, we're ready to build a final version of the Faye Custom Transporter client component, completing our development project.  In [Part 5](https://dev.to/nestjs/part-4-basic-client-component-16f9) we cover:
 
 * Solving the multiplexing issue
 * Client library connection management

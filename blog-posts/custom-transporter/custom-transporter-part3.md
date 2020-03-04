@@ -130,7 +130,7 @@ const publish = (response: any) => {
 
 This code is very similar to the way we published in the *Take 1* version (from branch `part2`), but now packaged as a function we can hand off to the framework.  Study it for a moment and make sure you understand it &#8212; it should be pretty straightforward. The `Object.assign(...)` code's job is to copy the `id` field from the inbound request to the outbound response.  We did that in the earlier version as well, but there we were defining the response object in place, so the technique was a little different.
 
-**Note**: We still haven't discussed **why** we need that `id`.  For now, just trust the process :smiley:.  Don't worry, we'll cover this in Part 5.
+**Note**: We still haven't discussed **why** we need that `id`.  For now, just trust the process :smiley:.  Don't worry, we'll cover this in [Part 5](https://dev.to/nestjs/part-4-basic-client-component-16f9).
 
 Finally, we delegate the publishing step to the framework with the final line:
 
