@@ -1,5 +1,5 @@
 ---
-published: false
+published: true
 title: "Part 5: Completing the Client Component"
 description: "tags: nestjs, nest, faye, microservices, node.js"
 series: "Advanced NestJS Microservices"
